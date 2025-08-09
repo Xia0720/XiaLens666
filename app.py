@@ -105,24 +105,16 @@ def view_album(album_name):
         return f"Error loading album: {str(e)}"
 
 # Story 页面
-stories = []
-
-@app.route("/story", methods=["GET", "POST"])
+@app.route("/story")
 def story():
-    global stories
-    if request.method == "POST":
-        if not session.get("logged_in"):
-            return "你没有权限上传故事内容", 403
-        try:
-            image = request.files["image"]
-            caption = request.form["caption"]
-            upload_result = cloudinary.uploader.upload(image)
-            image_url = upload_result["secure_url"]
-            stories.append({"image_url": image_url, "caption": caption})
-            return redirect(url_for("story"))
-        except Exception as e:
-            return f"Upload error: {str(e)}"
-
+    # 这里不需要登录限制，直接读取所有故事数据
+    stories = []
+    for filename in sorted(os.listdir(STORY_FOLDER)):
+        if filename.endswith(".txt"):
+            with open(os.path.join(STORY_FOLDER, filename), "r", encoding="utf-8") as f:
+                text = f.read()
+            image_file = filename.replace(".txt", ".jpg")
+            stories.append({"text": text, "image": image_file})
     return render_template("story.html", stories=stories, logged_in=session.get("logged_in", False))
 
 # Upload 页面
