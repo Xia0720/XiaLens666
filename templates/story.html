@@ -1,25 +1,26 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>Stories</title>
+    <title>故事</title>
 </head>
 <body>
-    <h1>Stories</h1>
-
-    {% for story in stories %}
-        <div class="story">
-            <img src="{{ url_for('static', filename='story/' ~ story.image) }}" alt="Story Image" style="max-width:300px;">
-            <p>{{ story.text }}</p>
-        </div>
-    {% endfor %}
+    <h1>故事</h1>
 
     {% if logged_in %}
-        <a href="{{ url_for('upload_story') }}">上传新故事</a>
+        <p><a href="{{ url_for('upload_story') }}">上传新故事</a></p>
+        <p><a href="{{ url_for('logout') }}">退出登录</a></p>
+    {% else %}
+        <p><a href="{{ url_for('login') }}">登录</a></p>
     {% endif %}
 
-    <br>
-    <a href="{{ url_for('index') }}">返回首页</a>
+    {% for story in stories %}
+        <div>
+            <img src="{{ story.image }}" style="max-width:300px;">
+            <p>{{ story.text }}</p>
+        </div>
+        <hr>
+    {% endfor %}
 </body>
 </html>
 
