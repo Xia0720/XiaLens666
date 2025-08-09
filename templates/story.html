@@ -2,25 +2,47 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>故事</title>
+    <title>故事集 - XiaCapture</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+        header { background: #333; color: white; padding: 10px 20px; }
+        header a { color: white; margin-left: 15px; text-decoration: none; }
+        .container { max-width: 900px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; }
+        .story { border-bottom: 1px solid #ddd; padding: 15px 0; }
+        .story img { max-width: 100%; border-radius: 6px; margin-top: 10px; }
+        .upload-btn { display: inline-block; padding: 8px 16px; background: #28a745; color: white; text-decoration: none; border-radius: 4px; margin-bottom: 20px; }
+        .upload-btn:hover { background: #218838; }
+    </style>
 </head>
 <body>
-    <h1>故事</h1>
-
+<header>
+    <span>📖 XiaCapture 故事集</span>
+    <a href="{{ url_for('index') }}">首页</a>
     {% if logged_in %}
-        <p><a href="{{ url_for('upload_story') }}">上传新故事</a></p>
-        <p><a href="{{ url_for('logout') }}">退出登录</a></p>
+        <a href="{{ url_for('logout') }}">退出登录</a>
     {% else %}
-        <p><a href="{{ url_for('login') }}">登录</a></p>
+        <a href="{{ url_for('login') }}">登录</a>
+    {% endif %}
+</header>
+
+<div class="container">
+    {% if logged_in %}
+        <a href="{{ url_for('upload_story') }}" class="upload-btn">+ 上传新故事</a>
     {% endif %}
 
-    {% for story in stories %}
-        <div>
-            <img src="{{ story.image }}" style="max-width:300px;">
-            <p>{{ story.text }}</p>
+    {% if stories %}
+        {% for story in stories %}
+        <div class="story">
+            <p>{{ story.text|safe }}</p>
+            {% if story.image %}
+                <img src="{{ url_for('static', filename='story/' ~ story.image) }}" alt="故事图片">
+            {% endif %}
         </div>
-        <hr>
-    {% endfor %}
+        {% endfor %}
+    {% else %}
+        <p>暂无故事内容。</p>
+    {% endif %}
+</div>
 </body>
 </html>
 
