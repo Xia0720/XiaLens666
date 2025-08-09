@@ -28,20 +28,16 @@ def allowed_file(filename):
 # 查看故事
 @app.route("/story")
 def story():
+    # 获取 static/story 下的所有图片或文字文件
+    story_dir = os.path.join(app.static_folder, "story")
     stories = []
-    for filename in sorted(os.listdir(STORY_FOLDER)):
-        if filename.lower().endswith((".png", ".jpg", ".jpeg", ".gif")):
-            img_path = os.path.join(STORY_FOLDER, filename)
-            txt_path = os.path.splitext(img_path)[0] + ".txt"
-            text_content = ""
-            if os.path.exists(txt_path):
-                with open(txt_path, "r", encoding="utf-8") as f:
-                    text_content = f.read()
-            stories.append({
-                "image": img_path.replace("\\", "/"),
-                "text": text_content
-            })
 
+    if os.path.exists(story_dir):
+        for filename in sorted(os.listdir(story_dir)):
+            file_path = os.path.join("story", filename)  # 相对 static
+            stories.append(file_path)
+
+    # logged_in 用于模板判断是否显示上传按钮
     return render_template("story.html", stories=stories, logged_in=session.get("logged_in", False))
 
 # 上传故事（仅登录用户）
