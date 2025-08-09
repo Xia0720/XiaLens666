@@ -1,40 +1,38 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Story</title>
+</head>
+<body>
+  <h1>Stories</h1>
 
-{% block content %}
-<div class="container mt-4">
-    <h2>Stories</h2>
+  <!-- 展示所有故事图文 -->
+  {% for story in stories %}
+    <div style="margin-bottom: 20px;">
+      <img src="{{ story.image_url }}" alt="Story Image" style="max-width: 400px;" />
+      <p>{{ story.caption }}</p>
+    </div>
+  {% endfor %}
 
-    {% if logged_in %}
+  <!-- 登录用户显示上传表单 -->
+  {% if logged_in %}
+    <hr />
+    <h2>Upload New Story</h2>
     <form method="POST" enctype="multipart/form-data">
-        <div class="mb-3">
-            <label for="image" class="form-label">Upload Image</label>
-            <input type="file" name="image" id="image" class="form-control" required>
-        </div>
-        <div class="mb-3">
-            <label for="caption" class="form-label">Caption</label>
-            <textarea name="caption" id="caption" class="form-control" rows="2" required></textarea>
-        </div>
-        <button type="submit" class="btn btn-success">Upload Story</button>
+      <input type="file" name="image" required />
+      <br />
+      <textarea name="caption" placeholder="Caption" required></textarea>
+      <br />
+      <button type="submit">Upload</button>
     </form>
-    <hr>
-    {% else %}
-        <p>You must <a href="{{ url_for('login') }}">login</a> to upload stories.</p>
-    {% endif %}
+    <p><a href="{{ url_for('logout') }}">Logout</a></p>
+  {% else %}
+    <p><a href="{{ url_for('login') }}">Login to upload stories</a></p>
+  {% endif %}
+</body>
+</html>
 
-    {% if stories %}
-        <div class="story-list">
-            {% for story in stories %}
-                <div class="story-item mb-3">
-                    <img src="{{ story.image_url }}" alt="Story image" style="max-width: 100%; height: auto;">
-                    <p>{{ story.caption }}</p>
-                </div>
-            {% endfor %}
-        </div>
-    {% else %}
-        <p>No stories uploaded yet.</p>
-    {% endif %}
-</div>
-{% endblock %}
 
 
 
