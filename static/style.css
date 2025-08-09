@@ -1,67 +1,89 @@
-body {
-    font-family: Arial, sans-serif;
+/* 通用样式 */
+body, html {
     margin: 0;
     padding: 0;
+    height: 100%;
+    font-family: Arial, sans-serif;
 }
 
+/* 导航栏 */
 .navbar {
     background-color: #333;
     padding: 10px 20px;
 }
 
-.nav-links {
+.navbar-menu {
+    list-style: none;
     display: flex;
     justify-content: center;
-    list-style: none;
     margin: 0;
     padding: 0;
 }
 
-.nav-links li {
+.navbar-menu li {
     margin: 0 15px;
 }
 
-.nav-links a {
+.navbar-menu li a {
     color: white;
     text-decoration: none;
     font-weight: bold;
 }
 
-.nav-links a:hover {
+.navbar-menu li a:hover {
     text-decoration: underline;
 }
 
-.content {
-    padding: 30px;
-}
-
+/* 首页 */
 .homepage {
+    position: relative;
+    height: 100vh;  /* 视窗高度，确保满屏 */
+    color: white;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background-color: black;
 }
 
 .main-title {
-    font-size: 64px;
+    font-size: 128px;  /* 放大一倍 */
     font-weight: bold;
-    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4);
-    margin-bottom: 30px;
+    text-shadow: 2px 2px 5px rgba(0,0,0,0.7);
+    margin-bottom: 20px;
+    z-index: 2;
+    margin-top: -20px;  /* 往上移20px，根据需要调整 */
+}
+
+.main-image-container {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    overflow: hidden;
+    z-index: 1;
 }
 
 .main-image {
-    width: 80%;
-    max-width: 1000px;
-    border-radius: 10px;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: brightness(0.6);  /* 调暗图片让文字更突出 */
+    position: absolute;
+    top: 0;
+    left: 0;
 }
 
+/* About 页面 */
 .about-container {
     display: flex;
     flex-wrap: wrap;
-    justify-content: space-between;
     gap: 30px;
+    padding: 30px;
+    justify-content: center;
 }
 
 .about-text {
-    flex: 1;
-    min-width: 280px;
+    flex: 1 1 300px;
+    max-width: 450px;
 }
 
 .text-box {
@@ -70,21 +92,21 @@ body {
     border-radius: 15px;
     font-size: 18px;
     line-height: 1.6;
-    max-width: 400px;
     word-wrap: break-word;
 }
 
 .about-images {
-    flex: 1;
+    flex: 1 1 300px;
     display: flex;
     flex-direction: column;
     gap: 20px;
     align-items: center;
-    min-width: 280px;
+    max-width: 505px;
 }
 
 .about-image {
     width: 100%;
-    max-width: 400px;
     border-radius: 10px;
+    max-height: 405px;
+    object-fit: cover;
 }
