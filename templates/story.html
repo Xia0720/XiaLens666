@@ -1,37 +1,100 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Story</title>
+    <meta charset="UTF-8">
+    <title>Story - XiaCapture</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #fafafa;
+        }
+        header {
+            margin-bottom: 20px;
+        }
+        nav a {
+            margin-right: 15px;
+            text-decoration: none;
+            color: #0077cc;
+        }
+        nav a:hover {
+            text-decoration: underline;
+        }
+        .story {
+            background-color: #fff;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .story img {
+            max-width: 100%;
+            border-radius: 5px;
+        }
+        form {
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        textarea {
+            width: 100%;
+            height: 80px;
+            margin-top: 10px;
+        }
+        button {
+            margin-top: 10px;
+            padding: 8px 15px;
+            background-color: #0077cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #005fa3;
+        }
+    </style>
 </head>
 <body>
-  <h1>Stories</h1>
+    <header>
+        <nav>
+            <a href="{{ url_for('album') }}">Album</a>
+            <a href="{{ url_for('story') }}">Story</a>
+            {% if logged_in %}
+                <a href="{{ url_for('upload') }}">Upload</a>
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">Login</a>
+            {% endif %}
+        </nav>
+    </header>
 
-  <!-- 展示所有故事图文 -->
-  {% for story in stories %}
-    <div style="margin-bottom: 20px;">
-      <img src="{{ story.image_url }}" alt="Story Image" style="max-width: 400px;" />
-      <p>{{ story.caption }}</p>
-    </div>
-  {% endfor %}
+    <h1>Stories</h1>
 
-  <!-- 登录用户显示上传表单 -->
-  {% if logged_in %}
-    <hr />
-    <h2>Upload New Story</h2>
-    <form method="POST" enctype="multipart/form-data">
-      <input type="file" name="image" required />
-      <br />
-      <textarea name="caption" placeholder="Caption" required></textarea>
-      <br />
-      <button type="submit">Upload</button>
-    </form>
-    <p><a href="{{ url_for('logout') }}">Logout</a></p>
-  {% else %}
-    <p><a href="{{ url_for('login') }}">Login to upload stories</a></p>
-  {% endif %}
+    <!-- 展示所有图文 -->
+    {% for story in stories %}
+        <div class="story">
+            <img src="{{ story.image_url }}" alt="Story Image">
+            <p>{{ story.caption }}</p>
+        </div>
+    {% endfor %}
+
+    <!-- 登录用户才能上传 -->
+    {% if logged_in %}
+        <h2>Upload New Story</h2>
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="image" required>
+            <textarea name="caption" placeholder="Write a caption..." required></textarea>
+            <br>
+            <button type="submit">Upload</button>
+        </form>
+    {% else %}
+        <p><a href="{{ url_for('login') }}">Login to upload stories</a></p>
+    {% endif %}
 </body>
 </html>
+
 
 
 
