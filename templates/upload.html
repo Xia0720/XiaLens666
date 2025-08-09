@@ -1,21 +1,18 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container mt-4">
-    <h2>Upload Photo</h2>
-    <form method="POST" enctype="multipart/form-data">
-        <div class="mb-3">
-            <label for="folder" class="form-label">Album Name (New or Existing)</label>
-            <input type="text" class="form-control" name="folder" placeholder="e.g. my_album" required>
-        </div>
-        <div class="mb-3">
-            <label for="photo" class="form-label">Select Photo</label>
-            <input type="file" class="form-control" name="photo" required>
-        </div>
-        <button type="submit" class="btn btn-primary">Upload</button>
-    </form>
-</div>
+<h2>Upload Photo</h2>
+<form method="POST" enctype="multipart/form-data">
+    <div>
+        <label for="folder">Album Name (New or Existing)</label><br>
+        <input type="text" name="folder" placeholder="e.g. my_album" required>
+    </div>
+    <div>
+        <label for="photo">Select Photo</label><br>
+        <input type="file" name="photo" required>
+    </div>
+    <button type="submit">Upload</button>
+</form>
 {% endblock %}
-
 
 
 
