@@ -1,38 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>Story</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: auto; }
-        .story-item { margin-bottom: 30px; }
-        img { max-width: 100%; height: auto; }
-        .upload-btn { margin-top: 20px; }
-    </style>
+    <title>Stories</title>
 </head>
 <body>
+    <h1>Stories</h1>
 
-<h1>Stories</h1>
+    {% for story in stories %}
+        <div class="story">
+            <img src="{{ url_for('static', filename='story/' ~ story.image) }}" alt="Story Image" style="max-width:300px;">
+            <p>{{ story.text }}</p>
+        </div>
+    {% endfor %}
 
-{% if logged_in %}
-    <div class="upload-btn">
-        <a href="{{ url_for('upload_story') }}">📤 上传新 Story</a>
-    </div>
-{% endif %}
+    {% if logged_in %}
+        <a href="{{ url_for('upload_story') }}">上传新故事</a>
+    {% endif %}
 
-{% for s in stories %}
-    <div class="story-item">
-        {% if s.image %}
-            <img src="{{ url_for('static', filename='story/' + s.image) }}" alt="Story Image">
-        {% endif %}
-        <p>{{ s.text }}</p>
-    </div>
-{% endfor %}
-
-<a href="{{ url_for('albums') }}">返回相册</a>
-
+    <br>
+    <a href="{{ url_for('index') }}">返回首页</a>
 </body>
 </html>
+
 
 
 
