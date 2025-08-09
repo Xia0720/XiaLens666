@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>上传故事 - XiaCapture</title>
+    <title>Upload a story - XiaCapture</title>
     <style>
         body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
         header { background: #333; color: white; padding: 10px 20px; }
@@ -19,19 +19,19 @@
 </head>
 <body>
 <header>
-    <span>📤 上传故事</span>
-    <a href="{{ url_for('story') }}">返回故事集</a>
+    <span>📤 Upload a story</span>
+    <a href="{{ url_for('story') }}">Back to storycollection</a>
 </header>
 
 <div class="container">
     <form action="{{ url_for('upload_story') }}" method="post" enctype="multipart/form-data">
-        <label for="story_text">故事内容</label>
+        <label for="story_text">Story content</label>
         <textarea name="story_text" id="story_text" rows="5" placeholder="请输入故事文字..." required></textarea>
 
-        <label for="story_image">上传图片</label>
+        <label for="story_image">Upload an image</label>
         <input type="file" name="story_image" id="story_image" accept="image/*" required>
 
-        <button type="submit">提交故事</button>
+        <button type="submit">Submit story</button>
     </form>
 </div>
 </body>
