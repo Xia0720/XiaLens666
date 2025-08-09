@@ -72,52 +72,49 @@ body, html {
     left: 0;
 }
 
-/* About 页面 */
+/* About 页面整体容器 */
 .about-container {
     display: flex;
     flex-wrap: wrap;
     gap: 30px;
-    padding: 30px;
+    padding: 40px 30px;
     justify-content: center;
+    background-color: #fafafa;
 }
 
+/* 文字部分容器 */
 .about-text {
-    flex: 1 1 300px;
+    flex: 1 1 350px;
     max-width: 450px;
-}
-
-.about-text .text-box {
     background-color: #f0f0f0;
-    padding: 20px;
+    padding: 25px 30px;
     border-radius: 15px;
     font-size: 18px;
     line-height: 1.6;
-    word-wrap: break-word;
+    color: #333;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
-/* 段落间距 */
-.about-text .text-box p {
-    margin-top: 1em;
-    margin-bottom: 1em;
+/* 文字段落间距 */
+.about-text p {
+    margin: 1em 0;
 }
 
-/* 去掉第一个段落上方间距 */
-.about-text .text-box p:first-child {
-    margin-top: 0;
-}
-
+/* 图片容器 */
 .about-images {
-    flex: 1 1 300px;
+    flex: 1 1 350px;
+    max-width: 500px;
     display: flex;
     flex-direction: column;
     gap: 20px;
     align-items: center;
-    max-width: 505px;
 }
 
+/* 图片样式 */
 .about-image {
     width: 100%;
-    border-radius: 10px;
-    max-height: 405px;
+    max-height: 400px;
     object-fit: cover;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
