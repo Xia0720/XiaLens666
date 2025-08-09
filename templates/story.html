@@ -1,23 +1,40 @@
-{% include 'navbar.html' %}
+{% extends "base.html" %}
 
-<h1>Photo Stories</h1>
+{% block content %}
+<div class="container mt-4">
+    <h2>Stories</h2>
 
-<form method="post" enctype="multipart/form-data">
-  <label>Story Image</label>
-  <input type="file" name="image" required><br>
-  <label>Caption</label>
-  <textarea name="caption" required></textarea><br>
-  <button type="submit">Upload</button>
-</form>
+    {% if logged_in %}
+    <form method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="image" class="form-label">Upload Image</label>
+            <input type="file" name="image" id="image" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label for="caption" class="form-label">Caption</label>
+            <textarea name="caption" id="caption" class="form-control" rows="2" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-success">Upload Story</button>
+    </form>
+    <hr>
+    {% else %}
+        <p>You must <a href="{{ url_for('login') }}">login</a> to upload stories.</p>
+    {% endif %}
 
-<div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 30px;">
-  {% for story in stories %}
-    <div style="width: 300px;">
-      <img src="{{ story.image_url }}" alt="Story image" style="width: 100%;">
-      <p>{{ story.caption }}</p>
-    </div>
-  {% endfor %}
+    {% if stories %}
+        <div class="story-list">
+            {% for story in stories %}
+                <div class="story-item mb-3">
+                    <img src="{{ story.image_url }}" alt="Story image" style="max-width: 100%; height: auto;">
+                    <p>{{ story.caption }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No stories uploaded yet.</p>
+    {% endif %}
 </div>
+{% endblock %}
 
 
 
