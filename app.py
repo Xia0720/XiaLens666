@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, session, g
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+from werkzeug.utils import secure_filename
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
@@ -14,8 +15,76 @@ cloudinary.config(
     api_secret='9o-PlPBRQzQPfuVCQfaGrUV3_IE'
 )
 
-# 存放 Story 内容的文件夹
+# 故事文件夹路径
 STORY_FOLDER = os.path.join("static", "story")
+os.makedirs(STORY_FOLDER, exist_ok=True)
+
+# 上传允许的图片格式
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
+
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# 查看故事
+@app.route("/story")
+def story():
+    stories = []
+    for filename in sorted(os.listdir(STORY_FOLDER)):
+        if filename.lower().endswith((".png", ".jpg", ".jpeg", ".gif")):
+            img_path = os.path.join(STORY_FOLDER, filename)
+            txt_path = os.path.splitext(img_path)[0] + ".txt"
+            text_content = ""
+            if os.path.exists(txt_path):
+                with open(txt_path, "r", encoding="utf-8") as f:
+                    text_content = f.read()
+            stories.append({
+                "image": img_path.replace("\\", "/"),
+                "text": text_content
+            })
+
+    return render_template("story.html", stories=stories, logged_in=session.get("logged_in", False))
+
+# 上传故事（仅登录用户）
+@app.route("/upload_story", methods=["GET", "POST"])
+def upload_story():
+    if not session.get("logged_in"):
+        flash("请先登录才能上传故事")
+        return redirect(url_for("story"))
+
+    if request.method == "POST":
+        text = request.form.get("story_text", "")
+        file = request.files.get("story_image")
+
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            img_path = os.path.join(STORY_FOLDER, filename)
+            file.save(img_path)
+
+            # 保存文字
+            txt_filename = os.path.splitext(filename)[0] + ".txt"
+            txt_path = os.path.join(STORY_FOLDER, txt_filename)
+            with open(txt_path, "w", encoding="utf-8") as f:
+                f.write(text)
+
+            flash("故事上传成功！")
+            return redirect(url_for("story"))
+        else:
+            flash("请上传有效的图片文件（png/jpg/jpeg/gif）")
+
+    return render_template("upload_story.html")
+
+# 测试登录（临时）
+@app.route("/login")
+def login():
+    session["logged_in"] = True
+    flash("已登录")
+    return redirect(url_for("story"))
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("已退出登录")
+    return redirect(url_for("story"))
 
 # 管理员免登录秘钥（可改成复杂点）
 ADMIN_SECRET = "superxia0720"
