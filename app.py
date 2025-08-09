@@ -110,29 +110,31 @@ def view_album(album_name):
 # Story 页面
 @app.route("/story")
 def story():
+    # 确保目录存在
+    os.makedirs(STORY_FOLDER, exist_ok=True)
+
     stories = []
-    if os.path.exists(STORY_FOLDER):
-        for filename in sorted(os.listdir(STORY_FOLDER)):
-            if filename.endswith(".txt"):
-                txt_path = os.path.join(STORY_FOLDER, filename)
-                with open(txt_path, "r", encoding="utf-8") as f:
-                    text = f.read()
+    for filename in sorted(os.listdir(STORY_FOLDER)):
+        if filename.endswith(".txt"):
+            txt_path = os.path.join(STORY_FOLDER, filename)
+            with open(txt_path, "r", encoding="utf-8") as f:
+                text = f.read()
 
-                # 假设图片和文本文件同名（只是后缀不同）
-                base_name = filename.rsplit(".", 1)[0]
-                image_file = f"{base_name}.jpg"  # 你可以改成 .png
+            base_name = filename.rsplit(".", 1)[0]
+            # 假设图片是jpg，也可以改成png等
+            image_file = f"{base_name}.jpg"
 
-                stories.append({
-                    "text": text,
-                    "image": image_file
-                })
+            stories.append({
+                "text": text,
+                "image": image_file
+            })
 
     return render_template(
         "story.html",
         stories=stories,
         logged_in=session.get("logged_in", False)
     )
-
+    
 # Upload 页面
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
