@@ -82,15 +82,7 @@
 
     <!-- 登录用户才能上传 -->
     {% if logged_in %}
-        <h2>Upload New Story</h2>
-        <form method="POST" enctype="multipart/form-data">
-            <input type="file" name="image" required>
-            <textarea name="caption" placeholder="Write a caption..." required></textarea>
-            <br>
-            <button type="submit">Upload</button>
-        </form>
-    {% else %}
-        <p><a href="{{ url_for('login') }}">Login to upload stories</a></p>
+    <a href="{{ url_for('upload_story') }}" class="btn btn-primary">上传新故事</a>
     {% endif %}
 </body>
 </html>
