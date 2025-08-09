@@ -14,6 +14,9 @@ cloudinary.config(
     api_secret='9o-PlPBRQzQPfuVCQfaGrUV3_IE'
 )
 
+# 存放 Story 内容的文件夹
+STORY_FOLDER = os.path.join("static", "story")
+
 # 管理员免登录秘钥（可改成复杂点）
 ADMIN_SECRET = "superxia0720"
 
@@ -107,15 +110,28 @@ def view_album(album_name):
 # Story 页面
 @app.route("/story")
 def story():
-    # 这里不需要登录限制，直接读取所有故事数据
     stories = []
-    for filename in sorted(os.listdir(STORY_FOLDER)):
-        if filename.endswith(".txt"):
-            with open(os.path.join(STORY_FOLDER, filename), "r", encoding="utf-8") as f:
-                text = f.read()
-            image_file = filename.replace(".txt", ".jpg")
-            stories.append({"text": text, "image": image_file})
-    return render_template("story.html", stories=stories, logged_in=session.get("logged_in", False))
+    if os.path.exists(STORY_FOLDER):
+        for filename in sorted(os.listdir(STORY_FOLDER)):
+            if filename.endswith(".txt"):
+                txt_path = os.path.join(STORY_FOLDER, filename)
+                with open(txt_path, "r", encoding="utf-8") as f:
+                    text = f.read()
+
+                # 假设图片和文本文件同名（只是后缀不同）
+                base_name = filename.rsplit(".", 1)[0]
+                image_file = f"{base_name}.jpg"  # 你可以改成 .png
+
+                stories.append({
+                    "text": text,
+                    "image": image_file
+                })
+
+    return render_template(
+        "story.html",
+        stories=stories,
+        logged_in=session.get("logged_in", False)
+    )
 
 # Upload 页面
 @app.route("/upload", methods=["GET", "POST"])
