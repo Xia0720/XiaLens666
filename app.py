@@ -3,6 +3,7 @@ from werkzeug.utils import secure_filename
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
+from flask_sqlalchemy import SQLAlchemy
 import os
 
 app = Flask(__name__)
@@ -15,9 +16,16 @@ cloudinary.config(
     api_secret='9o-PlPBRQzQPfuVCQfaGrUV3_IE'
 )
 
-# 故事文件夹路径
-STORY_FOLDER = os.path.join("static", "story")
-os.makedirs(STORY_FOLDER, exist_ok=True)
+# 数据库配置（Railway 自动提供 DATABASE_URL）
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+# 故事数据表
+class Story(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.Text, nullable=False)
+    image_url = db.Column(db.String(500), nullable=True)
 
 # 上传允许的图片格式
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
@@ -63,28 +71,12 @@ def view_album(album_name):
     except Exception as e:
         return f"Error loading album: {str(e)}"
 
-# 查看故事（游客可访问）
+# 查看故事
 @app.route("/story")
 def story():
-    os.makedirs(STORY_FOLDER, exist_ok=True)
-    stories = []
-    for filename in sorted(os.listdir(STORY_FOLDER)):
-        if filename.endswith(".txt"):
-            txt_path = os.path.join(STORY_FOLDER, filename)
-            with open(txt_path, "r", encoding="utf-8") as f:
-                text = f.read()
-            base_name = filename.rsplit(".", 1)[0]
-            image_file = None
-            for ext in ALLOWED_EXTENSIONS:
-                img_candidate = f"{base_name}.{ext}"
-                if os.path.exists(os.path.join(STORY_FOLDER, img_candidate)):
-                    image_file = img_candidate
-                    break
-            stories.append({
-                "text": text,
-                "image": image_file
-            })
-    return render_template("story.html", stories=stories, logged_in=session.get("logged_in", False))
+    stories = Story.query.order_by(Story.id.desc()).all()
+    story_list = [{"text": s.text, "image": s.image_url} for s in stories]
+    return render_template("story.html", stories=story_list, logged_in=session.get("logged_in", False))
 
 # 上传故事（需登录）
 @app.route("/upload_story", methods=["GET", "POST"])
@@ -97,20 +89,17 @@ def upload_story():
         text = request.form.get("story_text", "")
         file = request.files.get("story_image")
 
+        image_url = None
         if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            img_path = os.path.join(STORY_FOLDER, filename)
-            file.save(img_path)
+            upload_result = cloudinary.uploader.upload(file)
+            image_url = upload_result.get("secure_url")
 
-            txt_filename = os.path.splitext(filename)[0] + ".txt"
-            txt_path = os.path.join(STORY_FOLDER, txt_filename)
-            with open(txt_path, "w", encoding="utf-8") as f:
-                f.write(text)
+        new_story = Story(text=text, image_url=image_url)
+        db.session.add(new_story)
+        db.session.commit()
 
-            flash("故事上传成功！")
-            return redirect(url_for("story"))
-        else:
-            flash("请上传有效的图片文件（png/jpg/jpeg/gif）")
+        flash("故事上传成功！")
+        return redirect(url_for("story"))
 
     return render_template("upload_story.html", logged_in=True)
 
@@ -163,4 +152,7 @@ def logout():
     return redirect(url_for("index"))
 
 if __name__ == "__main__":
+    # 第一次运行时初始化数据库
+    with app.app_context():
+        db.create_all()
     app.run(debug=True)
