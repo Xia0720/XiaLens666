@@ -26,22 +26,24 @@
 </header>
 
 <div class="container">
-    {% if logged_in %}
-        <a href="{{ url_for('upload_story') }}" class="upload-btn">+ Upload New Story</a>
-    {% endif %}
+  {% if logged_in %}
+    <a href="{{ url_for('upload_story') }}" class="upload-btn">+ Upload New Story</a>
+  {% endif %}
 
-    {% if stories %}
-        {% for story in stories %}
-        <div class="story">
-            <p>{{ story.text|safe }}</p>
-            {% if story.image %}
-              <img src="{{ story.image }}" alt="故事图片">
-            {% endif %}
-        </div>
-        {% endfor %}
-    {% else %}
-        <p>No stories yet.</p>
-    {% endif %}
+  {% if stories %}
+    <div class="stories-container">
+      {% for story in stories %}
+      <div class="story">
+        {% if story.image %}
+          <img src="{{ story.image }}" alt="故事图片">
+        {% endif %}
+        <p>{{ story.text|safe }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>No stories yet.</p>
+  {% endif %}
 </div>
 </body>
 </html>
