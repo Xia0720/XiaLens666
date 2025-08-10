@@ -5,6 +5,10 @@ import cloudinary.uploader
 import cloudinary.api
 from flask_sqlalchemy import SQLAlchemy
 import os
+import os
+
+print("Flask 配置的 DATABASE_URL:", os.getenv("DATABASE_URL"))
+print("Flask 配置的 SQLALCHEMY_DATABASE_URI:", app.config.get("SQLALCHEMY_DATABASE_URI"))
 
 app = Flask(__name__)
 app.secret_key = "xia0720"  # 用于 session 加密
