@@ -17,7 +17,10 @@ cloudinary.config(
 )
 
 # 数据库配置（Railway 自动提供 DATABASE_URL）
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+    "DATABASE_URL",
+    "postgresql://postgres:VGsQnBUSMnPCJCwQJJcRmbuStxvRWKrQ@trolley.proxy.rlwy.net:59000/railway"
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -150,6 +153,14 @@ def logout():
     session.clear()
     flash("已退出登录")
     return redirect(url_for("index"))
+
+@app.route('/test-db')
+def test_db():
+    try:
+        db.session.execute("SELECT 1")
+        return "数据库连接成功！"
+    except Exception as e:
+        return f"数据库连接失败: {str(e)}"
 
 if __name__ == "__main__":
     # 第一次运行时初始化数据库
