@@ -7,11 +7,11 @@ from flask_sqlalchemy import SQLAlchemy
 import os
 import os
 
-print("Flask 配置的 DATABASE_URL:", os.getenv("DATABASE_URL"))
-print("Flask 配置的 SQLALCHEMY_DATABASE_URI:", app.config.get("SQLALCHEMY_DATABASE_URI"))
-
 app = Flask(__name__)
 app.secret_key = "xia0720"  # 用于 session 加密
+
+print("Flask 配置的 DATABASE_URL:", os.getenv("DATABASE_URL"))
+print("Flask 配置的 SQLALCHEMY_DATABASE_URI:", app.config.get("SQLALCHEMY_DATABASE_URI"))
 
 # 配置 Cloudinary（建议用环境变量存）
 cloudinary.config(
