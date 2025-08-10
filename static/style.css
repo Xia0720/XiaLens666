@@ -118,3 +118,37 @@ body, html {
     border-radius: 10px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
+
+ /* 外层容器，横向排列，换行 */
+  .stories-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px; /* 组间距 */
+    justify-content: center; /* 居中排列 */
+  }
+  /* 每组故事卡片 */
+  .story {
+    width: 300px; /* 固定宽度，方便控制 */
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column; /* 图片在上，文字在下 */
+    align-items: center;
+  }
+  .story img {
+    width: 50%;  /* 图片宽度50% */
+    border-radius: 6px;
+    object-fit: cover;
+  }
+  .story p {
+    /* 跟 About 页面文字样式一样 */
+    max-width: 100%;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: #333;
+    margin-top: 12px;
+    text-align: center;
+  }
