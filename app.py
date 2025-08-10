@@ -17,7 +17,7 @@ cloudinary.config(
 )
 
 # 数据库配置（Railway 自动提供 DATABASE_URL）
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("postgresql://postgres:VGsQnBUSMnPCJCwQJJcRmbuStxvRWKrQ@postgres.railway.internal:5432/railway")
+app.config['SQLALCHEMY_DATABASE_URL'] = os.getenv("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
