@@ -12,13 +12,12 @@
         <div class="nav-container">
             <div class="nav-left">
                 <a href="{{ url_for('index') }}">Home</a>
-                <a href="{{ url_for('story') }}">📖 XiaCapture Story Collection</a>
                 <a href="{{ url_for('about') }}">About</a>
+                <a href="{{ url_for('albums') }}">Album</a>
+                <a href="{{ url_for('story') }}">Story</a>
+                <a href="{{ url_for('upload') }}">Upload</a>
             </div>
             <div class="nav-right">
-                {% if 'story' in request.path and logged_in %}
-                    <a href="{{ url_for('upload_story') }}" class="btn-primary">+ Upload New Story</a>
-                {% endif %}
                 {% if logged_in %}
                     <a href="{{ url_for('logout') }}">Logout</a>
                 {% else %}
@@ -35,4 +34,5 @@
 
 </body>
 </html>
+
 
