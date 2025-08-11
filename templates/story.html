@@ -9,17 +9,15 @@
 
 <!-- 新导航栏 -->
 <header class="navbar">
-    <div class="navbar-inner">
-        <div class="navbar-brand">📖 XiaCapture StoryCollection</div>
-        <nav class="navbar-links">
-            <a href="{{ url_for('index') }}">Home</a>
-            {% if logged_in %}
-                <a href="{{ url_for('logout') }}">Logout</a>
-            {% else %}
-                <a href="{{ url_for('login') }}">Login</a>
-            {% endif %}
-        </nav>
-    </div>
+    <ul class="navbar-menu">
+        <li>📖 XiaCapture StoryCollection</li>
+        <li><a href="{{ url_for('index') }}">Home</a></li>
+        {% if logged_in %}
+            <li><a href="{{ url_for('logout') }}">Logout</a></li>
+        {% else %}
+            <li><a href="{{ url_for('login') }}">Login</a></li>
+        {% endif %}
+    </ul>
 </header>
 
 <div class="content-area">
