@@ -1,0 +1,20 @@
+<!-- templates/edit_story.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Edit Story</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <h2>Edit Story</h2>
+  <form method="POST" enctype="multipart/form-data">
+    <label for="story_text">Story content:</label><br/>
+    <textarea id="story_text" name="story_text" rows="5" required>{{ story.text }}</textarea><br/>
+    <label for="story_image">Upload new image (optional):</label><br/>
+    <input type="file" id="story_image" name="story_image" accept="image/*"><br/><br/>
+    <button type="submit">Update Story</button>
+  </form>
+  <a href="{{ url_for('story') }}">Back to stories</a>
+</body>
+</html>
