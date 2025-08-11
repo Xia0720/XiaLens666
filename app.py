@@ -102,6 +102,48 @@ def upload_story():
         return redirect(url_for("story"))
 
     return render_template("upload_story.html", logged_in=True)
+    
+# 编辑故事页
+@app.route("/edit_story/<int:story_id>", methods=["GET", "POST"])
+def edit_story(story_id):
+    if not session.get("logged_in"):
+        flash("Please login to edit stories")
+        return redirect(url_for("login"))
+
+    story = Story.query.get_or_404(story_id)
+
+    if request.method == "POST":
+        new_text = request.form.get("story_text", "")
+        file = request.files.get("story_image")
+
+        if new_text.strip() == "":
+            flash("Story text cannot be empty")
+            return redirect(url_for("edit_story", story_id=story_id))
+
+        story.text = new_text
+
+        if file and allowed_file(file.filename):
+            upload_result = cloudinary.uploader.upload(file)
+            story.image_url = upload_result.get("secure_url")
+
+        db.session.commit()
+        flash("Story updated successfully")
+        return redirect(url_for("story"))
+
+    return render_template("edit_story.html", story=story, logged_in=True)
+
+# 删除故事
+@app.route("/delete_story/<int:story_id>", methods=["POST"])
+def delete_story(story_id):
+    if not session.get("logged_in"):
+        flash("Please login to delete stories")
+        return redirect(url_for("login"))
+
+    story = Story.query.get_or_404(story_id)
+    db.session.delete(story)
+    db.session.commit()
+    flash("Story deleted successfully")
+    return redirect(url_for("story"))
 
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
