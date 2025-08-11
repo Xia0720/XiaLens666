@@ -1,42 +1,24 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>About - XiaCapture</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    
-    <!-- 导航栏 -->
-    <nav class="navbar">
-        <ul class="navbar-menu">
-            <li><a href="{{ url_for('index') }}">Home</a></li>
-            <li><a href="{{ url_for('about') }}">About</a></li>
-            <li><a href="{{ url_for('albums') }}">Album</a></li>
-            <li><a href="{{ url_for('story') }}">Story</a></li>
-            <li><a href="{{ url_for('upload') }}">Upload</a></li>
-        </ul>
-     </nav>
-    
-  <div class="about-container">
+{% extends "base.html" %}
+{% block title %}About - XiaCapture{% endblock %}
+
+{% block content %}
+<div class="about-container">
     <div class="about-text">
-       <p>
+        <p>
             Hi, I’m Xia. I’m a photography enthusiast from China, currently at the beginning of my journey behind the lens.
             I have a deep passion for capturing people, nature, and the beauty of fleeting moments. Through my photos, I aim to 
-            freeze time, preserve memories, and celebrate the simple joys of life.This website is not only a collection of my 
+            freeze time, preserve memories, and celebrate the simple joys of life. This website is not only a collection of my 
             favorite shots, but also a visual diary of my growth as a photographer. I hope my work brings you a sense of beauty 
             and inspiration — let’s embrace the magic in every moment, together.
         </p>
-      </div>
-      <div class="about-images">
+    </div>
+    <div class="about-images">
         <img class="about-image" src="https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg" alt="Nature photo">
         <img class="about-image" src="https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754516887/WechatIMG74_wxzsrb.jpg" alt="Portrait photo">
-      </div>
-  </div>
+    </div>
+</div>
+{% endblock %}
 
-</body>
-</html>
 
 
 
