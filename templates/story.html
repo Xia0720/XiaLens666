@@ -3,40 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <title>StoryCollection - XiaCapture</title>
-    <!-- 引用外部 CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-<header>
-    <span>📖 XiaCapture StoryCollection </span>
-    <a href="{{ url_for('index') }}">Home</a>
-    {% if logged_in %}
-        <a href="{{ url_for('logout') }}">Logout</a>
-    {% else %}
-        <a href="{{ url_for('login') }}">Login</a>
-    {% endif %}
+
+<!-- 新导航栏 -->
+<header class="navbar">
+    <div class="navbar-inner">
+        <div class="navbar-brand">📖 XiaCapture StoryCollection</div>
+        <nav class="navbar-links">
+            <a href="{{ url_for('index') }}">Home</a>
+            {% if logged_in %}
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}">Login</a>
+            {% endif %}
+        </nav>
+    </div>
 </header>
 
-<div class="container">
-  {% if logged_in %}
-    <a href="{{ url_for('upload_story') }}" class="upload-btn">+ Upload New Story</a>
-  {% endif %}
+<div class="content-area">
+    {% if logged_in %}
+        <a href="{{ url_for('upload_story') }}" class="upload-btn">+ Upload New Story</a>
+    {% endif %}
 
-  {% if stories %}
-    <div class="stories-container">
-      {% for story in stories %}
-      <div class="story">
-        {% if story.image %}
-          <img src="{{ story.image }}" alt="故事图片">
-        {% endif %}
-        <p>{{ story.text|safe }}</p>
-      </div>
-      {% endfor %}
-    </div>
-  {% else %}
-    <p>No stories yet.</p>
-  {% endif %}
+    {% if stories %}
+        <div class="stories-container">
+            {% for story in stories %}
+            <div class="story">
+                {% if story.image %}
+                    <img src="{{ story.image }}" alt="故事图片" class="story-image">
+                {% endif %}
+                <p>{{ story.text|safe }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No stories yet.</p>
+    {% endif %}
 </div>
+
 </body>
 </html>
 
