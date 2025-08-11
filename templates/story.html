@@ -1,96 +1,14 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <title>StoryCollection - XiaCapture</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <style>
-      /* 图片点击查看大图弹窗 */
-      .modal {
-        display: none; 
-        position: fixed; 
-        z-index: 100; 
-        padding-top: 60px; 
-        left: 0; top: 0; width: 100%; height: 100%; 
-        overflow: auto; background-color: rgba(0,0,0,0.8);
-      }
-      .modal-content {
-        margin: auto; display: block; max-width: 90%; max-height: 80vh;
-        border-radius: 10px;
-        box-shadow: 0 4px 12px rgba(255,255,255,0.2);
-      }
-      .modal-close {
-        position: absolute; top: 30px; right: 30px;
-        color: white; font-size: 35px; font-weight: bold;
-        cursor: pointer;
-      }
-      /* 故事卡片容器 */
-      .story {
-          width: 320px;
-          margin-bottom: 30px;
-          border: 1px solid #ddd;
-          border-radius: 12px;
-          overflow: hidden;
-          background: white;
-          box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          padding-bottom: 15px;
-      }
-      .story-image {
-          width: 100%;
-          cursor: pointer;
-          object-fit: cover;
-          max-height: 250px;
-          border-bottom: 1px solid #ccc;
-      }
-      .story-text {
-          padding: 15px 20px;
-          font-size: 16px;
-          color: #333;
-          text-align: left;
-          width: 100%;
-          min-height: 100px;
-      }
-      .story-actions {
-          margin-top: 8px;
-          width: 100%;
-          display: flex;
-          justify-content: flex-end;
-          gap: 10px;
-          padding: 0 20px;
-      }
-      .btn-action {
-          background: #007bff;
-          color: white;
-          border: none;
-          padding: 6px 14px;
-          border-radius: 6px;
-          cursor: pointer;
-          font-size: 14px;
-          font-weight: bold;
-      }
-      .btn-action.delete {
-          background: #dc3545;
-      }
-      .btn-action:hover {
-          opacity: 0.85;
-      }
-      /* 故事容器整体布局 */
-      .stories-container {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 30px;
-          justify-content: center;
-          padding: 20px 0;
-          background: #f9f9f9;
-      }
-    </style>
 </head>
 <body>
 
-<header class="story-navbar">
+<!-- 导航栏 -->
+<nav class="navbar">
     <ul class="navbar-menu">
         <div class="navbar-left">
             <li>📖 XiaCapture StoryCollection</li>
@@ -98,60 +16,41 @@
         <div class="navbar-right">
             <li><a href="{{ url_for('index') }}">Home</a></li>
             {% if logged_in %}
-                <li><a href="{{ url_for('upload_story') }}" class="upload-btn">+ Upload New Story</a></li>
                 <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                <li><a href="{{ url_for('upload_story') }}" class="upload-btn">+ Upload New Story</a></li>
             {% else %}
                 <li><a href="{{ url_for('login') }}">Login</a></li>
             {% endif %}
         </div>
     </ul>
-</header>
+</nav>
 
 <div class="content-area">
+    {% if logged_in %}
+        <a href="{{ url_for('upload_story') }}" class="upload-btn">+ Upload New Story</a>
+    {% endif %}
+
     {% if stories %}
         <div class="stories-container">
             {% for story in stories %}
-            <div class="story" data-story-id="{{ story.id }}">
-                {% if story.image %}
-                    <img src="{{ story.image }}" alt="Story Image" class="story-image" onclick="openModal(this.src)">
+            <div class="story">
+                {% if story.image_url %}
+                    <img src="{{ story.image_url }}" alt="故事图片" class="story-image">
                 {% endif %}
-                <div class="story-text">{{ story.text|safe }}</div>
+                <p>{{ story.text|safe }}</p>
+                <!-- 示例：编辑按钮（假设你后续有编辑功能） -->
                 {% if logged_in %}
-                <div class="story-actions">
-                    <form style="display:inline;" method="GET" action="{{ url_for('edit_story', story_id=story.id) }}">
-                      <button type="submit" class="btn-action">Edit</button>
-                    </form>
-                    <form style="display:inline;" method="POST" action="{{ url_for('delete_story', story_id=story.id) }}" onsubmit="return confirm('Are you sure you want to delete this story?');">
-                      <button type="submit" class="btn-action delete">Delete</button>
-                    </form>
-                </div>
+                <form style="display:inline;" method="GET" action="{{ url_for('edit_story', story_id=story.id) }}">
+                    <button type="submit">Edit</button>
+                </form>
                 {% endif %}
             </div>
             {% endfor %}
         </div>
     {% else %}
-        <p style="text-align:center; padding: 20px;">No stories yet.</p>
+        <p>No stories yet.</p>
     {% endif %}
 </div>
-
-<!-- 图片弹窗 -->
-<div id="imgModal" class="modal" onclick="closeModal()">
-  <span class="modal-close" onclick="closeModal()">&times;</span>
-  <img class="modal-content" id="modalImg">
-</div>
-
-<script>
-function openModal(src) {
-    const modal = document.getElementById("imgModal");
-    const modalImg = document.getElementById("modalImg");
-    modal.style.display = "block";
-    modalImg.src = src;
-}
-function closeModal() {
-    const modal = document.getElementById("imgModal");
-    modal.style.display = "none";
-}
-</script>
 
 </body>
 </html>
