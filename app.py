@@ -133,13 +133,21 @@ def edit_story(story_id):
     return render_template("edit_story.html", story=story, logged_in=True)
 
 # 删除故事
-@app.route("/delete_story/<int:story_id>", methods=["POST"])
+@app.route("/delete_story/<int:story_id>")
 def delete_story(story_id):
     if not session.get("logged_in"):
         return redirect(url_for("login"))
+    
     story = Story.query.get_or_404(story_id)
+
+    # 删除图片文件
+    image_path = os.path.join(app.static_folder, "uploads", story.image_filename)
+    if os.path.exists(image_path):
+        os.remove(image_path)
+
     db.session.delete(story)
     db.session.commit()
+    flash("Story deleted successfully!", "success")
     return redirect(url_for("story"))
 
 @app.route("/upload", methods=["GET", "POST"])
