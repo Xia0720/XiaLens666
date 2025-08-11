@@ -271,3 +271,76 @@ body, html {
 .btn-delete:hover {
     background-color: #a71d2a;
 }
+
+/* ======= Edit Story 页面 ======= */
+.edit-container {
+    max-width: 600px;
+    margin: 30px auto;
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.edit-container h2 {
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.edit-container label {
+    display: block;
+    margin-top: 15px;
+    font-weight: bold;
+    color: #444;
+}
+
+.edit-container textarea, 
+.edit-container input[type="file"] {
+    width: 100%;
+    padding: 10px;
+    margin-top: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.current-image {
+    margin-top: 15px;
+}
+
+.current-image img {
+    width: 100%;
+    max-width: 300px;
+    border-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.edit-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-save {
+    padding: 8px 16px;
+    background: #28a745;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+}
+
+.btn-save:hover {
+    background: #1e7e34;
+}
+
+.btn-cancel {
+    padding: 8px 16px;
+    background: #6c757d;
+    border-radius: 4px;
+    color: white;
+    text-decoration: none;
+}
+
+.btn-cancel:hover {
+    background: #5a6268;
+}
