@@ -136,13 +136,10 @@ def edit_story(story_id):
 @app.route("/delete_story/<int:story_id>", methods=["POST"])
 def delete_story(story_id):
     if not session.get("logged_in"):
-        flash("Please login to delete stories")
         return redirect(url_for("login"))
-
     story = Story.query.get_or_404(story_id)
     db.session.delete(story)
     db.session.commit()
-    flash("Story deleted successfully")
     return redirect(url_for("story"))
 
 @app.route("/upload", methods=["GET", "POST"])
