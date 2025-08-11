@@ -10,10 +10,11 @@
 <!-- 新导航栏 -->
 <header class="navbar">
     <ul class="navbar-menu">
-        <li>📖 XiaCapture StoryCollection</li>
+        <li class="site-title">📖 XiaCapture StoryCollection</li>
         <li><a href="{{ url_for('index') }}">Home</a></li>
         {% if logged_in %}
             <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            <li><a href="{{ url_for('upload_story') }}" class="upload-btn">+ Upload New Story</a></li>
         {% else %}
             <li><a href="{{ url_for('login') }}">Login</a></li>
         {% endif %}
