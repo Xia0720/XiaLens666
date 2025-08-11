@@ -5,22 +5,18 @@ import cloudinary.uploader
 import cloudinary.api
 from flask_sqlalchemy import SQLAlchemy
 import os
-import os
 
 app = Flask(__name__)
-app.secret_key = "xia0720"  # 用于 session 加密
+app.secret_key = "xia0720"  # session加密密钥
 
-print("Flask 配置的 DATABASE_URL:", os.getenv("DATABASE_URL"))
-print("Flask 配置的 SQLALCHEMY_DATABASE_URI:", app.config.get("SQLALCHEMY_DATABASE_URI"))
-
-# 配置 Cloudinary（建议用环境变量存）
+# 配置 Cloudinary (建议用环境变量)
 cloudinary.config(
     cloud_name='dpr0pl2tf',
     api_key='548549517251566',
     api_secret='9o-PlPBRQzQPfuVCQfaGrUV3_IE'
 )
 
-# 数据库配置（Railway 自动提供 DATABASE_URL）
+# 数据库配置，Railway默认提供DATABASE_URL环境变量
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
     "DATABASE_URL",
     "postgresql://postgres:VGsQnBUSMnPCJCwQJJcRmbuStxvRWKrQ@trolley.proxy.rlwy.net:59000/railway"
@@ -28,13 +24,12 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# 故事数据表
+# Story数据模型
 class Story(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text, nullable=False)
     image_url = db.Column(db.String(500), nullable=True)
 
-# 上传允许的图片格式
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 
 def allowed_file(filename):
@@ -43,49 +38,43 @@ def allowed_file(filename):
 # 首页
 @app.route("/")
 def index():
-    return render_template("index.html")
-
-@app.route("/gallery")
-def gallery():
-    return render_template("gallery.html")
+    return render_template("index.html", logged_in=session.get("logged_in", False))
 
 @app.route("/about")
 def about():
-    return render_template("about.html")
+    return render_template("about.html", logged_in=session.get("logged_in", False))
 
-# 相册列表
 @app.route("/album")
 def albums():
     try:
         folders = cloudinary.api.root_folders()
         albums = []
         for folder in folders.get('folders', []):
-            subfolder_name = folder['name']
-            resources = cloudinary.api.resources(type="upload", prefix=subfolder_name, max_results=1)
+            name = folder['name']
+            resources = cloudinary.api.resources(type="upload", prefix=name, max_results=1)
             cover_url = resources['resources'][0]['secure_url'] if resources['resources'] else ""
-            albums.append({'name': subfolder_name, 'cover': cover_url})
+            albums.append({'name': name, 'cover': cover_url})
         return render_template("album.html", albums=albums, logged_in=session.get("logged_in", False))
     except Exception as e:
-        return f"Error fetching albums: {str(e)}"
+        flash(f"Error fetching albums: {str(e)}")
+        return render_template("album.html", albums=[], logged_in=session.get("logged_in", False))
 
-# 查看单个相册内容
 @app.route("/album/<album_name>")
 def view_album(album_name):
     try:
         resources = cloudinary.api.resources(type="upload", prefix=album_name)
         image_urls = [img["secure_url"] for img in resources["resources"]]
-        return render_template("view_album.html", album_name=album_name, image_urls=image_urls, logged_in=session.get("logged_in", False))
+        return render_template("view_album.html", folder=album_name, image_urls=image_urls, logged_in=session.get("logged_in", False))
     except Exception as e:
-        return f"Error loading album: {str(e)}"
+        flash(f"Error loading album: {str(e)}")
+        return redirect(url_for("albums"))
 
-# 查看故事
 @app.route("/story")
 def story():
     stories = Story.query.order_by(Story.id.desc()).all()
     story_list = [{"text": s.text, "image": s.image_url} for s in stories]
     return render_template("story.html", stories=story_list, logged_in=session.get("logged_in", False))
 
-# 上传故事（需登录）
 @app.route("/upload_story", methods=["GET", "POST"])
 def upload_story():
     if not session.get("logged_in"):
@@ -93,13 +82,17 @@ def upload_story():
         return redirect(url_for("login"))
 
     if request.method == "POST":
-        text = request.form.get("story_text", "")
+        text = request.form.get("story_text", "").strip()
         file = request.files.get("story_image")
 
         image_url = None
         if file and allowed_file(file.filename):
             upload_result = cloudinary.uploader.upload(file)
             image_url = upload_result.get("secure_url")
+
+        if not text:
+            flash("故事文本不能为空")
+            return redirect(url_for("upload_story"))
 
         new_story = Story(text=text, image_url=image_url)
         db.session.add(new_story)
@@ -110,7 +103,6 @@ def upload_story():
 
     return render_template("upload_story.html", logged_in=True)
 
-# 上传图片到 Cloudinary（需登录）
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     if not session.get("logged_in"):
@@ -118,23 +110,25 @@ def upload():
 
     if request.method == "POST":
         photo = request.files.get("photo")
-        folder = request.form.get("folder")
+        folder = request.form.get("folder", "").strip()
 
         if not photo or photo.filename == '':
-            return "No selected photo file", 400
+            flash("请选择要上传的照片")
+            return redirect(url_for("upload"))
         if not folder:
-            return "Folder name is required", 400
+            flash("文件夹名称不能为空")
+            return redirect(url_for("upload"))
 
         try:
             cloudinary.uploader.upload(photo, folder=folder)
             flash("上传成功")
             return redirect(url_for("upload"))
         except Exception as e:
-            return f"Error uploading file: {str(e)}"
+            flash(f"上传失败: {str(e)}")
+            return redirect(url_for("upload"))
 
     return render_template("upload.html", logged_in=True)
 
-# 登录
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -151,23 +145,13 @@ def login():
 
     return render_template("login.html", logged_in=session.get("logged_in", False))
 
-# 登出
 @app.route("/logout")
 def logout():
     session.clear()
     flash("已退出登录")
     return redirect(url_for("index"))
 
-@app.route('/test-db')
-def test_db():
-    try:
-        db.session.execute("SELECT 1")
-        return "数据库连接成功！"
-    except Exception as e:
-        return f"数据库连接失败: {str(e)}"
-
 if __name__ == "__main__":
-    # 第一次运行时初始化数据库
     with app.app_context():
         db.create_all()
     app.run(debug=True)
