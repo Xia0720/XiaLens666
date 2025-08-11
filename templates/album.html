@@ -1,5 +1,7 @@
-{% include 'navbar.html' %}
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% extends "base.html" %}
+{% block title %}Albums - XiaCapture{% endblock %}
+
+{% block content %}
 <h1>Albums</h1>
 <div style="display: flex; flex-wrap: wrap; gap: 20px;">
   {% for album in albums %}
@@ -15,7 +17,8 @@
     </div>
   {% endfor %}
 </div>
-</div>
+{% endblock %}
+
 
 
 
