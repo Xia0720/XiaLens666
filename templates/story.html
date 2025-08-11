@@ -3,16 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>StoryCollection - XiaCapture</title>
-    <style>
-        body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
-        header { background: #333; color: white; padding: 10px 20px; }
-        header a { color: white; margin-left: 15px; text-decoration: none; }
-        .container { max-width: 900px; margin: 20px auto; background: white; padding: 20px; border-radius: 8px; }
-        .story { border-bottom: 1px solid #ddd; padding: 15px 0; }
-        .story img { max-width: 100%; border-radius: 6px; margin-top: 10px; }
-        .upload-btn { display: inline-block; padding: 8px 16px; background: #28a745; color: white; text-decoration: none; border-radius: 4px; margin-bottom: 20px; }
-        .upload-btn:hover { background: #218838; }
-    </style>
+    <!-- 引用外部 CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 <header>
