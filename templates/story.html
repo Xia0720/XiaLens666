@@ -1,8 +1,16 @@
 {% extends "base.html" %}
-
 {% block title %}Story Collection - XiaCapture{% endblock %}
-
 {% block content %}
+
+<!-- 页面标题 & 上传按钮 -->
+<div class="story-header">
+    <h1>📖 XiaCapture Story Collection</h1>
+    {% if logged_in %}
+        <a href="{{ url_for('upload_story') }}" class="btn-primary">+ Upload New Story</a>
+    {% endif %}
+</div>
+
+<!-- 故事卡片容器 -->
 <div class="story-container">
     {% for story in stories %}
     <div class="story-card">
@@ -28,7 +36,9 @@
     </div>
     {% endfor %}
 </div>
+
 {% endblock %}
+
 
 
 
