@@ -208,3 +208,66 @@ body, html {
     color: white;
     border: none;
     cursor: pointer;
+.story-container {
+    max-width: 1100px;
+    margin: 20px auto;
+    padding: 0 20px;
+}
+
+.story-card {
+    display: flex;
+    align-items: flex-start;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+.story-image img {
+    width: 300px;
+    height: auto;
+    object-fit: cover;
+    cursor: pointer;
+    display: block;
+}
+
+.story-content {
+    padding: 15px;
+    flex: 1;
+}
+
+.story-content p {
+    margin: 0 0 10px;
+    line-height: 1.6;
+    color: #333;
+}
+
+.story-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-edit, .btn-delete {
+    padding: 6px 12px;
+    border-radius: 5px;
+    font-size: 14px;
+    text-decoration: none;
+    color: white;
+}
+
+.btn-edit {
+    background-color: #28a745;
+}
+
+.btn-edit:hover {
+    background-color: #1e7e34;
+}
+
+.btn-delete {
+    background-color: #dc3545;
+}
+
+.btn-delete:hover {
+    background-color: #a71d2a;
+}
