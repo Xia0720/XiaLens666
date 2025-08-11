@@ -140,41 +140,77 @@ body, html {
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
-/* Story 页面导航栏 */
-.story-navbar {
-    background-color: #333;
-    padding: 8px 20px;
-}
-
-.story-navbar .navbar-menu {
-    list-style: none;
+/* Story Page Layout */
+.story-header {
     display: flex;
-    justify-content: space-between; /* 左右分区 */
-    margin: 0;
+    justify-content: space-between;
+    align-items: center;
+    margin: 30px auto;
     padding: 0 20px;
-    align-items: center;
+    max-width: 1100px;
 }
 
-.story-navbar .navbar-left,
-.story-navbar .navbar-right {
+.story-container {
     display: flex;
-    align-items: center;
-    gap: 15px;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 1100px;
+    margin: auto;
 }
 
-.story-navbar .navbar-left li,
-.story-navbar .navbar-right li {
-    color: white;
-    font-weight: bold;
-    font-size: 15px;
+.story-card {
+    display: flex;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.story-navbar .navbar-right li a {
-    color: white;
-    font-weight: bold;
+.story-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.story-card img {
+    width: 40%;
+    object-fit: cover;
+}
+
+.story-info {
+    padding: 20px;
+    flex: 1;
+}
+
+.story-info h2 {
+    margin-top: 0;
+}
+
+.story-actions {
+    margin-top: 15px;
+}
+
+.btn-primary, .btn-secondary, .btn-danger {
+    padding: 8px 14px;
     text-decoration: none;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-right: 5px;
+    display: inline-block;
 }
 
-.story-navbar .navbar-right li a:hover {
-    text-decoration: underline;
+.btn-primary {
+    background-color: #007BFF;
+    color: white;
 }
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    cursor: pointer;
