@@ -69,11 +69,11 @@ def view_album(album_name):
         flash(f"Error loading album: {str(e)}")
         return redirect(url_for("albums"))
 
-@app.route("/story")
+@@app.route("/story")
 def story():
+    # 查询数据库，获取所有故事模型对象，按 id 降序排列
     stories = Story.query.order_by(Story.id.desc()).all()
-    story_list = [{"text": s.text, "image": s.image_url} for s in stories]
-    return render_template("story.html", stories=story_list, logged_in=session.get("logged_in", False))
+    return render_template("story.html", stories=stories, logged_in=session.get("logged_in", False))
 
 @app.route("/upload_story", methods=["GET", "POST"])
 def upload_story():
