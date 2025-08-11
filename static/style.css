@@ -6,53 +6,47 @@ body, html {
     font-family: Arial, sans-serif;
 }
 
-/* 导航栏公共样式调整 */
+/* ======= 导航栏样式 ======= */
 .navbar {
-    background-color: #333;
-    padding: 8px 20px;
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 10px 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
 }
 
-/* 除 story 页外导航栏，导航项居中且间距较紧 */
-.navbar-menu {
-    list-style: none;
+.nav-container {
+    max-width: 1100px;
+    margin: auto;
     display: flex;
-    justify-content: center; /* 居中 */
-    gap: 25px; /* 适当间距，紧凑 */
-    margin: 0;
-    padding: 0;
+    justify-content: space-between;
     align-items: center;
+    padding: 0 20px;
 }
 
-.navbar-menu li {
-    color: white;
-    font-weight: bold;
-    font-size: 15px;
-}
-
-.navbar-menu li a {
+.nav-left a, .nav-right a {
     color: white;
     text-decoration: none;
-    font-weight: bold;
-    font-size: 15px;
+    margin: 0 10px;
+    font-weight: 500;
 }
 
-.navbar-menu li a:hover {
+.nav-left a:hover, .nav-right a:hover {
     text-decoration: underline;
 }
 
-.upload-btn {
-    display: inline-block;
-    padding: 6px 14px;
-    background: #28a745;
+/* Upload 按钮 */
+.btn-primary {
+    padding: 6px 12px;
+    background-color: #007BFF;
     color: white !important;
+    border-radius: 5px;
     text-decoration: none;
-    border-radius: 4px;
-    font-weight: bold;
     font-size: 14px;
 }
 
-.upload-btn:hover {
-    background: #218838;
+.btn-primary:hover {
+    background-color: #0056b3;
 }
 
 /* 首页 */
