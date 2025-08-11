@@ -8,16 +8,19 @@ body, html {
 
 /* 导航栏 */
 .navbar {
-    background-color: #333;
-    padding: 10px 20px;
+    background: linear-gradient(90deg, #333, #555); /* 渐变背景 */
+    padding: 12px 30px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
 .navbar-menu {
     list-style: none;
     display: flex;
-    justify-content: center;
-    margin: 0;
+    justify-content: space-between; /* 左右分布 */
+    align-items: center;
+    margin: 0 auto;
     padding: 0;
+    max-width: 1100px; /* 限制最大宽度 */
 }
 
 .navbar-menu li {
@@ -27,11 +30,14 @@ body, html {
 .navbar-menu li a {
     color: white;
     text-decoration: none;
-    font-weight: bold;
+    font-weight: 500;
+    font-size: 16px;
+    transition: color 0.2s ease;
 }
 
 .navbar-menu li a:hover {
-    text-decoration: underline;
+    color: #ffd700; /* hover 金色 */
+    text-decoration: none;
 }
 
 /* 首页 */
@@ -119,36 +125,41 @@ body, html {
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
- /* 外层容器，横向排列，换行 */
-  .stories-container {
+/* stories 容器：去掉背景色，改为纯布局 */
+.stories-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 20px; /* 组间距 */
-    justify-content: center; /* 居中排列 */
-  }
-  /* 每组故事卡片 */
-  .story {
-    width: 300px; /* 固定宽度，方便控制 */
-    background: white;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    gap: 30px;
+    justify-content: center;
+    padding: 20px 0;
+}
+
+/* 每组故事卡片 */
+.story {
+    width: 320px;
+    padding: 0; /* 不要白色背景 */
+    background: none; /* 去掉背景色 */
+    box-shadow: none; /* 去掉阴影 */
     display: flex;
-    flex-direction: column; /* 图片在上，文字在下 */
+    flex-direction: column;
     align-items: center;
-  }
-  .story img {
-    width: 50%;  /* 图片宽度50% */
-    border-radius: 6px;
+}
+
+/* 图片全宽显示 */
+.story img {
+    width: 100%;
+    border-radius: 10px;
     object-fit: cover;
-  }
-  .story p {
-    /* 跟 About 页面文字样式一样 */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    margin-bottom: 12px;
+}
+
+/* 文字样式 */
+.story p {
     max-width: 100%;
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 16px;
     line-height: 1.5;
     color: #333;
-    margin-top: 12px;
     text-align: center;
-  }
+}
