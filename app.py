@@ -107,30 +107,33 @@ def upload_story():
 @app.route("/edit_story/<int:story_id>", methods=["GET", "POST"])
 def edit_story(story_id):
     if not session.get("logged_in"):
-        flash("Please login to edit stories")
         return redirect(url_for("login"))
 
     story = Story.query.get_or_404(story_id)
 
     if request.method == "POST":
-        new_text = request.form.get("story_text", "")
-        file = request.files.get("story_image")
+        story.text = request.form["story_text"]
 
-        if new_text.strip() == "":
-            flash("Story text cannot be empty")
-            return redirect(url_for("edit_story", story_id=story_id))
+        # 如果用户上传了新图片，替换
+        if "story_image" in request.files and request.files["story_image"].filename != "":
+            image_file = request.files["story_image"]
+            filename = secure_filename(image_file.filename)
 
-        story.text = new_text
+            # 删除旧图片
+            old_image_path = os.path.join(app.static_folder, "uploads", story.image_filename)
+            if os.path.exists(old_image_path):
+                os.remove(old_image_path)
 
-        if file and allowed_file(file.filename):
-            upload_result = cloudinary.uploader.upload(file)
-            story.image_url = upload_result.get("secure_url")
+            # 保存新图片
+            new_path = os.path.join(app.static_folder, "uploads", filename)
+            image_file.save(new_path)
+            story.image_filename = filename
 
         db.session.commit()
-        flash("Story updated successfully")
+        flash("Story updated successfully!", "success")
         return redirect(url_for("story"))
 
-    return render_template("edit_story.html", story=story, logged_in=True)
+    return render_template("edit_story.html", story=story)
 
 # 删除故事
 @app.route("/delete_story/<int:story_id>")
