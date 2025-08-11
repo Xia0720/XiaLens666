@@ -15,20 +15,32 @@ body, html {
 .navbar-menu {
     list-style: none;
     display: flex;
+    justify-content: space-between; /* 左右分区 */
     align-items: center;
     margin: 0;
-    padding: 0;
-    gap: 20px; /* 控制间距 */
+    padding: 0 20px; /* 两边留点间距 */
 }
 
+.navbar-left,
+.navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 15px; /* 元素之间的间距 */
+}
+
+* 左右栏中的 li 元素 */
 .navbar-menu li {
     margin: 0;
+    color: white;         /* 让文字（非 a 标签）变白 */
+    font-weight: bold;    /* 白色加粗 */
+    font-size: 15px;
 }
 
+/* 链接样式 */
 .navbar-menu li a {
     color: white;
     text-decoration: none;
-    font-weight: bold; /* 白色加粗 */
+    font-weight: bold;
     font-size: 15px;
 }
 
@@ -36,12 +48,12 @@ body, html {
     text-decoration: underline;
 }
 
-/* Upload 按钮 */
+/* Upload 按钮样式 */
 .upload-btn {
     display: inline-block;
     padding: 6px 14px;
     background: #28a745;
-    color: white;
+    color: white !important;
     text-decoration: none;
     border-radius: 4px;
     font-weight: bold;
