@@ -8,36 +8,48 @@ body, html {
 
 /* 导航栏 */
 .navbar {
-    background: linear-gradient(90deg, #333, #555); /* 渐变背景 */
-    padding: 12px 30px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    background-color: #333;
+    padding: 8px 20px; /* 缩小上下间距 */
 }
 
 .navbar-menu {
     list-style: none;
     display: flex;
-    justify-content: space-between; /* 左右分布 */
     align-items: center;
-    margin: 0 auto;
+    margin: 0;
     padding: 0;
-    max-width: 1100px; /* 限制最大宽度 */
+    gap: 20px; /* 控制间距 */
 }
 
 .navbar-menu li {
-    margin: 0 15px;
+    margin: 0;
 }
 
 .navbar-menu li a {
     color: white;
     text-decoration: none;
-    font-weight: 500;
-    font-size: 16px;
-    transition: color 0.2s ease;
+    font-weight: bold; /* 白色加粗 */
+    font-size: 15px;
 }
 
 .navbar-menu li a:hover {
-    color: #ffd700; /* hover 金色 */
+    text-decoration: underline;
+}
+
+/* Upload 按钮 */
+.upload-btn {
+    display: inline-block;
+    padding: 6px 14px;
+    background: #28a745;
+    color: white;
     text-decoration: none;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.upload-btn:hover {
+    background: #218838;
 }
 
 /* 首页 */
