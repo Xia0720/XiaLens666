@@ -6,37 +6,29 @@ body, html {
     font-family: Arial, sans-serif;
 }
 
-/* 导航栏 */
+/* 导航栏公共样式调整 */
 .navbar {
     background-color: #333;
-    padding: 8px 20px; /* 缩小上下间距 */
+    padding: 8px 20px;
 }
 
+/* 除 story 页外导航栏，导航项居中且间距较紧 */
 .navbar-menu {
     list-style: none;
     display: flex;
-    justify-content: space-between; /* 左右分区 */
-    align-items: center;
+    justify-content: center; /* 居中 */
+    gap: 25px; /* 适当间距，紧凑 */
     margin: 0;
-    padding: 0 20px; /* 两边留点间距 */
-}
-
-.navbar-left,
-.navbar-right {
-    display: flex;
+    padding: 0;
     align-items: center;
-    gap: 15px; /* 元素之间的间距 */
 }
 
-* 左右栏中的 li 元素 */
 .navbar-menu li {
-    margin: 0;
-    color: white;         /* 让文字（非 a 标签）变白 */
-    font-weight: bold;    /* 白色加粗 */
+    color: white;
+    font-weight: bold;
     font-size: 15px;
 }
 
-/* 链接样式 */
 .navbar-menu li a {
     color: white;
     text-decoration: none;
@@ -48,7 +40,6 @@ body, html {
     text-decoration: underline;
 }
 
-/* Upload 按钮样式 */
 .upload-btn {
     display: inline-block;
     padding: 6px 14px;
@@ -149,41 +140,41 @@ body, html {
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
 
-/* stories 容器：去掉背景色，改为纯布局 */
-.stories-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 30px;
-    justify-content: center;
-    padding: 20px 0;
+/* Story 页面导航栏 */
+.story-navbar {
+    background-color: #333;
+    padding: 8px 20px;
 }
 
-/* 每组故事卡片 */
-.story {
-    width: 320px;
-    padding: 0; /* 不要白色背景 */
-    background: none; /* 去掉背景色 */
-    box-shadow: none; /* 去掉阴影 */
+.story-navbar .navbar-menu {
+    list-style: none;
     display: flex;
-    flex-direction: column;
+    justify-content: space-between; /* 左右分区 */
+    margin: 0;
+    padding: 0 20px;
     align-items: center;
 }
 
-/* 图片全宽显示 */
-.story img {
-    width: 100%;
-    border-radius: 10px;
-    object-fit: cover;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    margin-bottom: 12px;
+.story-navbar .navbar-left,
+.story-navbar .navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
 }
 
-/* 文字样式 */
-.story p {
-    max-width: 100%;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-    font-size: 16px;
-    line-height: 1.5;
-    color: #333;
-    text-align: center;
+.story-navbar .navbar-left li,
+.story-navbar .navbar-right li {
+    color: white;
+    font-weight: bold;
+    font-size: 15px;
+}
+
+.story-navbar .navbar-right li a {
+    color: white;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.story-navbar .navbar-right li a:hover {
+    text-decoration: underline;
 }
