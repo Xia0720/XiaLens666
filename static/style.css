@@ -182,7 +182,7 @@ body, html {
 /* 每张卡片（图片 + 文字盒）*/
 .story-card {
     width: 100%;
-    max-width: 320px;  /* 之前340px，稍微调小一点 */
+    max-width: 300px;  /* 之前340px，稍微调小一点 */
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -225,7 +225,7 @@ body, html {
     flex-direction: column;
     gap: 12px;
     margin-top: 15px;
-    max-width: 320px;  /* 限制图片区域最大宽度，和.story-card保持一致 */
+    max-width: 300px;  /* 限制图片区域最大宽度，和.story-card保持一致 */
 }
 
 .story-images a {
