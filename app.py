@@ -267,3 +267,14 @@ def test_db():
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
+
+from flask.cli import with_appcontext
+import click
+
+@app.cli.command("create-db")
+@with_appcontext
+def create_db():
+    """Create the database tables."""
+    db.create_all()
+    click.echo("Database tables created.")
+
