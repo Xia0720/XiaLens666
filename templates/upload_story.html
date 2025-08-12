@@ -1,24 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Upload a story - XiaCapture{% endblock %}
-
+{% block title %}Upload Story - XiaCapture{% endblock %}
 {% block content %}
-<div style="max-width: 600px; margin: 30px auto; background: white; padding: 20px; border-radius: 8px;">
-    <h2>📤 Upload a story</h2>
-    <p><a href="{{ url_for('story') }}">← Back to storycollection</a></p>
-
-    <form action="{{ url_for('upload_story') }}" method="post" enctype="multipart/form-data">
+<div class="container upload-container">
+    <h2>Upload a Story</h2>
+    <form action="{{ url_for('upload_story') }}" method="post" enctype="multipart/form-data" class="upload-form">
         <label for="story_text">Story content</label>
-        <textarea name="story_text" id="story_text" rows="5" placeholder="请输入故事文字..." required
-            style="width:100%; padding:10px; margin-bottom:15px; border:1px solid #ccc; border-radius:4px;"></textarea>
+        <textarea name="story_text" id="story_text" rows="5" placeholder="Enter your story..." required></textarea>
 
-        <label for="story_image">Upload an image</label>
-        <input type="file" name="story_image" id="story_image" accept="image/*" required
-            style="width:100%; padding:10px; margin-bottom:15px; border:1px solid #ccc; border-radius:4px;">
+        <label for="story_image">Upload an image (optional)</label>
+        <input type="file" name="story_image" id="story_image" accept="image/*">
 
-        <button type="submit" style="padding:10px 20px; background:#007bff; color:#fff; border:none; border-radius:4px; cursor:pointer;">
-            Submit story
-        </button>
+        <button type="submit" class="btn-primary">Submit story</button>
     </form>
 </div>
 {% endblock %}
+
 
