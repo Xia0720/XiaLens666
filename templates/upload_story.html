@@ -7,12 +7,13 @@
         <label for="story_text">Story content</label>
         <textarea name="story_text" id="story_text" rows="5" placeholder="Enter your story..." required></textarea>
 
-        <label for="story_image">Upload an image (optional)</label>
-        <input type="file" name="story_image" id="story_image" accept="image/*">
+        <label for="story_images">Upload images (optional, multiple allowed)</label>
+        <input type="file" name="story_images" id="story_images" accept="image/*" multiple>
 
         <button type="submit" class="btn-primary">Submit story</button>
     </form>
 </div>
 {% endblock %}
+
 
 
