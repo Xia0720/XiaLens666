@@ -21,7 +21,7 @@
                     {% endif %}
 
                     <div class="story-card-content">
-                        <h3><a href="{{ url_for('story_detail', story_id=story.id) }}">{{ story.story.text[:30] }}</a></h3>
+                        <h3><a href="{{ url_for('story_detail', story_id=story.id) }}">{{ story.text[:30] }}</a></h3>
                         <p>{{ story.content|truncate(150)|safe }}</p>
                         <div class="story-meta">
                             <span class="created-at">{{ story.created_at.strftime('%Y-%m-%d %H:%M') if story.created_at else '' }}</span>
