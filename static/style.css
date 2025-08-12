@@ -200,7 +200,7 @@ body, html {
     background:#f7f7f7;
     padding:14px;
     border-radius:10px;
-    margin-top: -18px; /* 让文字盒与图片有点重叠的视觉（可删） */
+    margin-top: -10px; /* 让文字盒与图片有点重叠的视觉（可删） */
     box-shadow: 0 4px 10px rgba(0,0,0,0.04);
 }
 .story-card-content p {
@@ -212,6 +212,43 @@ body, html {
 }
 .story-meta { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:8px; }
 .created-at { color:#777; font-size:13px; }
+
+.story-images {
+  display: flex;
+  flex-direction: column; /* 竖直排列 */
+  gap: 12px;              /* 图片间垂直间距 */
+  margin-top: 15px;
+}
+
+.story-images a {
+  display: inline-block;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+  transition: transform 0.2s ease;
+}
+
+.story-images a:hover {
+  transform: scale(1.03);
+}
+
+.story-images img {
+  max-width: 300px;
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+}
+
+.story-text {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 17px;
+  color: #444444;        /* 深灰色，比默认更柔和 */
+  line-height: 1.7;      /* 行高增加，提升可读性 */
+  margin-top: 18px;
+  margin-bottom: 24px;
+  font-weight: 400;
+}
 
 /* 操作按钮对齐右侧 */
 .story-actions { display:flex; gap:8px; align-items:center; }
