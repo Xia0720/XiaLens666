@@ -200,7 +200,7 @@ body, html {
     background:#f7f7f7;
     padding:14px;
     border-radius:10px;
-    margin-top: -10px; /* 让文字盒与图片有点重叠的视觉（可删） */
+    margin-top: -18px; /* 让文字盒与图片有点重叠的视觉（可删） */
     box-shadow: 0 4px 10px rgba(0,0,0,0.04);
 }
 .story-card-content p {
