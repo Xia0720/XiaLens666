@@ -182,30 +182,33 @@ body, html {
 /* 每张卡片（图片 + 文字盒）*/
 .story-card {
     width: 100%;
-    max-width: 340px; /* 限制最大宽度，防止太大 */
+    max-width: 320px;  /* 之前340px，稍微调小一点 */
     display: flex;
     flex-direction: column;
     align-items: stretch;
 }
 
-/* 图片占整块宽度（图片不要在白色文字容器里） */
+/* 图片占整块宽度，和文字盒宽度保持一致 */
 .story-card img {
-    width: 100%;
+    width: 100%;       /* 100%撑满.story-card的宽度 */
     height: 210px;
     object-fit: cover;
     border-radius: 10px;
     box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-    display:block;
+    display: block;
 }
 
-/* 文字盒：类似 about 的 text-box */
+/* 文字盒：宽度和.story-card一致 */
 .story-card-content {
-    background:#f7f7f7;
-    padding:14px;
-    border-radius:10px;
-    margin-top: -18px; /* 让文字盒与图片有点重叠的视觉（可删） */
+    background: #f7f7f7;
+    padding: 14px;
+    border-radius: 10px;
+    margin-top: -18px; /* 让文字盒与图片稍重叠 */
     box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+    width: 100%;  /* 宽度填满.story-card */
+    box-sizing: border-box; /* 防止padding导致宽度溢出 */
 }
+
 .story-card-content p {
     margin:0 0 10px 0;
     font-size:15px;
@@ -216,14 +219,13 @@ body, html {
 .story-meta { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:8px; }
 .created-at { color:#777; font-size:13px; }
 
+/* story-images（图片列表）内图片宽度调整跟文字盒一致 */
 .story-images {
-  display: flex;
-  flex-direction: column; /* 竖直排列 */
-  gap: 12px;              /* 图片间垂直间距 */
-  margin-top: 15px;
-  max-width: 300px;       /* 限制宽度 */
-  margin-left: auto;      /* 居中 */
-  margin-right: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 15px;
+    max-width: 320px;  /* 限制图片区域最大宽度，和.story-card保持一致 */
 }
 
 .story-images a {
@@ -239,11 +241,9 @@ body, html {
 }
 
 .story-images img {
-  max-width: 300px;
-  width: 100%;
-  height: auto;
-  display: block;
-  border-radius: 8px;
+    max-width: 100%;  /* 图片最大宽度撑满.story-images */
+    height: auto;
+    border-radius: 8px;
 }
 
 .story-text {
