@@ -250,6 +250,12 @@ body, html {
   font-weight: 400;
 }
 
+.story-detail {
+  max-width: 760px;
+  margin: 40px auto;
+  padding: 0 15px;
+}
+
 /* 操作按钮对齐右侧 */
 .story-actions { display:flex; gap:8px; align-items:center; }
 
