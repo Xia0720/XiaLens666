@@ -1,21 +1,21 @@
 {% extends "base.html" %}
-
+{% block title %}Login - XiaCapture{% endblock %}
 {% block content %}
-<div class="container mt-4">
+<div class="container upload-container">
     <h2>Login</h2>
     {% if logged_in %}
         <p>You are already logged in. <a href="{{ url_for('logout') }}">Logout</a></p>
     {% else %}
         <form method="POST" action="{{ url_for('login') }}">
-            <div class="mb-3">
-                <label for="username" class="form-label">Username</label>
-                <input type="text" name="username" id="username" class="form-control" required>
+            <div class="form-row">
+                <label for="username">Username</label>
+                <input type="text" name="username" id="username" required>
             </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" name="password" id="password" class="form-control" required>
+            <div class="form-row">
+                <label for="password">Password</label>
+                <input type="password" name="password" id="password" required>
             </div>
-            <button type="submit" class="btn btn-primary">Login</button>
+            <button type="submit" class="btn-primary">Login</button>
         </form>
     {% endif %}
 </div>
