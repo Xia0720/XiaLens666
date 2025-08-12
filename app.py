@@ -42,8 +42,13 @@ def allowed_file(filename):
 class Story(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text, nullable=False)
-    image_url = db.Column(db.String(1000), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    images = db.relationship("StoryImage", backref="story", cascade="all, delete-orphan")
+
+class StoryImage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
+    image_url = db.Column(db.String(1000), nullable=False)
 
 
 # 在模板内全局可用 logged_in、request（request 自带），避免每次都传
