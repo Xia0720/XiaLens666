@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Edit Story - XiaCapture{% endblock %}
+{% block content %}
+<div class="container upload-container">
+    <h2>Edit Story</h2>
+    <form action="{{ url_for('edit_story', story_id=story.id) }}" method="post" enctype="multipart/form-data" class="upload-form">
+        <label for="story_text">Story content</label>
+        <textarea name="story_text" id="story_text" rows="5" required>{{ story.text }}</textarea>
+
+        {% if story.images %}
+        <div class="existing-images">
+            <p>Existing images:</p>
+            <div class="story-images">
+                {% for img in story.images %}
+                    <a href="{{ img.image_url }}" target="_blank">
+                        <img src="{{ img.image_url }}" style="max-height: 120px; margin-right: 8px; margin-bottom: 8px; border-radius: 6px;">
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <label for="story_images">Upload new images (optional, multiple allowed)</label>
+        <input type="file" name="story_images" id="story_images" accept="image/*" multiple>
+
+        <button type="submit" class="btn-primary">Update story</button>
+    </form>
+</div>
+{% endblock %}
+

@@ -1,38 +1,19 @@
-<!DOCTYPE html>
-<html lang="zh">
-<head>
-    <meta charset="UTF-8">
-    <title>Upload a story - XiaCapture</title>
-    <style>
-        body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
-        header { background: #333; color: white; padding: 10px 20px; }
-        header a { color: white; margin-left: 15px; text-decoration: none; }
-        .container { max-width: 600px; margin: 30px auto; background: white; padding: 20px; border-radius: 8px; }
-        input[type="text"], textarea, input[type="file"] {
-            width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 4px;
-        }
-        button {
-            padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px;
-        }
-        button:hover { background: #0056b3; cursor: pointer; }
-    </style>
-</head>
-<body>
-<header>
-    <span>📤 Upload a story</span>
-    <a href="{{ url_for('story') }}">Back to storycollection</a>
-</header>
-
-<div class="container">
-    <form action="{{ url_for('upload_story') }}" method="post" enctype="multipart/form-data">
+{% extends "base.html" %}
+{% block title %}Upload Story - XiaCapture{% endblock %}
+{% block content %}
+<div class="container upload-container">
+    <h2>Upload a Story</h2>
+    <form action="{{ url_for('upload_story') }}" method="post" enctype="multipart/form-data" class="upload-form">
         <label for="story_text">Story content</label>
-        <textarea name="story_text" id="story_text" rows="5" placeholder="请输入故事文字..." required></textarea>
+        <textarea name="story_text" id="story_text" rows="5" placeholder="Enter your story..." required></textarea>
 
-        <label for="story_image">Upload an image</label>
-        <input type="file" name="story_image" id="story_image" accept="image/*" required>
+        <label for="story_images">Upload images (optional, multiple allowed)</label>
+        <input type="file" name="story_images" id="story_images" accept="image/*" multiple>
 
-        <button type="submit">Submit story</button>
+        <button type="submit" class="btn-primary">Submit story</button>
     </form>
 </div>
-</body>
-</html>
+{% endblock %}
+
+
+
