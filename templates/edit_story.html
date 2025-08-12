@@ -1,32 +1,18 @@
 {% extends "base.html" %}
-
 {% block title %}Edit Story - XiaCapture{% endblock %}
-
 {% block content %}
-<div class="edit-container">
+<div class="container upload-container">
     <h2>Edit Story</h2>
     <form action="{{ url_for('edit_story', story_id=story.id) }}" method="post" enctype="multipart/form-data">
-        
-        <!-- 文字内容 -->
-        <label for="story_text">Story Content</label>
+        <label for="story_text">Story content</label>
         <textarea name="story_text" id="story_text" rows="5" required>{{ story.text }}</textarea>
 
-        <!-- 当前图片预览 -->
-        <div class="current-image">
-            <p>Current Image:</p>
-            <a href="{{ url_for('static', filename='uploads/' ~ story.image_filename) }}" target="_blank">
-                <img src="{{ url_for('static', filename='uploads/' ~ story.image_filename) }}" alt="Current Story Image">
-            </a>
-        </div>
-
-        <!-- 上传新图片 -->
-        <label for="story_image">Replace Image (optional)</label>
+        <label for="story_image">Replace image (optional)</label>
         <input type="file" name="story_image" id="story_image" accept="image/*">
 
-        <div class="edit-actions">
-            <button type="submit" class="btn-save">Save Changes</button>
-            <a href="{{ url_for('story') }}" class="btn-cancel">Cancel</a>
-        </div>
+        <button type="submit" class="btn-primary">Save changes</button>
+        <a href="{{ url_for('story') }}" class="btn-secondary">Cancel</a>
     </form>
 </div>
 {% endblock %}
+
