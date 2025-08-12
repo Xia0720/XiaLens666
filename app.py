@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
 from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
@@ -18,17 +17,16 @@ cloudinary.config(
     api_secret='9o-PlPBRQzQPfuVCQfaGrUV3_IE'
 )
 
-# Database config: 优先使用环境变量 DATABASE_URL (Railway)
+# 数据库配置，优先用环境变量 DATABASE_URL，没设置就用本地 sqlite
 database_url = os.getenv("DATABASE_URL")
 if database_url:
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    # fallback 本地 sqlite，方便本地开发
     app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///stories.db"
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 db = SQLAlchemy(app)
-migrate = Migrate(app, db)
 
 # admin secret (可选，用 ?admin_key=xxx 自动登录)
 ADMIN_SECRET = os.getenv("ADMIN_SECRET", "superxia0720")
@@ -43,14 +41,15 @@ def allowed_file(filename):
 # Model
 class Story(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    text = db.Column(db.Text, nullable=False)
+    title = db.Column(db.String(100))
+    content = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    images = db.relationship("StoryImage", backref="story", cascade="all, delete-orphan")
+    images = db.relationship('StoryImage', backref='story', lazy=True)
 
 class StoryImage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
-    image_url = db.Column(db.String(1000), nullable=False)
+    story_id = db.Column(db.Integer, db.ForeignKey('story.id'), nullable=False)
+    image_url = db.Column(db.String(300))
 
 
 # 在模板内全局可用 logged_in、request（request 自带），避免每次都传
@@ -265,15 +264,8 @@ def test_db():
     except Exception as e:
         return f"DB failed: {str(e)}", 500
 
+# 入口，启动前创建所有表（第一次运行会自动创建）
 if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()
     app.run(debug=True, host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
-
-from flask.cli import with_appcontext
-import click
-
-@app.cli.command("create-db")
-@with_appcontext
-def create_db():
-    """Create the database tables."""
-    db.create_all()
-    click.echo("Database tables created.")
