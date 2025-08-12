@@ -8,8 +8,8 @@
     {% if story.images %}
         <div class="story-images">
             {% for img in story.images %}
-                <a href="{{ img.image_url }}" target="_blank">
-                    <img src="{{ img.image_url }}" alt="Story Image" style="max-width:300px; margin:10px;">
+                <a href="{{ img.image_url }}" target="_blank" rel="noopener noreferrer">
+                    <img src="{{ img.image_url }}" alt="Story Image">
                 </a>
             {% endfor %}
         </div>
