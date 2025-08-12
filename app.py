@@ -121,13 +121,18 @@ def upload_story():
 
     return render_template("upload_story.html")
 
-@app.route("/edit_story/<int:story_id>", methods=["GET", "POST"])
+@app.route("/story/<int:story_id>/edit", methods=["GET", "POST"])
 def edit_story(story_id):
     story = Story.query.get_or_404(story_id)
     if request.method == "POST":
-        story.text = request.form.get("story_text")
-        files = request.files.getlist("story_images")
+        text = request.form.get("text")
+        if not text or text.strip() == "":
+            flash("故事内容不能为空", "error")
+            return render_template("edit_story.html", story=story)
 
+        story.text = text
+
+        files = request.files.getlist("story_images")
         for file in files:
             if file and file.filename:
                 upload_result = cloudinary.uploader.upload(file)
@@ -136,8 +141,8 @@ def edit_story(story_id):
                     db.session.add(Image(image_url=img_url, story=story))
 
         db.session.commit()
-        flash("Story updated successfully!", "success")
-        return redirect(url_for("story"))
+        flash("故事已更新", "success")
+        return redirect(url_for("story_detail", story_id=story.id))
 
     return render_template("edit_story.html", story=story)
 
