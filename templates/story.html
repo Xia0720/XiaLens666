@@ -11,11 +11,15 @@
         <div class="story-container">
             {% for story in stories %}
                 <div class="story-card">
-                    {% if story.image_url %}
-                        <a href="{{ story.image_url }}" target="_blank" class="story-image-link">
-                            <img src="{{ story.image_url }}" alt="Story image">
-                        </a>
-                    {% endif %}
+                    {% if story.images %}
+                    <div class="story-images">
+                        {% for img in story.images %}
+                            <a href="{{ img.image_url }}" target="_blank">
+                                <img src="{{ img.image_url }}">
+                           </a>
+                       {% endfor %}
+                   </div>
+                   {% endif %}
 
                     <div class="story-card-content">
                         <p>{{ story.text|safe }}</p>
