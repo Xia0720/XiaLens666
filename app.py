@@ -117,7 +117,7 @@ def story():
     return render_template("story.html", stories=stories)
 
 
-# Upload story (create)
+# Upload story (create) — 支持多图上传
 @app.route("/upload_story", methods=["GET", "POST"])
 def upload_story():
     if not session.get("logged_in"):
@@ -126,23 +126,29 @@ def upload_story():
 
     if request.method == "POST":
         text = request.form.get("story_text", "").strip()
-        file = request.files.get("story_image")
+        files = request.files.getlist("story_images")  # 获取多文件
 
         if not text:
             flash("Please enter story text.")
             return redirect(url_for("upload_story"))
 
-        image_url = None
-        if file and allowed_file(file.filename):
-            try:
-                upload_result = cloudinary.uploader.upload(file)
-                image_url = upload_result.get("secure_url")
-            except Exception as e:
-                flash(f"Image upload failed: {str(e)}")
-                return redirect(url_for("upload_story"))
-
-        new_story = Story(text=text, image_url=image_url)
+        new_story = Story(text=text)
         db.session.add(new_story)
+        db.session.flush()  # 先flush以便获取 new_story.id
+
+        # 上传多张图片
+        for file in files:
+            if file and allowed_file(file.filename):
+                try:
+                    upload_result = cloudinary.uploader.upload(file)
+                    image_url = upload_result.get("secure_url")
+                    story_image = StoryImage(story_id=new_story.id, image_url=image_url)
+                    db.session.add(story_image)
+                except Exception as e:
+                    flash(f"Image upload failed: {str(e)}")
+                    db.session.rollback()
+                    return redirect(url_for("upload_story"))
+
         db.session.commit()
         flash("Story uploaded.")
         return redirect(url_for("story"))
@@ -161,16 +167,23 @@ def edit_story(story_id):
 
     if request.method == "POST":
         text = request.form.get("story_text", "").strip()
-        file = request.files.get("story_image")
+        files = request.files.getlist("story_images")  # 支持多图编辑时上传
+
         if text:
             story_obj.text = text
-        if file and allowed_file(file.filename):
-            try:
-                upload_result = cloudinary.uploader.upload(file)
-                story_obj.image_url = upload_result.get("secure_url")
-            except Exception as e:
-                flash(f"Image upload failed: {str(e)}")
-                return redirect(url_for("edit_story", story_id=story_id))
+
+        # 如果上传了新图片，添加进去（不删除旧图）
+        for file in files:
+            if file and allowed_file(file.filename):
+                try:
+                    upload_result = cloudinary.uploader.upload(file)
+                    image_url = upload_result.get("secure_url")
+                    story_image = StoryImage(story_id=story_obj.id, image_url=image_url)
+                    db.session.add(story_image)
+                except Exception as e:
+                    flash(f"Image upload failed: {str(e)}")
+                    return redirect(url_for("edit_story", story_id=story_id))
+
         db.session.commit()
         flash("Story updated.")
         return redirect(url_for("story"))
@@ -255,3 +268,4 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True, host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
+
