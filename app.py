@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
 from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
@@ -27,6 +28,7 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 # admin secret (可选，用 ?admin_key=xxx 自动登录)
 ADMIN_SECRET = os.getenv("ADMIN_SECRET", "superxia0720")
