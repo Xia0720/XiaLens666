@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
 from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
@@ -27,8 +28,8 @@ else:
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
-# admin secret (可选，用 ?admin_key=xxx 自动登录)
 ADMIN_SECRET = os.getenv("ADMIN_SECRET", "superxia0720")
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
@@ -38,7 +39,7 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-# Model
+# Models
 class Story(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100))
@@ -46,22 +47,20 @@ class Story(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     images = db.relationship('StoryImage', backref='story', lazy=True)
 
+
 class StoryImage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     story_id = db.Column(db.Integer, db.ForeignKey('story.id'), nullable=False)
     image_url = db.Column(db.String(300))
 
 
-# 在模板内全局可用 logged_in、request（request 自带），避免每次都传
 @app.context_processor
 def inject_logged_in():
     return dict(logged_in=session.get("logged_in", False))
 
 
-# 自动通过 URL 参数 admin_key 登录（可选）
 @app.before_request
 def auto_login_with_secret():
-    # 只做自动登录，不做强制 redirect
     if session.get("logged_in"):
         return
     admin_key = request.args.get("admin_key")
@@ -69,7 +68,6 @@ def auto_login_with_secret():
         session["logged_in"] = True
 
 
-# 首页
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -85,7 +83,6 @@ def about():
     return render_template("about.html")
 
 
-# Album 列表（Cloudinary folders）
 @app.route("/album")
 def albums():
     try:
@@ -111,129 +108,51 @@ def view_album(album_name):
         return f"Error loading album: {str(e)}"
 
 
-# Story 列表（显示）
 @app.route("/story")
 def story():
     stories = Story.query.order_by(Story.created_at.desc()).all()
     return render_template("story.html", stories=stories)
 
 
-# Upload story (create) — 支持多图上传
-@app.route("/upload_story", methods=["GET", "POST"])
-def upload_story():
-    if not session.get("logged_in"):
-        flash("Please login to upload stories.")
-        return redirect(url_for("login"))
+@app.route('/story/new', methods=['GET', 'POST'])
+def new_story():
+    if request.method == 'POST':
+        title = request.form.get('title')
+        content = request.form.get('content')
+        files = request.files.getlist('images')
 
-    if request.method == "POST":
-        text = request.form.get("story_text", "").strip()
-        files = request.files.getlist("story_images")  # 获取多文件
+        if not title or not content:
+            return "标题和内容不能为空", 400
 
-        if not text:
-            flash("Please enter story text.")
-            return redirect(url_for("upload_story"))
+        story = Story(title=title, content=content)
+        db.session.add(story)
+        db.session.flush()  # 先flush获取id
 
-        new_story = Story(text=text)
-        db.session.add(new_story)
-        db.session.flush()  # 先flush以便获取 new_story.id
-
-        # 上传多张图片
         for file in files:
             if file and allowed_file(file.filename):
                 try:
                     upload_result = cloudinary.uploader.upload(file)
-                    image_url = upload_result.get("secure_url")
-                    story_image = StoryImage(story_id=new_story.id, image_url=image_url)
-                    db.session.add(story_image)
+                    image_url = upload_result.get('secure_url')
+                    img = StoryImage(story_id=story.id, image_url=image_url)
+                    db.session.add(img)
                 except Exception as e:
-                    flash(f"Image upload failed: {str(e)}")
                     db.session.rollback()
-                    return redirect(url_for("upload_story"))
+                    return f"图片上传失败: {str(e)}", 500
 
         db.session.commit()
-        flash("Story uploaded.")
-        return redirect(url_for("story"))
+        return redirect(url_for('show_story', story_id=story.id))
 
-    return render_template("upload_story.html")
-
-
-# Edit story
-@app.route("/edit_story/<int:story_id>", methods=["GET", "POST"])
-def edit_story(story_id):
-    if not session.get("logged_in"):
-        flash("Please login to edit.")
-        return redirect(url_for("login"))
-
-    story_obj = Story.query.get_or_404(story_id)
-
-    if request.method == "POST":
-        text = request.form.get("story_text", "").strip()
-        files = request.files.getlist("story_images")  # 支持多图编辑时上传
-
-        if text:
-            story_obj.text = text
-
-        # 如果上传了新图片，添加进去（不删除旧图）
-        for file in files:
-            if file and allowed_file(file.filename):
-                try:
-                    upload_result = cloudinary.uploader.upload(file)
-                    image_url = upload_result.get("secure_url")
-                    story_image = StoryImage(story_id=story_obj.id, image_url=image_url)
-                    db.session.add(story_image)
-                except Exception as e:
-                    flash(f"Image upload failed: {str(e)}")
-                    return redirect(url_for("edit_story", story_id=story_id))
-
-        db.session.commit()
-        flash("Story updated.")
-        return redirect(url_for("story"))
-
-    return render_template("edit_story.html", story=story_obj)
+    return render_template('edit_story.html')
 
 
-# Delete story (POST to avoid accidental deletes)
-@app.route("/delete_story/<int:story_id>", methods=["POST"])
-def delete_story(story_id):
-    if not session.get("logged_in"):
-        flash("Please login to delete.")
-        return redirect(url_for("login"))
-
-    story_obj = Story.query.get_or_404(story_id)
-    # NOTE: not removing image from Cloudinary to keep it simple
-    db.session.delete(story_obj)
-    db.session.commit()
-    flash("Story deleted.")
-    return redirect(url_for("story"))
+@app.route('/story/<int:story_id>')
+def show_story(story_id):
+    story = Story.query.get_or_404(story_id)
+    return render_template('story.html', story=story)
 
 
-# Generic upload page (Cloudinary folder upload)
-@app.route("/upload", methods=["GET", "POST"])
-def upload():
-    if not session.get("logged_in"):
-        # show login only on certain pages — but here redirect to login
-        return redirect(url_for("login"))
-
-    if request.method == "POST":
-        photo = request.files.get("photo")
-        folder = request.form.get("folder")
-        if not photo or photo.filename == '':
-            return "No selected photo file", 400
-        if not folder:
-            return "Folder name is required", 400
-        try:
-            cloudinary.uploader.upload(photo, folder=folder)
-            flash("Uploaded successfully.")
-            return redirect(url_for("upload"))
-        except Exception as e:
-            return f"Error uploading file: {str(e)}"
-    return render_template("upload.html")
-
-
-# Login / Logout
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    # keep simple auth
     if request.method == "POST":
         username = request.form.get("username", "")
         password = request.form.get("password", "")
@@ -251,11 +170,9 @@ def login():
 def logout():
     session.pop("logged_in", None)
     flash("Logged out.")
-    # go home after logout
     return redirect(url_for("index"))
 
 
-# Test DB connectivity
 @app.route("/test-db")
 def test_db():
     try:
@@ -264,7 +181,7 @@ def test_db():
     except Exception as e:
         return f"DB failed: {str(e)}", 500
 
-# 入口，启动前创建所有表（第一次运行会自动创建）
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
