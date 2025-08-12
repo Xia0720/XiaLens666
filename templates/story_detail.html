@@ -3,7 +3,7 @@
 {% block content %}
 <div class="story-detail">
     <h1>Story Detail</h1>
-    <p>{{ story.text|safe }}</p>
+    <p class="story-text">{{ story.text|safe }}</p>
 
     {% if story.images %}
         <div class="story-images">
