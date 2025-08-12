@@ -235,11 +235,21 @@ body, html {
 }
 .form-row { margin-bottom:10px; }
 
-/* 小设备自适应 */
+
+/* 响应式：屏幕宽度变化时调整列数 */
+@media (max-width: 1024px) {
+    .story-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* 小设备自适应（保留原来的） */
 @media (max-width: 720px) {
+    .story-container {
+        grid-template-columns: 1fr;
+    }
     .main-title { font-size:48px; }
     .story-card { width: 100%; }
     .about-container { padding:20px; }
     .nav-container { padding: 0 10px; gap:12px; }
 }
-
