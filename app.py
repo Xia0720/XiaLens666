@@ -77,10 +77,13 @@ def albums():
         folders = cloudinary.api.root_folders()
         albums = []
         for folder in folders.get('folders', []):
-            subfolder_name = folder['name']
-            resources = cloudinary.api.resources(type="upload", prefix=subfolder_name, max_results=1)
+            folder_name = folder['name']
+            if folder_name == "private":  # 忽略 Private-space 文件夹
+                continue
+            # 获取相册封面
+            resources = cloudinary.api.resources(type="upload", prefix=folder_name, max_results=1)
             cover_url = resources['resources'][0]['secure_url'] if resources['resources'] else ""
-            albums.append({'name': subfolder_name, 'cover': cover_url})
+            albums.append({'name': folder_name, 'cover': cover_url})
         return render_template("album.html", albums=albums)
     except Exception as e:
         return f"Error fetching albums: {str(e)}"
