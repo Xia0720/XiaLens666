@@ -4,20 +4,21 @@
 <h1 style="text-align:center; margin-top:20px;">{{ album_name }} Private Album</h1>
 
 <form method="POST" action="{{ url_for('delete_private_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
-<div style="display: flex; flex-wrap: wrap; gap: 15px; justify-content:center; padding:20px;">
+<div class="album-grid">
   {% for img in images %}
-    <div style="position:relative; max-width: 200px;">
+    <div class="album-item" style="position: relative;">
       <input type="checkbox" name="public_ids" value="{{ img.public_id }}" style="position:absolute; top:5px; left:5px; z-index:10; width:20px; height:20px;">
       <a href="{{ img.secure_url }}" target="_blank">
-        <img src="{{ img.secure_url }}" alt="Photo" style="width: 200px; height: auto; border-radius:8px;">
+        <img src="{{ img.secure_url }}" alt="Photo">
       </a>
     </div>
   {% endfor %}
 </div>
 
   <input type="hidden" name="album_name" value="{{ album_name }}">
-  <div style="text-align: right; margin-top: 450px;">
+  <div style="text-align: right; margin-top: 10px;">
     <button type="submit" style="padding: 5px 12px;">Delete Selected Images</button>
   </div>
 </form>
 {% endblock %}
+
