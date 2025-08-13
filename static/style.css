@@ -174,20 +174,21 @@ body, html {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  column-gap: 20px; /* 水平间距 */
-  row-gap: 10px;    /* 垂直间距 */
-  padding: 20px;
+  column-gap: 20px; /* 横向间距 */
+  row-gap: 10px;    /* 纵向间距 */
+  padding: 0;
 }
 
 .album-item {
+  text-align: center;
   margin: 0;
 }
 
-.album-img {
-  display: block;
+.album-item img {
+  display: block;        /* 消除底部空白 */
   width: 200px;
-  height: 200px;
-  object-fit: cover;
+  height: 200px;         /* 固定高度，保持布局整齐 */
+  object-fit: cover;     /* 保持比例裁剪 */
   border-radius: 8px;
 }
 
