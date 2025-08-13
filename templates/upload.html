@@ -1,30 +1,41 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>Upload Photos</h2>
-<form method="POST" enctype="multipart/form-data" id="uploadForm">
+
+<form method="POST" enctype="multipart/form-data">
     <div>
-        <label for="folder">Album Name (New or Existing)</label><br>
-        <input type="text" name="folder" id="folder" placeholder="e.g. my_album" required>
+        <label for="albumSelect">选择相册</label><br>
+        <select name="album" id="albumSelect" onchange="toggleNewAlbumInput()">
+            {% for album in album_names %}
+                <option value="{{ album }}">{{ album }}</option>
+            {% endfor %}
+            <option value="new">+ 创建新相册</option>
+        </select>
     </div>
-    <div>
-        <label for="photo">Select Photos</label><br>
+
+    <div id="newAlbumDiv" style="display:none; margin-top:10px;">
+        <label for="new_album">新相册名</label><br>
+        <input type="text" name="new_album" placeholder="输入新相册名">
+    </div>
+
+    <div style="margin-top:15px;">
+        <label for="photo">选择照片</label><br>
         <input type="file" name="photo" id="photo" multiple required>
     </div>
-    <button type="submit">Upload</button>
+
+    <button type="submit" style="margin-top:15px;">上传</button>
 </form>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    const folderInput = document.getElementById('folder');
-    const savedFolder = localStorage.getItem('uploadFolderName');
-    if (savedFolder) {
-        folderInput.value = savedFolder;
+function toggleNewAlbumInput() {
+    var select = document.getElementById('albumSelect');
+    var newAlbumDiv = document.getElementById('newAlbumDiv');
+    if (select.value === 'new') {
+        newAlbumDiv.style.display = 'block';
+    } else {
+        newAlbumDiv.style.display = 'none';
     }
-
-    document.getElementById('uploadForm').addEventListener('submit', () => {
-        localStorage.setItem('uploadFolderName', folderInput.value);
-    });
-});
+}
 </script>
 {% endblock %}
 
