@@ -17,8 +17,8 @@
                 <a href="{{ url_for('about') }}">About</a>
                 {% if logged_in %}
                     <!-- 只有登录后才显示 Upload -->
-                    <a href="{{ url_for('private_space') }}">Private-space</a> <!-- 新增 -->
                     <a href="{{ url_for('upload') }}">Upload</a>
+                    <a href="{{ url_for('private_space') }}">Private-space</a> <!-- 新增 -->
                     <a href="{{ url_for('upload_private') }}">Upload Private</a>
                 {% endif %}
             </div>
