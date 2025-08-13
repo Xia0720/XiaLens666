@@ -175,14 +175,16 @@ def delete_story(story_id):
 @login_required
 def upload():
     if request.method == "POST":
-        photo = request.files.get("photo")
+        photos = request.files.getlist("photo")  # 改成 getlist，获取多个文件
         folder = request.form.get("folder")
-        if not photo or photo.filename == '':
+        if not photos or all(p.filename == '' for p in photos):
             return "No selected photo file", 400
         if not folder:
             return "Folder name is required", 400
         try:
-            cloudinary.uploader.upload(photo, folder=folder)
+            for photo in photos:
+                if photo and photo.filename != '':
+                    cloudinary.uploader.upload(photo, folder=folder)
             flash("Uploaded successfully.")
             return redirect(url_for("upload"))
         except Exception as e:
