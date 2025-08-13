@@ -70,7 +70,7 @@ def gallery():
 def about():
     return render_template("about.html")
 
-原来不设置相册密码： # Album 列表（Cloudinary folders）
+# 原来不设置相册密码：Album 列表（Cloudinary folders）
 @app.route("/album")
 def albums():
     try:
