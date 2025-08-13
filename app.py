@@ -107,23 +107,31 @@ def view_album(album_name):
 @login_required
 def rename_album(album_name):
     from flask import request, jsonify
+    import cloudinary.uploader
+
     data = request.get_json()
     new_name = data.get("new_name")
     if not new_name:
-        return jsonify({"error":"No new name"}), 400
+        return jsonify({"error":"No new name provided"}), 400
 
     try:
         # 获取原相册所有图片
         resources = cloudinary.api.resources(type="upload", prefix=album_name, max_results=500)
+        if not resources["resources"]:
+            return jsonify({"error":"No images found in album"}), 404
+
         for img in resources["resources"]:
             old_public_id = img["public_id"]
-            # 生成新 public_id：替换文件夹名
+            # 新 public_id，把文件夹名替换掉
             new_public_id = old_public_id.replace(album_name + "/", new_name + "/")
             cloudinary.uploader.rename(old_public_id, new_public_id)
 
         return jsonify({"success": True})
     except Exception as e:
+        import traceback
+        traceback.print_exc()  # 打印完整错误到控制台
         return jsonify({"error": str(e)}), 500
+
         
 @app.route("/delete_images", methods=["POST"])
 @login_required
