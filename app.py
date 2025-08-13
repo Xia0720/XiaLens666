@@ -30,6 +30,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
+from app import models  # 或者如果没有 app 文件夹，就直接 from models import Album
+from models import Album, Image, Story  # 你项目里的所有模型
+
 # --------------- 数据模型 ---------------
 
 class Album(db.Model):
