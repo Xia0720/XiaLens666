@@ -316,10 +316,15 @@ def delete_private_images():
 @app.route("/upload_private", methods=["GET", "POST"])
 @login_required
 def upload_private():
-    """上传私人空间照片"""
     try:
-        result = cloudinary.api.sub_folders("private")
-        album_names = [folder['name'] for folder in result.get('folders', [])]
+        # 获取 private/ 下已有相册
+        resources = cloudinary.api.resources(type="upload", prefix="private", max_results=500)
+        album_names_set = set()
+        for res in resources['resources']:
+            parts = res['public_id'].split('/')
+            if len(parts) >= 2:
+                album_names_set.add(parts[1])
+        album_names = list(album_names_set)
     except Exception as e:
         album_names = []
 
@@ -334,8 +339,8 @@ def upload_private():
         folder = new_album if (selected_album == "new" and new_album) else selected_album
         if not folder:
             return "Folder name is required", 400
-        folder = f"private/{folder}"  # 保证都存 private/ 下
 
+        folder = f"private/{folder}"  # 上传到 private/ 下
         try:
             for photo in photos:
                 if photo and photo.filename != '':
