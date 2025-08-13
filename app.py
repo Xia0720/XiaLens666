@@ -236,16 +236,20 @@ def upload():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form.get("username", "")
-        password = request.form.get("password", "")
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+
+        # 验证账户
         if username == "xia0720" and password == "qq123456":
             session["logged_in"] = True
+            session["username"] = username  # 保存用户名，方便私有页面判断
             flash("Logged in.")
             next_url = request.args.get("next")
             return redirect(next_url or url_for("story"))
         else:
             flash("Invalid credentials.")
             return redirect(url_for("login"))
+
     return render_template("login.html")
 
 @app.route("/logout")
