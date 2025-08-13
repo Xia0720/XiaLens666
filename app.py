@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_login import login_required
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
@@ -196,13 +197,31 @@ def delete_story(story_id):
 @app.route("/upload", methods=["GET", "POST"])
 @login_required
 def upload():
+    # 获取 Cloudinary 已有相册（文件夹）
+    try:
+        result = cloudinary.api.root_folders()
+        album_names = [folder['name'] for folder in result.get('folders', [])]
+    except Exception as e:
+        album_names = []
+        print("Error fetching folders:", e)
+
     if request.method == "POST":
-        photos = request.files.getlist("photo")  # 改成 getlist，获取多个文件
-        folder = request.form.get("folder")
+        photos = request.files.getlist("photo")
+        selected_album = request.form.get("album")
+        new_album = request.form.get("new_album", "").strip()
+
         if not photos or all(p.filename == '' for p in photos):
             return "No selected photo file", 400
+
+        # 如果选择了“新建相册”
+        if selected_album == "new" and new_album:
+            folder = new_album
+        else:
+            folder = selected_album
+
         if not folder:
             return "Folder name is required", 400
+
         try:
             for photo in photos:
                 if photo and photo.filename != '':
@@ -211,7 +230,8 @@ def upload():
             return redirect(url_for("upload"))
         except Exception as e:
             return f"Error uploading file: {str(e)}"
-    return render_template("upload.html")
+
+    return render_template("upload.html", album_names=album_names)
 
 # Login / Logout（路由存在，但不在导航栏展示）
 @app.route("/login", methods=["GET", "POST"])
