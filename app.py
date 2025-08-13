@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from flask_login import login_required
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
