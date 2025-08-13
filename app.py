@@ -10,15 +10,9 @@ import os
 from datetime import datetime
 from functools import wraps
 
+# --------- 先初始化 app ---------
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET", "xia0720_secret")
-
-# 配置 Cloudinary
-cloudinary.config(
-    cloud_name='dpr0pl2tf',
-    api_key='548549517251566',
-    api_secret='9o-PlPBRQzQPfuVCQfaGrUV3_IE'
-)
 
 # 数据库配置（优先 Railway）
 database_url = os.getenv("DATABASE_URL")
@@ -28,9 +22,12 @@ else:
     app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///stories.db"
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# --------- 先初始化 db 和 migrate ---------
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
+# --------- 模型定义 ---------
 class Album(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), unique=True, nullable=False)
@@ -43,6 +40,24 @@ class Album(db.Model):
         if not self.password_hash:
             return True  # 无密码视为开放访问
         return check_password_hash(self.password_hash, password)
+
+class Story(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    images = db.relationship("Image", backref="story", cascade="all, delete-orphan")
+
+class Image(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    image_url = db.Column(db.String(255), nullable=False)
+    story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
+
+# 配置 Cloudinary
+cloudinary.config(
+    cloud_name='dpr0pl2tf',
+    api_key='548549517251566',
+    api_secret='9o-PlPBRQzQPfuVCQfaGrUV3_IE'
+)
 
 # ---------- 模板全局变量：所有模板都能拿到 logged_in ----------
 @app.context_processor
@@ -58,18 +73,6 @@ def login_required(f):
             return redirect(url_for("login", next=request.path))
         return f(*args, **kwargs)
     return decorated
-
-# ---------- 数据模型 ----------
-class Story(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    text = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    images = db.relationship("Image", backref="story", cascade="all, delete-orphan")
-
-class Image(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    image_url = db.Column(db.String(255), nullable=False)
-    story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
 
 # ---------- 路由 ----------
 @app.route("/")
