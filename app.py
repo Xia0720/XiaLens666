@@ -91,7 +91,7 @@ def albums():
 @app.route("/album/<album_name>", methods=["GET", "POST"])
 def view_album(album_name):
     try:
-        resources = cloudinary.api.resources(type="upload", prefix=album_name)
+        resources = cloudinary.api.resources(type="upload", prefix=album_name, max_results=500)
         images = []
         for img in resources["resources"]:
             images.append({
