@@ -31,6 +31,19 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
+class Album(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=True)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        if not self.password_hash:
+            return True  # 无密码视为开放访问
+        return check_password_hash(self.password_hash, password)
+
 # ---------- 模板全局变量：所有模板都能拿到 logged_in ----------
 @app.context_processor
 def inject_logged_in():
@@ -57,19 +70,6 @@ class Image(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     image_url = db.Column(db.String(255), nullable=False)
     story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
-
-class Album(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=True)
-
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password):
-        if not self.password_hash:
-            return True  # 无密码视为开放访问
-        return check_password_hash(self.password_hash, password)
 
 # ---------- 路由 ----------
 @app.route("/")
