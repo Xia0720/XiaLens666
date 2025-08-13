@@ -1,16 +1,30 @@
 {% extends "base.html" %}
 {% block title %}{{ album_name }} - Album{% endblock %}
 {% block content %}
-  <h1 style="text-align:center; margin-top:20px;">{{ album_name }} Album</h1>
-  <div style="display: flex; flex-wrap: wrap; gap: 15px; justify-content:center; padding:20px;">
-    {% for url in image_urls %}
-      <div>
-        <a href="{{ url }}" target="_blank">
-          <img src="{{ url }}" alt="Photo" style="width: 200px; height: auto; border-radius:8px;">
-        </a>
-      </div>
-    {% endfor %}
-  </div>
+<h1 style="text-align:center; margin-top:20px;">{{ album_name }} Album</h1>
+
+{% if logged_in %}
+<form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
+{% endif %}
+
+<div style="display: flex; flex-wrap: wrap; gap: 15px; justify-content:center; padding:20px;">
+  {% for img in images %}
+    <div style="position:relative; max-width: 200px;">
+      {% if logged_in %}
+      <input type="checkbox" name="public_ids" value="{{ img.public_id }}" style="position:absolute; top:5px; left:5px; z-index:10; width:20px; height:20px;">
+      {% endif %}
+      <a href="{{ img.secure_url }}" target="_blank">
+        <img src="{{ img.secure_url }}" alt="Photo" style="width: 200px; height: auto; border-radius:8px;">
+      </a>
+    </div>
+  {% endfor %}
+</div>
+
+{% if logged_in %}
+  <input type="hidden" name="album_name" value="{{ album_name }}">
+  <button type="submit" style="margin-top: 15px; padding: 8px 16px;">Delete Selected Images</button>
+</form>
+{% endif %}
 {% endblock %}
 
 
