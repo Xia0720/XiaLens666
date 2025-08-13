@@ -2,7 +2,7 @@
 {% block title %}Albums - XiaCapture{% endblock %}
 {% block content %}
 <h1 style="text-align:center; margin-top:20px;">Albums</h1>
-<div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content:center; padding: 20px;">
+<div class="album-grid">
   {% for album in albums %}
     <div style="text-align: center;">
       <a href="{{ url_for('view_album', album_name=album.name) }}">
