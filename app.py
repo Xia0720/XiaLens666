@@ -85,14 +85,36 @@ def albums():
     except Exception as e:
         return f"Error fetching albums: {str(e)}"
 
-@app.route("/album/<album_name>")
+@app.route("/album/<album_name>", methods=["GET", "POST"])
 def view_album(album_name):
     try:
         resources = cloudinary.api.resources(type="upload", prefix=album_name)
-        image_urls = [img["secure_url"] for img in resources["resources"]]
-        return render_template("view_album.html", album_name=album_name, image_urls=image_urls)
+        images = []
+        for img in resources["resources"]:
+            images.append({
+                "public_id": img["public_id"],
+                "secure_url": img["secure_url"]
+            })
+        logged_in = session.get("logged_in", False)
+        return render_template("view_album.html", album_name=album_name, images=images, logged_in=logged_in)
     except Exception as e:
         return f"Error loading album: {str(e)}"
+        
+@app.route("/delete_images", methods=["POST"])
+@login_required
+def delete_images():
+    public_ids = request.form.getlist("public_ids")
+    album_name = request.form.get("album_name")
+    if not public_ids:
+        flash("No images selected for deletion.", "warning")
+        return redirect(url_for("view_album", album_name=album_name))
+    try:
+        cloudinary.api.delete_resources(public_ids)
+        flash(f"Deleted {len(public_ids)} images successfully.", "success")
+    except Exception as e:
+        flash(f"Delete failed: {str(e)}", "error")
+    return redirect(url_for("view_album", album_name=album_name))
+
 
 @app.route("/story")
 def story():
