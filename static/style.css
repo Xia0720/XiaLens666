@@ -175,7 +175,7 @@ body, html {
     padding: 18px;
     display: grid;
     grid-template-columns: repeat(4, 1fr); /* 固定 3 列 */
-    gap: 26px;
+    gap: 40px;
     justify-items: center; /* 水平居中卡片 */
 }
 
@@ -258,7 +258,7 @@ body, html {
 
 .story-detail {
   max-width: 760px;
-  margin: 40px auto;
+  margin: 我0px auto;
   padding: 0 15px;
 }
 
