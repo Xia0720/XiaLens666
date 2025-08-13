@@ -170,6 +170,15 @@ body, html {
     box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
 
+.album-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: 20px; /* 水平间距 */
+  row-gap: 10px;    /* 垂直间距 */
+  padding: 20px;
+}
+
 /* ===== Story 页面样式（blog 风格） ===== */
 .story-page { padding-bottom:40px; }
 .story-header { max-width:1100px; margin:22px auto; padding:0 12px; display:flex; justify-content:center; align-items:center; gap:16px; }
