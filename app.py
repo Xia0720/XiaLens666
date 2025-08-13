@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 from functools import wraps
 from app.models import Album, Story, Image
+from app import create_app 
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET", "xia0720_secret")
