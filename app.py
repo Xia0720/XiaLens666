@@ -75,6 +75,10 @@ def index():
     albums = Album.query.all()
     return render_template("index.html", albums=albums)
 
+@app.route("/gallery")
+def gallery():
+    return render_template("gallery.html")
+
 @app.route("/about")
 def about():
     return render_template("about.html")
@@ -150,6 +154,97 @@ def delete_images():
         flash(f"Delete failed: {str(e)}", "error")
     return redirect(url_for("view_album", album_name=album_name))
 
+
+# 故事列表页
+@app.route("/story")
+def story():
+    stories = Story.query.order_by(Story.created_at.desc()).all()
+    return render_template("story_list.html", stories=stories)
+
+# 故事详情页
+@app.route("/story/<int:story_id>")
+def story_detail(story_id):
+    story = Story.query.get_or_404(story_id)
+    return render_template("story_detail.html", story=story)
+
+# 上传故事，登录保护
+@app.route("/upload_story", methods=["GET", "POST"])
+@login_required
+def upload_story():
+    if request.method == "POST":
+        story_text = request.form.get("story_text")
+        files = request.files.getlist("story_images")
+        if not story_text or story_text.strip() == "":
+            flash("Story content is required.", "error")
+            return redirect(request.url)
+        new_story = Story(text=story_text.strip())
+        db.session.add(new_story)
+        db.session.flush()
+        for file in files:
+            if file and file.filename:
+                upload_result = cloudinary.uploader.upload(file)
+                img_url = upload_result.get("secure_url")
+                if img_url:
+                    db.session.add(Image(image_url=img_url, story=new_story))
+        db.session.commit()
+        flash("Story uploaded successfully!", "success")
+        return redirect(url_for("story"))
+    return render_template("upload_story.html")
+
+# 编辑故事，登录保护
+@app.route("/story/<int:story_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_story(story_id):
+    story = Story.query.get_or_404(story_id)
+    if request.method == "POST":
+        text = request.form.get("text")
+        if not text or text.strip() == "":
+            flash("故事内容不能为空", "error")
+            return render_template("edit_story.html", story=story)
+        story.text = text.strip()
+        files = request.files.getlist("story_images")
+        for file in files:
+            if file and file.filename:
+                upload_result = cloudinary.uploader.upload(file)
+                img_url = upload_result.get("secure_url")
+                if img_url:
+                    db.session.add(Image(image_url=img_url, story=story))
+        db.session.commit()
+        flash("故事已更新", "success")
+        return redirect(url_for("story_detail", story_id=story.id))
+    return render_template("edit_story.html", story=story)
+
+# 删除故事，登录保护
+@app.route("/delete_story/<int:story_id>", methods=["POST"])
+@login_required
+def delete_story(story_id):
+    story = Story.query.get_or_404(story_id)
+    db.session.delete(story)
+    db.session.commit()
+    flash("Story deleted.", "info")
+    return redirect(url_for("story"))
+
+# 多图上传到指定相册，登录保护
+@app.route("/upload", methods=["GET", "POST"])
+@login_required
+def upload():
+    if request.method == "POST":
+        photos = request.files.getlist("photo")
+        folder = request.form.get("folder")
+        if not photos or all(p.filename == '' for p in photos):
+            return "No selected photo file", 400
+        if not folder:
+            return "Folder name is required", 400
+        try:
+            for photo in photos:
+                if photo and photo.filename != '':
+                    cloudinary.uploader.upload(photo, folder=folder)
+            flash("Uploaded successfully.")
+            return redirect(url_for("upload"))
+        except Exception as e:
+            return f"Error uploading file: {str(e)}"
+    return render_template("upload.html")
+
 # 登录/登出
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -172,8 +267,6 @@ def logout():
     flash("Logged out.")
     return redirect(url_for("index"))
 
-# 其余故事上传、编辑、删除等路由保持不变
-# ... （你原有的 Story/Image 上传、编辑、删除逻辑）
 
 if __name__ == "__main__":
     app.run(debug=True)
