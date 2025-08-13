@@ -267,17 +267,23 @@ def test_db():
 @app.route("/private_space")
 @login_required
 def private_space():
-    """列出所有私人相册"""
     try:
-        # 获取 private/ 前缀下的文件夹
-        folders = cloudinary.api.sub_folders("private")
+        # 获取 private/ 下的所有资源
+        resources = cloudinary.api.resources(type="upload", prefix="private", max_results=500)
+        # 提取不同子文件夹名作为相册
+        albums_set = set()
+        for res in resources['resources']:
+            # 公共 id 的前缀是 private/album_name/filename
+            public_id = res['public_id']
+            parts = public_id.split('/')
+            if len(parts) >= 2:
+                albums_set.add(parts[1])
         albums = []
-        for folder in folders.get('folders', []):
-            subfolder_name = folder['name']
-            # 获取封面
-            resources = cloudinary.api.resources(type="upload", prefix=f"private/{subfolder_name}", max_results=1)
-            cover_url = resources['resources'][0]['secure_url'] if resources['resources'] else ""
-            albums.append({'name': subfolder_name, 'cover': cover_url})
+        for album_name in albums_set:
+            # 取封面图
+            album_resources = cloudinary.api.resources(type="upload", prefix=f"private/{album_name}", max_results=1)
+            cover_url = album_resources['resources'][0]['secure_url'] if album_resources['resources'] else ""
+            albums.append({'name': album_name, 'cover': cover_url})
         return render_template("private_album.html", albums=albums)
     except Exception as e:
         return f"Error fetching private albums: {str(e)}"
@@ -285,9 +291,8 @@ def private_space():
 @app.route("/private_space/<album_name>", methods=["GET", "POST"])
 @login_required
 def view_private_album(album_name):
-    """查看单个私人相册"""
     try:
-        resources = cloudinary.api.resources(type="upload", prefix=f"private/{album_name}")
+        resources = cloudinary.api.resources(type="upload", prefix=f"private/{album_name}", max_results=500)
         images = [{"public_id": img["public_id"], "secure_url": img["secure_url"]} for img in resources["resources"]]
         return render_template("view_private_album.html", album_name=album_name, images=images)
     except Exception as e:
