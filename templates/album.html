@@ -28,25 +28,27 @@
 <script>
 function renameAlbum(oldName) {
     let newName = prompt("Enter new album name:", oldName);
-    if (newName && newName !== oldName) {
-        fetch(`/rename_album/${oldName}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({new_name: newName})
-        }).then(res => {
-            if(res.ok){
-                location.reload(); // 成功后刷新页面显示新名字
-            } else {
-                res.json().then(data => {
-                    alert("Rename failed: " + (data.error || ""));
-                });
-            }
-        }).catch(err => {
-            alert("Rename failed: " + err);
-        });
+    if (!newName || newName === oldName) {
+        alert("New album name must be different!");
+        return;
     }
+
+    fetch(`/rename_album/${oldName}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({new_name: newName})
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success){
+            location.reload();
+        } else {
+            alert("Rename failed: " + (data.error || "Unknown error"));
+        }
+    })
+    .catch(err => {
+        alert("Rename failed: " + err);
+    });
 }
 </script>
 
