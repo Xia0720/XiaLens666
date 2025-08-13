@@ -2,14 +2,16 @@
 {% block title %}Private Albums - XiaCapture{% endblock %}
 {% block content %}
 <h1 style="text-align:center; margin-top:20px;">Private Albums</h1>
-<div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content:center; padding: 20px;">
+<div class="album-grid">
   {% for album in albums %}
-    <div style="text-align: center;">
+    <div class="album-item">
       <a href="{{ url_for('view_private_album', album_name=album.name) }}">
         {% if album.cover %}
-          <img src="{{ album.cover }}" alt="{{ album.name }}" style="width: 200px; height: 200px; object-fit: cover; border-radius:8px;">
+          <img src="{{ album.cover }}" alt="{{ album.name }}">
         {% else %}
-          <div style="width: 200px; height: 200px; background: #ccc; border-radius:8px; display:flex;align-items:center;justify-content:center;">No cover</div>
+          <div style="width:200px; height:200px; background:#ccc; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+            No cover
+          </div>
         {% endif %}
         <p style="margin-top:8px;">{{ album.name }}</p>
       </a>
