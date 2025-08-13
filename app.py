@@ -263,6 +263,86 @@ def test_db():
     except Exception as e:
         return f"DB failed: {str(e)}", 500
 
+# ---------- Private-space 路由 ----------
+@app.route("/private_space")
+@login_required
+def private_space():
+    """列出所有私人相册"""
+    try:
+        # 获取 private/ 前缀下的文件夹
+        folders = cloudinary.api.sub_folders("private")
+        albums = []
+        for folder in folders.get('folders', []):
+            subfolder_name = folder['name']
+            # 获取封面
+            resources = cloudinary.api.resources(type="upload", prefix=f"private/{subfolder_name}", max_results=1)
+            cover_url = resources['resources'][0]['secure_url'] if resources['resources'] else ""
+            albums.append({'name': subfolder_name, 'cover': cover_url})
+        return render_template("private_album.html", albums=albums)
+    except Exception as e:
+        return f"Error fetching private albums: {str(e)}"
+
+@app.route("/private_space/<album_name>", methods=["GET", "POST"])
+@login_required
+def view_private_album(album_name):
+    """查看单个私人相册"""
+    try:
+        resources = cloudinary.api.resources(type="upload", prefix=f"private/{album_name}")
+        images = [{"public_id": img["public_id"], "secure_url": img["secure_url"]} for img in resources["resources"]]
+        return render_template("view_private_album.html", album_name=album_name, images=images)
+    except Exception as e:
+        return f"Error loading private album: {str(e)}"
+
+@app.route("/delete_private_images", methods=["POST"])
+@login_required
+def delete_private_images():
+    public_ids = request.form.getlist("public_ids")
+    album_name = request.form.get("album_name")
+    if not public_ids:
+        flash("No images selected for deletion.", "warning")
+        return redirect(url_for("view_private_album", album_name=album_name))
+    try:
+        cloudinary.api.delete_resources(public_ids)
+        flash(f"Deleted {len(public_ids)} images successfully.", "success")
+    except Exception as e:
+        flash(f"Delete failed: {str(e)}", "error")
+    return redirect(url_for("view_private_album", album_name=album_name))
+
+@app.route("/upload_private", methods=["GET", "POST"])
+@login_required
+def upload_private():
+    """上传私人空间照片"""
+    try:
+        result = cloudinary.api.sub_folders("private")
+        album_names = [folder['name'] for folder in result.get('folders', [])]
+    except Exception as e:
+        album_names = []
+
+    if request.method == "POST":
+        photos = request.files.getlist("photo")
+        selected_album = request.form.get("album")
+        new_album = request.form.get("new_album", "").strip()
+
+        if not photos or all(p.filename == '' for p in photos):
+            return "No selected photo file", 400
+
+        folder = new_album if (selected_album == "new" and new_album) else selected_album
+        if not folder:
+            return "Folder name is required", 400
+        folder = f"private/{folder}"  # 保证都存 private/ 下
+
+        try:
+            for photo in photos:
+                if photo and photo.filename != '':
+                    cloudinary.uploader.upload(photo, folder=folder)
+            flash("Uploaded successfully.")
+            return redirect(url_for("upload_private"))
+        except Exception as e:
+            return f"Error uploading file: {str(e)}"
+
+    return render_template("upload_private.html", album_names=album_names)
+
+
 if __name__ == "__main__":
     app.run(debug=True)
 
