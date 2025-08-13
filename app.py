@@ -7,6 +7,7 @@ import cloudinary.uploader
 import cloudinary.api
 import os
 from datetime import datetime
+from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET", "xia0720_secret")
@@ -29,6 +30,21 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
+# ---------- 模板全局变量：所有模板都能拿到 logged_in ----------
+@app.context_processor
+def inject_logged_in():
+    return dict(logged_in=session.get("logged_in", False))
+
+# ---------- 简单的登录保护装饰器 ----------
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("logged_in"):
+            # 不在导航栏暴露 login，但你可手动访问 /login
+            return redirect(url_for("login", next=request.path))
+        return f(*args, **kwargs)
+    return decorated
+
 # ---------- 数据模型 ----------
 class Story(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -46,16 +62,13 @@ class Image(db.Model):
 def index():
     return render_template("index.html")
 
-
 @app.route("/gallery")
 def gallery():
     return render_template("gallery.html")
 
-
 @app.route("/about")
 def about():
     return render_template("about.html")
-
 
 # Album 列表（Cloudinary folders）
 @app.route("/album")
@@ -72,7 +85,6 @@ def albums():
     except Exception as e:
         return f"Error fetching albums: {str(e)}"
 
-
 @app.route("/album/<album_name>")
 def view_album(album_name):
     try:
@@ -85,26 +97,26 @@ def view_album(album_name):
 @app.route("/story")
 def story():
     stories = Story.query.order_by(Story.created_at.desc()).all()
-    logged_in = session.get("logged_in", False)  # 这里加了
-    return render_template("story_list.html", stories=stories, logged_in=logged_in)
+    return render_template("story_list.html", stories=stories)
 
 @app.route("/story/<int:story_id>")
 def story_detail(story_id):
     story = Story.query.get_or_404(story_id)
-    logged_in = session.get("logged_in", False)
-    return render_template("story_detail.html", story=story, logged_in=logged_in)
+    return render_template("story_detail.html", story=story)
 
+# 仅登录后可发布新 Story
 @app.route("/upload_story", methods=["GET", "POST"])
+@login_required
 def upload_story():
     if request.method == "POST":
         story_text = request.form.get("story_text")
         files = request.files.getlist("story_images")
 
-        if not story_text:
+        if not story_text or story_text.strip() == "":
             flash("Story content is required.", "error")
             return redirect(request.url)
 
-        new_story = Story(text=story_text)
+        new_story = Story(text=story_text.strip())
         db.session.add(new_story)
         db.session.flush()
 
@@ -121,7 +133,9 @@ def upload_story():
 
     return render_template("upload_story.html")
 
+# 仅登录后可编辑
 @app.route("/story/<int:story_id>/edit", methods=["GET", "POST"])
+@login_required
 def edit_story(story_id):
     story = Story.query.get_or_404(story_id)
     if request.method == "POST":
@@ -130,7 +144,7 @@ def edit_story(story_id):
             flash("故事内容不能为空", "error")
             return render_template("edit_story.html", story=story)
 
-        story.text = text
+        story.text = text.strip()
 
         files = request.files.getlist("story_images")
         for file in files:
@@ -146,7 +160,9 @@ def edit_story(story_id):
 
     return render_template("edit_story.html", story=story)
 
+# 仅登录后可删除
 @app.route("/delete_story/<int:story_id>", methods=["POST"])
+@login_required
 def delete_story(story_id):
     story = Story.query.get_or_404(story_id)
     db.session.delete(story)
@@ -154,13 +170,10 @@ def delete_story(story_id):
     flash("Story deleted.", "info")
     return redirect(url_for("story"))
 
-# Generic upload page (Cloudinary folder upload)
+# Cloudinary folder 上传：仅登录后可见/可用
 @app.route("/upload", methods=["GET", "POST"])
+@login_required
 def upload():
-    if not session.get("logged_in"):
-        # show login only on certain pages — but here redirect to login
-        return redirect(url_for("login"))
-
     if request.method == "POST":
         photo = request.files.get("photo")
         folder = request.form.get("folder")
@@ -176,31 +189,27 @@ def upload():
             return f"Error uploading file: {str(e)}"
     return render_template("upload.html")
 
-
-# Login / Logout
+# Login / Logout（路由存在，但不在导航栏展示）
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    # keep simple auth
     if request.method == "POST":
         username = request.form.get("username", "")
         password = request.form.get("password", "")
         if username == "xia0720" and password == "qq123456":
             session["logged_in"] = True
             flash("Logged in.")
-            return redirect(url_for("story"))
+            next_url = request.args.get("next")
+            return redirect(next_url or url_for("story"))
         else:
             flash("Invalid credentials.")
             return redirect(url_for("login"))
     return render_template("login.html")
 
-
 @app.route("/logout")
 def logout():
     session.pop("logged_in", None)
     flash("Logged out.")
-    # go home after logout
     return redirect(url_for("index"))
-
 
 # Test DB connectivity
 @app.route("/test-db")
@@ -213,3 +222,4 @@ def test_db():
 
 if __name__ == "__main__":
     app.run(debug=True)
+
