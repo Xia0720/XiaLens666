@@ -102,6 +102,27 @@ def view_album(album_name):
         return render_template("view_album.html", album_name=album_name, images=images, logged_in=logged_in)
     except Exception as e:
         return f"Error loading album: {str(e)}"
+
+@app.route("/rename_album/<album_name>", methods=["POST"])
+@login_required
+def rename_album(album_name):
+    from flask import request, jsonify
+    data = request.get_json()
+    new_name = data.get("new_name")
+    if not new_name:
+        return jsonify({"error":"No new name"}), 400
+
+    try:
+        # 获取原相册所有图片
+        resources = cloudinary.api.resources(type="upload", prefix=album_name, max_results=500)
+        for img in resources["resources"]:
+            old_public_id = img["public_id"]
+            new_public_id = old_public_id.replace(album_name + "/", new_name + "/")
+            cloudinary.api.rename(old_public_id, new_public_id)
+
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
         
 @app.route("/delete_images", methods=["POST"])
 @login_required
