@@ -263,6 +263,26 @@ def test_db():
     except Exception as e:
         return f"DB failed: {str(e)}", 500
 
+@app.route("/private")
+@login_required
+def private_gallery():
+    # 限制：只有用户名是 xia0720 才能访问
+    if session.get("username") != "xia0720":
+        abort(403)  # 返回 403 Forbidden
+
+    # 从 Cloudinary 获取某个专用文件夹的照片
+    try:
+        resources = cloudinary.api.resources(type="upload", prefix="private_album")
+        images = [
+            {"public_id": img["public_id"], "secure_url": img["secure_url"]}
+            for img in resources["resources"]
+        ]
+    except Exception as e:
+        return f"Error loading private album: {str(e)}"
+
+    return render_template("private_gallery.html", images=images)
+
+
 if __name__ == "__main__":
     app.run(debug=True)
 
