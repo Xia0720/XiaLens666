@@ -1,17 +1,31 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Upload Photo</h2>
-<form method="POST" enctype="multipart/form-data">
+<h2>Upload Photos</h2>
+<form method="POST" enctype="multipart/form-data" id="uploadForm">
     <div>
         <label for="folder">Album Name (New or Existing)</label><br>
-        <input type="text" name="folder" placeholder="e.g. my_album" required>
+        <input type="text" name="folder" id="folder" placeholder="e.g. my_album" required>
     </div>
     <div>
-        <label for="photo">Select Photo</label><br>
-        <input type="file" name="photo" required>
+        <label for="photo">Select Photos</label><br>
+        <input type="file" name="photo" id="photo" multiple required>
     </div>
     <button type="submit">Upload</button>
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const folderInput = document.getElementById('folder');
+    const savedFolder = localStorage.getItem('uploadFolderName');
+    if (savedFolder) {
+        folderInput.value = savedFolder;
+    }
+
+    document.getElementById('uploadForm').addEventListener('submit', () => {
+        localStorage.setItem('uploadFolderName', folderInput.value);
+    });
+});
+</script>
 {% endblock %}
 
 
