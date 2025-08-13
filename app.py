@@ -117,8 +117,9 @@ def rename_album(album_name):
         resources = cloudinary.api.resources(type="upload", prefix=album_name, max_results=500)
         for img in resources["resources"]:
             old_public_id = img["public_id"]
+            # 生成新 public_id：替换文件夹名
             new_public_id = old_public_id.replace(album_name + "/", new_name + "/")
-            cloudinary.api.rename(old_public_id, new_public_id)
+            cloudinary.uploader.rename(old_public_id, new_public_id)
 
         return jsonify({"success": True})
     except Exception as e:
