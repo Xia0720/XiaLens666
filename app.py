@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
-from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -38,7 +37,7 @@ class Album(db.Model):
 
     def check_password(self, password):
         if not self.password_hash:
-            return True  # 无密码视为开放访问
+            return True
         return check_password_hash(self.password_hash, password)
 
 class Story(db.Model):
