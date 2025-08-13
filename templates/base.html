@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}XiaCapture{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
 <body>
     <!-- 导航栏：story 页左右分布，其它页居中 -->
@@ -16,12 +16,10 @@
                 <a href="{{ url_for('story') }}">Story</a>
                 <a href="{{ url_for('about') }}">About</a>
                 {% if logged_in %}
-                    <!-- 仅登录后在左侧显示 Cloudinary 的 Upload 管理入口（可选） -->
                     <a href="{{ url_for('upload') }}">Upload</a>
                 {% endif %}
             </div>
 
-            <!-- 右侧操作：仅登录后显示；未登录完全不显示任何入口 -->
             <div class="nav-right">
                 {% if logged_in %}
                     <a href="{{ url_for('upload_story') }}" class="upload-btn">+ Upload New Story</a>
@@ -44,4 +42,5 @@
     </main>
 </body>
 </html>
+
 
