@@ -1,7 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Private Albums - XiaCapture{% endblock %}
+{% block title %}Albums - XiaCapture{% endblock %}
 {% block content %}
-<h1 style="text-align:center; margin-top:20px;">Private Albums</h1>
+<h1 style="text-align:center; margin-top:20px;">Albums</h1>
+
 <div class="album-grid">
   {% for album in albums %}
     <div class="album-item">
@@ -13,9 +14,41 @@
             No cover
           </div>
         {% endif %}
-        <p style="margin-top:8px;">{{ album.name }}</p>
+        <p>{{ album.name }}</p>
       </a>
+
+      {% if logged_in %}
+      <!-- 重命名按钮 -->
+      <button onclick="renameAlbum('{{ album.name }}')">Rename</button>
+      {% endif %}
     </div>
   {% endfor %}
 </div>
+
+<script>
+function renameAlbum(oldName) {
+    let newName = prompt("Enter new album name:", oldName);
+    if (newName && newName !== oldName) {
+        fetch(`/rename_album/${oldName}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({new_name: newName})
+        }).then(res => {
+            if(res.ok){
+                location.reload(); // 成功后刷新页面显示新名字
+            } else {
+                res.json().then(data => {
+                    alert("Rename failed: " + (data.error || ""));
+                });
+            }
+        }).catch(err => {
+            alert("Rename failed: " + err);
+        });
+    }
+}
+</script>
+
 {% endblock %}
+
