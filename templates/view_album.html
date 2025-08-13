@@ -22,7 +22,9 @@
 
 {% if logged_in %}
   <input type="hidden" name="album_name" value="{{ album_name }}">
-  <button type="submit" style="margin-top: 15px; padding: 8px 16px;">Delete Selected Images</button>
+  <div style="text-align: right; margin-top: 15px;">
+    <button type="submit" style="padding: 8px 16px;">Delete Selected Images</button>
+  </div>
 </form>
 {% endif %}
 {% endblock %}
