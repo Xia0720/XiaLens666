@@ -1,29 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}XiaCapture{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <!-- 导航栏：story 页左右分布，其它页居中 -->
-    <nav class="navbar {% if request.path.startswith('/story') %}story-navbar{% endif %} {% if logged_in %}logged-in{% endif %}">
+    <!-- 导航栏：非 story 页居中，story 页左右分布 -->
+    <nav class="navbar {% if request.path.startswith('/story') %}story-navbar{% endif %}">
         <div class="nav-container">
             <div class="nav-left">
                 <a href="{{ url_for('index') }}">Home</a>
                 <a href="{{ url_for('albums') }}">Album</a>
                 <a href="{{ url_for('story') }}">Story</a>
                 <a href="{{ url_for('about') }}">About</a>
-                {% if logged_in %}
-                    <a href="{{ url_for('upload') }}">Upload</a>
-                {% endif %}
+                <a href="{{ url_for('upload') }}">Upload</a>
             </div>
 
+            <!-- 只有 story 或 upload 路径时才显示 login/logout / 上传按钮 -->
             <div class="nav-right">
-                {% if logged_in %}
-                    <a href="{{ url_for('upload_story') }}" class="upload-btn">+ Upload New Story</a>
-                    <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
+                {% if (request.path.startswith('/story') or request.path.startswith('/upload')) %}
+                    {% if logged_in %}
+                        <a href="{{ url_for('upload_story') }}" class="upload-btn">+ Upload New Story</a>
+                        <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>
@@ -41,6 +44,6 @@
         {% block content %}{% endblock %}
     </main>
 </body>
-</html>
+</html> 
 
 
