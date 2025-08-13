@@ -216,6 +216,21 @@ body, html {
     color:#222;
     text-align:left;
 }
+
+.story-card-content a {
+    color: #222; /* 未访问时黑灰色 */
+    font-size: 14px; /* 字体小一点 */
+    text-decoration: none; /* 去掉下划线，可选 */
+}
+
+.story-card-content a:visited {
+    color: #666; /* 已访问时灰色 */
+}
+
+.story-card-content a:hover {
+    color: #000; /* 鼠标悬停时纯黑，可选 */
+}
+
 .story-meta { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:8px; }
 .created-at { color:#777; font-size:13px; }
 
