@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Upload Photos to Private-space</h2>
+
+<form method="POST" enctype="multipart/form-data">
+    <div>
+        <label for="albumSelect">选择相册</label><br>
+        <select name="album" id="albumSelect" onchange="toggleNewAlbumInput()">
+            {% for album in album_names %}
+                <option value="{{ album }}">{{ album }}</option>
+            {% endfor %}
+            <option value="new">+ 创建新相册</option>
+        </select>
+    </div>
+
+    <div id="newAlbumDiv" style="display:none; margin-top:10px;">
+        <label for="new_album">新相册名</label><br>
+        <input type="text" name="new_album" placeholder="输入新相册名">
+    </div>
+
+    <div style="margin-top:15px;">
+        <label for="photo">选择照片</label><br>
+        <input type="file" name="photo" id="photo" multiple required>
+    </div>
+
+    <button type="submit" style="margin-top:15px;">上传</button>
+</form>
+
+<script>
+function toggleNewAlbumInput() {
+    var select = document.getElementById('albumSelect');
+    var newAlbumDiv = document.getElementById('newAlbumDiv');
+    newAlbumDiv.style.display = (select.value === 'new') ? 'block' : 'none';
+}
+</script>
+{% endblock %}
