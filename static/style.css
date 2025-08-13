@@ -174,7 +174,7 @@ body, html {
     margin: 20px auto;
     padding: 18px;
     display: grid;
-    grid-template-columns: repeat(3, 1fr); /* 固定 3 列 */
+    grid-template-columns: repeat(4, 1fr); /* 固定 3 列 */
     gap: 26px;
     justify-items: center; /* 水平居中卡片 */
 }
