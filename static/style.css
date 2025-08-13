@@ -26,11 +26,15 @@ body, html {
 .nav-left { display:flex; gap:18px; align-items:center; }
 .nav-right { display:none; gap:12px; align-items:center; }
 
-/* story 页面特殊：左右分布，显示右侧操作（upload/login/logout） */
+/* story 页面：默认居中 */
 .navbar.story-navbar .nav-container {
+    justify-content: center;
+}
+
+/* 登录状态下（有 nav-right 内容）保持左右分布 */
+.navbar.story-navbar .nav-container.has-right {
     justify-content: space-between;
 }
-.navbar.story-navbar .nav-right { display:flex; }
 
 /* 链接样式 */
 .nav-left a, .nav-right a, .nav-link {
@@ -39,7 +43,9 @@ body, html {
     font-weight: bold;
     font-size: 18px;
 }
-.nav-left a:hover, .nav-right a:hover { text-decoration: underline; }
+.nav-left a:hover, .nav-right a:hover {
+    text-decoration: underline;
+}
 
 /* Upload 按钮 */
 .upload-btn {
