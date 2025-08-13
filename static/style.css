@@ -249,7 +249,7 @@ body, html {
 .story-text {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   font-size: 17px;
-  color: #444444;
+  color: #444444 !important;
   line-height: 1.7;
   margin-top: 18px;
   margin-bottom: 24px;
