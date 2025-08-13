@@ -236,20 +236,16 @@ def upload():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "").strip()
-
-        # 验证账户
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
         if username == "xia0720" and password == "qq123456":
             session["logged_in"] = True
-            session["username"] = username  # 保存用户名，方便私有页面判断
             flash("Logged in.")
             next_url = request.args.get("next")
             return redirect(next_url or url_for("story"))
         else:
             flash("Invalid credentials.")
             return redirect(url_for("login"))
-
     return render_template("login.html")
 
 @app.route("/logout")
@@ -266,26 +262,6 @@ def test_db():
         return "DB OK"
     except Exception as e:
         return f"DB failed: {str(e)}", 500
-
-@app.route("/private")
-@login_required
-def private_gallery():
-    # 限制：只有用户名是 xia0720 才能访问
-    if session.get("username") != "xia0720":
-        abort(403)  # 返回 403 Forbidden
-
-    # 从 Cloudinary 获取某个专用文件夹的照片
-    try:
-        resources = cloudinary.api.resources(type="upload", prefix="private_album")
-        images = [
-            {"public_id": img["public_id"], "secure_url": img["secure_url"]}
-            for img in resources["resources"]
-        ]
-    except Exception as e:
-        return f"Error loading private album: {str(e)}"
-
-    return render_template("private_gallery.html", images=images)
-
 
 if __name__ == "__main__":
     app.run(debug=True)
