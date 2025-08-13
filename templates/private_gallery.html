@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>🔒 Private Gallery</h2>
+<div>
+    {% for img in images %}
+        <img src="{{ img.secure_url }}" style="max-width:200px; margin:5px;">
+    {% endfor %}
+</div>
+{% endblock %}
