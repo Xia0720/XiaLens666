@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import cloudinary
@@ -57,6 +58,19 @@ class Image(db.Model):
     image_url = db.Column(db.String(255), nullable=False)
     story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
 
+class Album(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=True)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        if not self.password_hash:
+            return True  # 无密码视为开放访问
+        return check_password_hash(self.password_hash, password)
+
 # ---------- 路由 ----------
 @app.route("/")
 def index():
@@ -87,18 +101,46 @@ def albums():
 
 @app.route("/album/<album_name>", methods=["GET", "POST"])
 def view_album(album_name):
+    album = Album.query.filter_by(name=album_name).first()
+    if album and album.password_hash:
+        if request.method == "POST":
+            password = request.form.get("password")
+            if not password or not check_password_hash(album.password_hash, password):
+                flash("Incorrect password.")
+            else:
+                session[f"album_access_{album_name}"] = True
+                return redirect(url_for("view_album", album_name=album_name))
+        # 检查是否已有权限
+        if not session.get(f"album_access_{album_name}"):
+            return render_template("album_password.html", album_name=album_name)
+
+    # 无密码或已授权，显示相册
     try:
         resources = cloudinary.api.resources(type="upload", prefix=album_name)
-        images = []
-        for img in resources["resources"]:
-            images.append({
-                "public_id": img["public_id"],
-                "secure_url": img["secure_url"]
-            })
-        logged_in = session.get("logged_in", False)
-        return render_template("view_album.html", album_name=album_name, images=images, logged_in=logged_in)
+        image_urls = [img["secure_url"] for img in resources["resources"]]
+        return render_template("view_album.html", album_name=album_name, image_urls=image_urls)
     except Exception as e:
         return f"Error loading album: {str(e)}"
+
+@app.route("/album/<album_name>/set_password", methods=["GET", "POST"])
+@login_required
+def set_album_password(album_name):
+    album = Album.query.filter_by(name=album_name).first()
+    if not album:
+        album = Album(name=album_name)
+        db.session.add(album)
+
+    if request.method == "POST":
+        password = request.form.get("password")
+        if password:
+            album.password_hash = generate_password_hash(password)
+        else:
+            album.password_hash = None  # 清除密码
+        db.session.commit()
+        flash("Password updated.")
+        return redirect(url_for("albums"))
+
+    return render_template("set_album_password.html", album=album)
         
 @app.route("/delete_images", methods=["POST"])
 @login_required
