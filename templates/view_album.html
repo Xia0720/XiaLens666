@@ -7,7 +7,7 @@
 <form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
 {% endif %}
 
-<div style="display: flex; flex-wrap: wrap; gap: 15px; justify-content:center; padding:20px;">
+<div class="album-grid">
   {% for img in images %}
     <div style="position:relative; max-width: 200px;">
       {% if logged_in %}
