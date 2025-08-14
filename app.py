@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
+from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, jsonify
 from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -103,45 +103,50 @@ def view_album(album_name):
     except Exception as e:
         return f"Error loading album: {str(e)}"
 
-@app.route("/rename_album/<album_name>", methods=["POST"])
-@login_required
+@app.route('/rename_album/<album_name>', methods=['POST'])
 def rename_album(album_name):
-    from flask import request, jsonify
-    import cloudinary.uploader
+    if "user_id" not in session:
+        return jsonify({"success": False, "error": "Unauthorized"}), 403
 
     data = request.get_json()
     new_name = data.get("new_name", "").strip()
-    if not new_name or new_name == album_name:
-        return jsonify({"error": "Invalid new name"}), 400
+    if not new_name:
+        return jsonify({"success": False, "error": "New name required"}), 400
 
-    # 1. 改 Cloudinary 里的文件夹名
-    try:
-        resources = cloudinary.api.resources(type="upload", prefix=album_name, max_results=500)
-        for img in resources["resources"]:
-            old_public_id = img["public_id"]
-            if not old_public_id.startswith(album_name + "/"):
-                continue
-            new_public_id = old_public_id.replace(album_name + "/", new_name + "/", 1)
-            if new_public_id != old_public_id:
-                cloudinary.uploader.rename(old_public_id, new_public_id, overwrite=True)
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": f"Cloudinary rename failed: {str(e)}"}), 500
-
-    # 2. 改数据库里的相册名
-    existing_album = Album.query.filter_by(name=new_name).first()
-    if existing_album:
-        return jsonify({"success": False, "error": "Album with this name already exists"}), 400
-
-    album = Album.query.filter_by(name=album_name).first()
-    if not album:
+    # 查数据库并修改
+    album_obj = Album.query.filter_by(name=album_name).first()
+    if not album_obj:
         return jsonify({"success": False, "error": "Album not found"}), 404
 
-    album.name = new_name
+    old_name = album_obj.name
+    album_obj.name = new_name
     db.session.commit()
 
-    return jsonify({"success": True})
+    try:
+        # 获取该相册下的所有图片（假设文件夹名就是相册名）
+        resources = cloudinary.api.resources(
+            type="upload",
+            prefix=f"{old_name}/",
+            max_results=500
+        )
+
+        for res in resources.get("resources", []):
+            old_public_id = res["public_id"]
+            # 新 public_id = 新相册名/原文件名
+            filename = old_public_id.split("/")[-1]
+            new_public_id = f"{new_name}/{filename}"
+
+            # 逐个重命名 Cloudinary 资源
+            cloudinary.uploader.rename(
+                old_public_id,
+                new_public_id,
+                overwrite=True
+            )
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+    return jsonify({"success": True, "message": "Album renamed"})
         
 @app.route("/delete_images", methods=["POST"])
 @login_required
