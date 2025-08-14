@@ -4,7 +4,7 @@
 <h1 style="text-align:center; margin-top:20px;">Albums</h1>
 <div class="album-grid">
   {% for album in albums %}
-    <div class="album-item" style="text-align:center;">
+    <div class="album-item">
       <a href="{{ url_for('view_album', album_name=album.name) }}">
         {% if album.cover %}
           <img src="{{ album.cover }}" alt="{{ album.name }}">
@@ -15,43 +15,10 @@
         {% endif %}
         <p style="margin-top:8px;">{{ album.name }}</p>
       </a>
-      <!-- 重命名按钮 -->
-      <button onclick="renameAlbum('{{ album.name }}')">Rename</button>
     </div>
   {% endfor %}
 </div>
-
-<script>
-function renameAlbum() {
-    const oldName = document.getElementById('oldName').value.trim();
-    const newName = document.getElementById('newName').value.trim();
-
-    if (!oldName || !newName) {
-        alert("Please enter both old and new album names");
-        return;
-    }
-
-    fetch('/rename_album', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ old_name: oldName, new_name: newName })
-    })
-    .then(res => res.json())
-    .then(data => {
-        if (data.success) {
-            alert(data.message);
-            location.reload();
-        } else {
-            alert("Rename failed: " + data.error);
-        }
-    })
-    .catch(err => {
-        alert("Error: " + err);
-    });
-}
-</script>
 {% endblock %}
-
 
 
 
