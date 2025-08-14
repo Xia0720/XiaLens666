@@ -110,10 +110,11 @@ def rename_album(album_name):
     import cloudinary.uploader
 
     data = request.get_json()
-    new_name = data.get("new_name")
+    new_name = data.get("new_name", "").strip()
     if not new_name or new_name == album_name:
         return jsonify({"error": "Invalid new name"}), 400
 
+    # 1. 改 Cloudinary 里的文件夹名
     try:
         resources = cloudinary.api.resources(type="upload", prefix=album_name, max_results=500)
         for img in resources["resources"]:
@@ -121,33 +122,19 @@ def rename_album(album_name):
             if not old_public_id.startswith(album_name + "/"):
                 continue
             new_public_id = old_public_id.replace(album_name + "/", new_name + "/", 1)
-            if new_public_id == old_public_id:
-                continue
-            cloudinary.uploader.rename(old_public_id, new_public_id, overwrite=True)
-
-        return jsonify({"success": True})
+            if new_public_id != old_public_id:
+                cloudinary.uploader.rename(old_public_id, new_public_id, overwrite=True)
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Cloudinary rename failed: {str(e)}"}), 500
 
-@app.route('/rename_album/<old_name>', methods=['POST'])
-def rename_album(old_name):
-    if 'username' not in session:
-        return jsonify({"success": False, "error": "Not authorized"}), 403
-
-    data = request.get_json()
-    new_name = data.get("new_name", "").strip()
-    if not new_name:
-        return jsonify({"success": False, "error": "New name is required"}), 400
-
-    # 检查是否有同名相册
+    # 2. 改数据库里的相册名
     existing_album = Album.query.filter_by(name=new_name).first()
     if existing_album:
         return jsonify({"success": False, "error": "Album with this name already exists"}), 400
 
-    # 找到旧相册
-    album = Album.query.filter_by(name=old_name).first()
+    album = Album.query.filter_by(name=album_name).first()
     if not album:
         return jsonify({"success": False, "error": "Album not found"}), 404
 
@@ -155,7 +142,6 @@ def rename_album(old_name):
     db.session.commit()
 
     return jsonify({"success": True})
-
         
 @app.route("/delete_images", methods=["POST"])
 @login_required
