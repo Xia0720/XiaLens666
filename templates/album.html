@@ -22,9 +22,14 @@
 </div>
 
 <script>
-function renameAlbum(oldName) {
-    const newName = prompt("Enter new album name for '" + oldName + "':");
-    if (!newName) return; // 用户取消或没输入
+function renameAlbum() {
+    const oldName = document.getElementById('oldName').value.trim();
+    const newName = document.getElementById('newName').value.trim();
+
+    if (!oldName || !newName) {
+        alert("Please enter both old and new album names");
+        return;
+    }
 
     fetch('/rename_album', {
         method: 'POST',
