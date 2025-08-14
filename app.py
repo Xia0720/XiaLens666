@@ -103,50 +103,29 @@ def view_album(album_name):
     except Exception as e:
         return f"Error loading album: {str(e)}"
 
-@app.route('/rename_album/<album_name>', methods=['POST'])
-def rename_album(album_name):
-    if "user_id" not in session:
-        return jsonify({"success": False, "error": "Unauthorized"}), 403
-
+@app.route("/rename_album", methods=["POST"])
+def rename_album():
     data = request.get_json()
-    new_name = data.get("new_name", "").strip()
-    if not new_name:
-        return jsonify({"success": False, "error": "New name required"}), 400
-
-    # 查数据库并修改
-    album_obj = Album.query.filter_by(name=album_name).first()
-    if not album_obj:
-        return jsonify({"success": False, "error": "Album not found"}), 404
-
-    old_name = album_obj.name
-    album_obj.name = new_name
-    db.session.commit()
+    old_name = data.get("old_name")
+    new_name = data.get("new_name")
 
     try:
-        # 获取该相册下的所有图片（假设文件夹名就是相册名）
-        resources = cloudinary.api.resources(
-            type="upload",
-            prefix=f"{old_name}/",
-            max_results=500
-        )
-
+        # 获取旧文件夹所有资源
+        resources = cloudinary.api.resources(type="upload", prefix=old_name, max_results=500)
         for res in resources.get("resources", []):
-            old_public_id = res["public_id"]
-            # 新 public_id = 新相册名/原文件名
-            filename = old_public_id.split("/")[-1]
-            new_public_id = f"{new_name}/{filename}"
+            public_id = res["public_id"]
+            file_extension = public_id.split('.')[-1] if '.' in public_id else None
+            # 新 public_id
+            new_public_id = public_id.replace(old_name, new_name, 1)
+            # 移动文件到新文件夹
+            cloudinary.uploader.rename(public_id, new_public_id, overwrite=True)
 
-            # 逐个重命名 Cloudinary 资源
-            cloudinary.uploader.rename(
-                old_public_id,
-                new_public_id,
-                overwrite=True
-            )
+        # 删除旧文件夹
+        cloudinary.api.delete_folder(old_name)
 
+        return jsonify({"success": True, "message": f"Renamed {old_name} to {new_name}"})
     except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-    return jsonify({"success": True, "message": "Album renamed"})
+        return jsonify({"success": False, "message": str(e)})
         
 @app.route("/delete_images", methods=["POST"])
 @login_required
