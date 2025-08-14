@@ -4,54 +4,55 @@
     <meta charset="UTF-8">
     <title>Albums</title>
     <style>
-        .album-card { display: inline-block; margin: 15px; padding: 10px; border: 1px solid #ccc; }
-        .album-name { font-weight: bold; margin-bottom: 5px; }
-        .album-actions button { margin-right: 5px; }
+        .album {
+            display: inline-block;
+            margin: 10px;
+            text-align: center;
+        }
+        .album img {
+            width: 200px;
+            height: 150px;
+            object-fit: cover;
+        }
     </style>
 </head>
 <body>
     <h1>Albums</h1>
 
     {% for album in albums %}
-    <div class="album-card">
-        <div class="album-name">{{ album.name }}</div>
-        <div class="album-actions">
-            <button onclick="renameAlbum('{{ album.name }}')">重命名</button>
-            <a href="{{ url_for('view_album', album_name=album.name) }}">查看</a>
-        </div>
+    <div class="album" data-name="{{ album.name }}">
+        <img src="{{ album.cover }}" alt="{{ album.name }}">
+        <p>{{ album.name }}</p>
+        <button onclick="renameAlbum('{{ album.name }}')">Rename</button>
     </div>
     {% endfor %}
 
     <script>
-    function renameAlbum(oldName) {
-        const newName = prompt("请输入新的相册名：", oldName);
-        if (!newName || newName.trim() === "" || newName === oldName) {
-            return;
-        }
+        function renameAlbum(oldName) {
+            const newName = prompt("Enter new album name:", oldName);
+            if (!newName || newName === oldName) return;
 
-        fetch(`/rename_album/${encodeURIComponent(oldName)}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ new_name: newName })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                alert("重命名成功！");
-                location.reload();
-            } else {
-                alert("重命名失败: " + data.error);
-            }
-        })
-        .catch(err => {
-            console.error(err);
-            alert("请求出错");
-        });
-    }
+            fetch("/rename_album", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ old_name: oldName, new_name: newName })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Renamed successfully!");
+                    location.reload();
+                } else {
+                    alert("Rename failed: " + data.message);
+                }
+            })
+            .catch(err => {
+                alert("Error: " + err);
+            });
+        }
     </script>
 </body>
 </html>
-
 
 
 
