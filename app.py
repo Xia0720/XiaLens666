@@ -147,6 +147,15 @@ def rename_album():
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)})
+
+@app.route("/debug_list_cloudinary")
+@login_required
+def debug_list_cloudinary():
+    import cloudinary.api
+
+    resources = cloudinary.api.resources(type="upload", max_results=500)
+    public_ids = [res["public_id"] for res in resources["resources"]]
+    return {"count": len(public_ids), "public_ids": public_ids}
         
 @app.route("/delete_images", methods=["POST"])
 @login_required
