@@ -355,7 +355,49 @@ def upload_private():
 
     return render_template("upload_private.html", album_names=album_names)
 
+@app.route("/rename_album", methods=["GET", "POST"])
+@login_required
+def rename_album():
+    if request.method == "POST":
+        old_name = request.form.get("old_name", "").strip()
+        new_name = request.form.get("new_name", "").strip()
+
+        if not old_name or not new_name:
+            flash("Both old and new album names are required.", "error")
+            return redirect(url_for("rename_album"))
+
+        try:
+            # 获取旧相册里的所有图片
+            resources = cloudinary.api.resources(type="upload", prefix=old_name, max_results=500)
+            renamed_count = 0
+
+            for img in resources["resources"]:
+                old_public_id = img["public_id"]  # old_album/image.jpg
+                # 只替换前缀部分
+                parts = old_public_id.split("/", 1)
+                if len(parts) == 2:
+                    new_public_id = f"{new_name}/{parts[1]}"
+                else:
+                    new_public_id = f"{new_name}/{old_public_id}"
+
+                cloudinary.uploader.rename(old_public_id, new_public_id, overwrite=True)
+                renamed_count += 1
+
+            flash(f"Album renamed successfully! {renamed_count} images moved to '{new_name}'.", "success")
+        except Exception as e:
+            flash(f"Rename failed: {str(e)}", "error")
+
+        return redirect(url_for("albums"))
+
+    # GET 请求 → 显示表单
+    try:
+        # 获取现有相册名
+        folders = cloudinary.api.root_folders()
+        album_names = [folder['name'] for folder in folders.get('folders', []) if folder['name'] != "private"]
+    except:
+        album_names = []
+
+    return render_template("rename_album.html", album_names=album_names)
+
 if __name__ == "__main__":
     app.run(debug=True)
-
-
