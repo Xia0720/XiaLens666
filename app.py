@@ -111,37 +111,25 @@ def rename_album(album_name):
 
     data = request.get_json()
     new_name = data.get("new_name")
-    if not new_name:
-        return jsonify({"error":"No new name provided"}), 400
-
-    if new_name == album_name:
-        return jsonify({"error":"New name must be different from old name"}), 400
+    if not new_name or new_name == album_name:
+        return jsonify({"error": "Invalid new name"}), 400
 
     try:
-        # 获取原相册所有图片
         resources = cloudinary.api.resources(type="upload", prefix=album_name, max_results=500)
-
-        if not resources["resources"]:
-            return jsonify({"error":"No images found in album"}), 404
-
         for img in resources["resources"]:
-            old_public_id = img["public_id"]  # 例如 "old_album_name/img1"
-            # 只替换开头的文件夹名
+            old_public_id = img["public_id"]
             if not old_public_id.startswith(album_name + "/"):
                 continue
             new_public_id = old_public_id.replace(album_name + "/", new_name + "/", 1)
-
             if new_public_id == old_public_id:
-                continue  # 避免报“Can't rename to same public_id”
-
+                continue
             cloudinary.uploader.rename(old_public_id, new_public_id, overwrite=True)
 
         return jsonify({"success": True})
     except Exception as e:
         import traceback
-        traceback.print_exc()  # 打印详细错误到控制台
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-
         
 @app.route("/delete_images", methods=["POST"])
 @login_required
