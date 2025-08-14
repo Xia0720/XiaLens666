@@ -105,8 +105,11 @@ def view_album(album_name):
 
 @app.route('/rename_album/<old_name>', methods=['POST'])
 def rename_album(old_name):
-    data = request.get_json()
-    new_name = data.get('new_name')
+    data = request.get_json(silent=True)  # silent=True 避免 JSON 解析出错
+    if not data or 'new_name' not in data:
+        return jsonify(success=False, error="Missing new_name"), 400
+
+    new_name = data['new_name']
     try:
         # 获取旧相册下的所有图片
         resources = cloudinary.api.resources(
@@ -116,13 +119,14 @@ def rename_album(old_name):
         )
         for resource in resources.get("resources", []):
             old_id = resource["public_id"]
-            # new_id = 新相册名 + '/' + 原图片名（去掉旧文件夹名）
             filename = old_id.split("/")[-1]
             new_id = f"{new_name}/{filename}"
             cloudinary.uploader.rename(old_id, new_id)
-        return jsonify(success=True)
+
+        return jsonify(success=True)  # 返回 JSON
+
     except Exception as e:
-        return jsonify(success=False, error=str(e)), 400
+        return jsonify(success=False, error=str(e)), 500  # 返回 JSON 错误信息
         
 @app.route("/delete_images", methods=["POST"])
 @login_required
