@@ -1,62 +1,62 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Albums</title>
-    <style>
-        .album {
-            display: inline-block;
-            margin: 10px;
-            text-align: center;
-        }
-        .album img {
-            width: 200px;
-            height: 150px;
-            object-fit: cover;
-        }
-    </style>
-</head>
-<body>
-    <h1>Albums</h1>
+{% extends "base.html" %}
+{% block title %}Albums - XiaCapture{% endblock %}
+{% block content %}
+<h1 style="text-align:center; margin-top:20px;">Albums</h1>
 
-    {% for album in albums %}
-    <div class="album" data-name="{{ album.name }}">
-        <img src="{{ album.cover }}" alt="{{ album.name }}">
-        <p>{{ album.name }}</p>
-        <!-- 给按钮加 class 和 data-old 属性 -->
-        <button class="rename-btn" data-old="{{ album.name }}">Rename</button>
+<!-- 重命名功能输入框 -->
+<div style="text-align:center; margin-bottom:20px;">
+    <input type="text" id="oldName" placeholder="Old album name" style="padding:6px; margin-right:5px;">
+    <input type="text" id="newName" placeholder="New album name" style="padding:6px; margin-right:5px;">
+    <button onclick="renameAlbum()" style="padding:6px 12px;">Rename Album</button>
+</div>
+
+<div class="album-grid">
+  {% for album in albums %}
+    <div class="album-item">
+      <a href="{{ url_for('view_album', album_name=album.name) }}">
+        {% if album.cover %}
+          <img src="{{ album.cover }}" alt="{{ album.name }}">
+        {% else %}
+          <div style="width:200px; height:200px; background:#ccc; border-radius:8px; display:flex; align-items:center; justify-content:center;">
+            No cover
+          </div>
+        {% endif %}
+        <p style="margin-top:8px;">{{ album.name }}</p>
+      </a>
     </div>
-    {% endfor %}
+  {% endfor %}
+</div>
 
-    <script>
-    // 绑定所有 rename 按钮点击事件
-    document.querySelectorAll('.rename-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const oldName = this.dataset.old;
-            const newName = prompt("Enter new album name:", oldName);
-            if (!newName || newName.trim() === oldName) return;
+<script>
+function renameAlbum() {
+    const oldName = document.getElementById('oldName').value.trim();
+    const newName = document.getElementById('newName').value.trim();
 
-            fetch("/rename_album", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ old_name: oldName, new_name: newName, space: "public" })
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    alert("重命名成功！");
-                    location.reload();
-                } else {
-                    alert("重命名失败：" + data.error);
-                }
-            })
-            .catch(err => alert("网络错误：" + err));
-        });
+    if (!oldName || !newName) {
+        alert("Please enter both old and new album names");
+        return;
+    }
+
+    fetch('/rename_album', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ old_name: oldName, new_name: newName })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload(); // 刷新页面
+        } else {
+            alert("Rename failed: " + data.error);
+        }
+    })
+    .catch(err => {
+        alert("Error: " + err);
     });
-    </script>
-</body>
-</html>
-
+}
+</script>
+{% endblock %}
 
 
 
