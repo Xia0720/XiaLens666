@@ -29,11 +29,15 @@
 function renameAlbum(oldName) {
     console.log("renameAlbum clicked for:", oldName);
     let newName = prompt("Enter new album name:", oldName);
+    console.log("User entered:", newName);
+
     if (!newName || newName.trim() === oldName.trim()) {
+        console.log("Validation failed, no fetch");
         alert("New album name must be different!");
         return;
     }
 
+    console.log("About to send fetch...");
     fetch(`/rename_album/${encodeURIComponent(oldName)}`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -49,6 +53,7 @@ function renameAlbum(oldName) {
         }
     })
     .catch(err => {
+        console.error("Fetch error:", err);
         alert("Rename failed: " + err);
     });
 }
