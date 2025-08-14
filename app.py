@@ -107,30 +107,37 @@ def view_album(album_name):
 @login_required
 def rename_album():
     from flask import request, jsonify
-    import cloudinary.uploader
 
     data = request.get_json()
     old_name = data.get("old_name", "").strip()
     new_name = data.get("new_name", "").strip()
+    space = data.get("space", "public")  # "public" 或 "private"
 
     if not old_name or not new_name or old_name == new_name:
         return jsonify({"success": False, "error": "Invalid names"}), 400
 
+    prefix = f"{old_name}/" if space == "public" else f"private/{old_name}/"
+
     try:
-        # 获取旧文件夹下所有资源
-        resources = cloudinary.api.resources(type="upload", prefix=old_name, max_results=500)
+        resources = cloudinary.api.resources(type="upload", prefix=prefix, max_results=500)
         for img in resources.get("resources", []):
             old_public_id = img["public_id"]
-            if not old_public_id.startswith(f"{old_name}/"):
-                continue
-            new_public_id = old_public_id.replace(f"{old_name}/", f"{new_name}/", 1)
+            new_public_id = old_public_id.replace(prefix, f"{'private/' if space=='private' else ''}{new_name}/", 1)
             cloudinary.uploader.rename(old_public_id, new_public_id, overwrite=True)
 
+        # 如果数据库有 Album 表，再改数据库
+        album = Album.query.filter_by(name=old_name).first()
+        if album:
+            album.name = new_name
+            db.session.commit()
+
         return jsonify({"success": True})
+
     except Exception as e:
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
+
         
 @app.route("/delete_images", methods=["POST"])
 @login_required
