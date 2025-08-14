@@ -32,23 +32,28 @@
             const newName = prompt("Enter new album name:", oldName);
             if (!newName || newName === oldName) return;
 
-            fetch("/rename_album", {
+            fetch(`/rename_album/${oldName}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ old_name: oldName, new_name: newName })
+                body: JSON.stringify({ new_name: newName })
             })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    alert("Renamed successfully!");
-                    location.reload();
-                } else {
-                    alert("Rename failed: " + data.message);
-                }
-            })
-            .catch(err => {
-                alert("Error: " + err);
-            });
+            .then(async response => {
+                const text = await response.text();
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.error("非JSON响应:", text);
+                    throw e;
+               }
+           })
+          .then(data => {
+             if (data.success) {
+                alert("相册改名成功！");
+            } else {
+               alert("改名失败：" + data.error);
+            }
+          })
+          .catch(err => console.error("请求出错", err));
         }
     </script>
 </body>
