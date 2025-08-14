@@ -1,17 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>Rename Album</h2>
-<form method="POST">
-    <label for="old_name">Select Old Album:</label>
-    <select name="old_name" required>
-        {% for name in album_names %}
-            <option value="{{ name }}">{{ name }}</option>
+<form method="POST" action="{{ url_for('rename_album') }}">
+    <select name="old_name">
+        {% for album in album_names %}
+        <option value="{{ album }}">{{ album }}</option>
         {% endfor %}
     </select>
-
-    <label for="new_name">New Album Name:</label>
-    <input type="text" name="new_name" required>
-
+    <input type="text" name="new_name" placeholder="New album name">
     <button type="submit">Rename</button>
 </form>
 {% endblock %}
