@@ -411,19 +411,23 @@ def upload_private():
 @app.route("/rename_album", methods=["GET", "POST"])
 @login_required
 def rename_album():
-    print("访问 /rename_album 路由")  # 🔹调试用
     if request.method == "POST":
         old_name = request.form.get("old_name", "").strip()
         new_name = request.form.get("new_name", "").strip()
 
-        # 调试打印
-        print(f"POST 请求：old_name={old_name}, new_name={new_name}")
-        debug_list_public_ids(old_name)
+        # ✅ 调试用：打印 Cloudinary 里符合 old_name 的所有 public_id
+        debug_list_public_ids(old_name)  # 关键一步
 
         flash(f"调试中：已经在后台打印所有 '{old_name}' 开头的 public_id，请查看服务器日志。", "info")
         return redirect(url_for("albums"))
 
-    return render_template("rename_album.html")
+    try:
+        folders = cloudinary.api.root_folders()
+        album_names = [folder['name'] for folder in folders.get('folders', []) if folder['name'] != "private"]
+    except:
+        album_names = []
+
+    return render_template("rename_album.html", album_names=album_names)
 
 if __name__ == "__main__":
     app.run(debug=True, use_reloader=False)
