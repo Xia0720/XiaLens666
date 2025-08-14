@@ -106,6 +106,9 @@ def view_album(album_name):
 @app.route("/rename_album", methods=["POST"])
 @login_required
 def rename_album():
+    from flask import request, jsonify
+    import cloudinary.uploader
+
     data = request.get_json()
     old_name = data.get("old_name", "").strip()
     new_name = data.get("new_name", "").strip()
@@ -114,11 +117,10 @@ def rename_album():
         return jsonify({"success": False, "error": "Invalid names"}), 400
 
     try:
-        # 获取旧文件夹下所有文件
+        # 获取旧文件夹下所有资源
         resources = cloudinary.api.resources(type="upload", prefix=old_name, max_results=500)
         for img in resources.get("resources", []):
             old_public_id = img["public_id"]
-            # 只处理该文件夹下的文件
             if not old_public_id.startswith(f"{old_name}/"):
                 continue
             new_public_id = old_public_id.replace(f"{old_name}/", f"{new_name}/", 1)
