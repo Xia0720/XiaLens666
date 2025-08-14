@@ -123,6 +123,10 @@ def rename_album():
             file_name = public_id.split("/")[-1]
             new_public_id = f"{new_name}/{file_name}"
             cloudinary.uploader.rename(public_id, new_public_id, overwrite=True)
+
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
         
 @app.route("/delete_images", methods=["POST"])
 @login_required
