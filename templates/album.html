@@ -2,17 +2,9 @@
 {% block title %}Albums - XiaCapture{% endblock %}
 {% block content %}
 <h1 style="text-align:center; margin-top:20px;">Albums</h1>
-
-<!-- 重命名功能输入框 -->
-<div style="text-align:center; margin-bottom:20px;">
-    <input type="text" id="oldName" placeholder="Old album name" style="padding:6px; margin-right:5px;">
-    <input type="text" id="newName" placeholder="New album name" style="padding:6px; margin-right:5px;">
-    <button onclick="renameAlbum()" style="padding:6px 12px;">Rename Album</button>
-</div>
-
 <div class="album-grid">
   {% for album in albums %}
-    <div class="album-item">
+    <div class="album-item" style="text-align:center;">
       <a href="{{ url_for('view_album', album_name=album.name) }}">
         {% if album.cover %}
           <img src="{{ album.cover }}" alt="{{ album.name }}">
@@ -23,19 +15,16 @@
         {% endif %}
         <p style="margin-top:8px;">{{ album.name }}</p>
       </a>
+      <!-- 重命名按钮 -->
+      <button onclick="renameAlbum('{{ album.name }}')">Rename</button>
     </div>
   {% endfor %}
 </div>
 
 <script>
-function renameAlbum() {
-    const oldName = document.getElementById('oldName').value.trim();
-    const newName = document.getElementById('newName').value.trim();
-
-    if (!oldName || !newName) {
-        alert("Please enter both old and new album names");
-        return;
-    }
+function renameAlbum(oldName) {
+    const newName = prompt("Enter new album name for '" + oldName + "':");
+    if (!newName) return; // 用户取消或没输入
 
     fetch('/rename_album', {
         method: 'POST',
@@ -46,7 +35,7 @@ function renameAlbum() {
     .then(data => {
         if (data.success) {
             alert(data.message);
-            location.reload(); // 刷新页面
+            location.reload();
         } else {
             alert("Rename failed: " + data.error);
         }
