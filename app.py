@@ -103,29 +103,26 @@ def view_album(album_name):
     except Exception as e:
         return f"Error loading album: {str(e)}"
 
-@app.route("/rename_album", methods=["POST"])
-def rename_album():
+@app.route('/rename_album/<old_name>', methods=['POST'])
+def rename_album(old_name):
     data = request.get_json()
-    old_name = data.get("old_name")
-    new_name = data.get("new_name")
-
+    new_name = data.get('new_name')
     try:
-        # 获取旧文件夹所有资源
-        resources = cloudinary.api.resources(type="upload", prefix=old_name, max_results=500)
-        for res in resources.get("resources", []):
-            public_id = res["public_id"]
-            file_extension = public_id.split('.')[-1] if '.' in public_id else None
-            # 新 public_id
-            new_public_id = public_id.replace(old_name, new_name, 1)
-            # 移动文件到新文件夹
-            cloudinary.uploader.rename(public_id, new_public_id, overwrite=True)
-
-        # 删除旧文件夹
-        cloudinary.api.delete_folder(old_name)
-
-        return jsonify({"success": True, "message": f"Renamed {old_name} to {new_name}"})
+        # 获取旧相册下的所有图片
+        resources = cloudinary.api.resources(
+            type="upload",
+            prefix=old_name + "/",
+            max_results=500
+        )
+        for resource in resources.get("resources", []):
+            old_id = resource["public_id"]
+            # new_id = 新相册名 + '/' + 原图片名（去掉旧文件夹名）
+            filename = old_id.split("/")[-1]
+            new_id = f"{new_name}/{filename}"
+            cloudinary.uploader.rename(old_id, new_id)
+        return jsonify(success=True)
     except Exception as e:
-        return jsonify({"success": False, "message": str(e)})
+        return jsonify(success=False, error=str(e)), 400
         
 @app.route("/delete_images", methods=["POST"])
 @login_required
