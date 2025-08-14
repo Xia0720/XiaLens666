@@ -103,50 +103,36 @@ def view_album(album_name):
     except Exception as e:
         return f"Error loading album: {str(e)}"
 
-@app.route("/rename_album", methods=["POST"])
-@login_required
+from flask import Flask, request, jsonify
+import cloudinary
+from cloudinary import api, uploader
+
+@app.route('/rename_album', methods=['POST'])
 def rename_album():
-    import cloudinary.uploader
-    import cloudinary.api
-    from flask import request, jsonify
+    data = request.json
+    old_name = data.get('old_name')
+    new_name = data.get('new_name')
 
-    data = request.get_json()
-    old_name = data.get("old_name")
-    new_name = data.get("new_name")
-    space = data.get("space", "public")
-
-    if not old_name or not new_name or old_name == new_name:
-        return jsonify({"success": False, "error": "Invalid names"}), 400
-
-    # 生成前缀
-    prefix = f"{space}/{old_name}" if space == "private" else old_name
+    if not old_name or not new_name:
+        return jsonify({'success': False, 'error': 'Missing album names'}), 400
 
     try:
-        # 获取该文件夹下所有资源
-        resources = cloudinary.api.resources(type="upload", prefix=prefix, max_results=500)
+        # 找到所有以 old_name/ 开头的文件
+        resources = api.resources(prefix=f"{old_name}/", type="upload", max_results=500)
 
-        changed = 0
-        for img in resources["resources"]:
-            old_public_id = img["public_id"]
+        if not resources.get('resources'):
+            return jsonify({'success': False, 'error': 'No files matched — check folder name'}), 404
 
-            if space == "private":
-                new_public_id = old_public_id.replace(f"{space}/{old_name}/", f"{space}/{new_name}/", 1)
-            else:
-                new_public_id = old_public_id.replace(f"{old_name}/", f"{new_name}/", 1)
+        # 批量重命名
+        for res in resources['resources']:
+            public_id = res['public_id']  # 例: old_name/photo1
+            new_public_id = public_id.replace(f"{old_name}/", f"{new_name}/", 1)
+            uploader.rename(public_id, new_public_id, overwrite=True)
 
-            if new_public_id != old_public_id:
-                print(f"Renaming: {old_public_id}  -->  {new_public_id}")  # 调试输出
-                cloudinary.uploader.rename(old_public_id, new_public_id, overwrite=True)
-                changed += 1
-
-        if changed == 0:
-            return jsonify({"success": False, "error": "No files matched — check folder structure"}), 400
-
-        return jsonify({"success": True, "changed": changed})
+        return jsonify({'success': True, 'message': f'Album renamed from {old_name} to {new_name}'})
+    
     except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({"success": False, "error": str(e)})
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route("/debug_list_cloudinary")
 @login_required
