@@ -130,6 +130,32 @@ def rename_album(album_name):
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
+@app.route('/rename_album/<old_name>', methods=['POST'])
+def rename_album(old_name):
+    if 'username' not in session:
+        return jsonify({"success": False, "error": "Not authorized"}), 403
+
+    data = request.get_json()
+    new_name = data.get("new_name", "").strip()
+    if not new_name:
+        return jsonify({"success": False, "error": "New name is required"}), 400
+
+    # 检查是否有同名相册
+    existing_album = Album.query.filter_by(name=new_name).first()
+    if existing_album:
+        return jsonify({"success": False, "error": "Album with this name already exists"}), 400
+
+    # 找到旧相册
+    album = Album.query.filter_by(name=old_name).first()
+    if not album:
+        return jsonify({"success": False, "error": "Album not found"}), 404
+
+    album.name = new_name
+    db.session.commit()
+
+    return jsonify({"success": True})
+
         
 @app.route("/delete_images", methods=["POST"])
 @login_required
