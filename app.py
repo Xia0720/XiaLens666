@@ -409,6 +409,7 @@ def upload_private():
     return render_template("upload_private.html", album_names=album_names)
 
 @app.route("/rename_album", methods=["GET", "POST"])
+@login_required
 def rename_album():
     if request.method == "POST":
         old_name = request.form.get("old_name", "").strip()
@@ -417,11 +418,16 @@ def rename_album():
         # ✅ 调试用：打印 Cloudinary 里符合 old_name 的所有 public_id
         debug_list_public_ids(old_name)  # 关键一步
 
-        # 暂时先不执行批量重命名，避免移动不到东西
         flash(f"调试中：已经在后台打印所有 '{old_name}' 开头的 public_id，请查看服务器日志。", "info")
         return redirect(url_for("albums"))
 
-    return render_template("rename_album.html")
+    try:
+        folders = cloudinary.api.root_folders()
+        album_names = [folder['name'] for folder in folders.get('folders', []) if folder['name'] != "private"]
+    except:
+        album_names = []
+
+    return render_template("rename_album.html", album_names=album_names)
 
 if __name__ == "__main__":
     app.run(debug=True)
