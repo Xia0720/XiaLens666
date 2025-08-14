@@ -23,39 +23,35 @@
     <div class="album" data-name="{{ album.name }}">
         <img src="{{ album.cover }}" alt="{{ album.name }}">
         <p>{{ album.name }}</p>
-        <button onclick="renameAlbum('{{ album.name }}')">Rename</button>
+        <!-- 加上 class 和 data-old -->
+        <button class="rename-btn" data-old="{{ album.name }}">Rename</button>
     </div>
     {% endfor %}
 
     <script>
-        function renameAlbum(oldName) {
-            const newName = prompt("Enter new album name:", oldName);
-            if (!newName || newName === oldName) return;
+    document.querySelectorAll('.rename-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const oldName = this.dataset.old;
+            const newName = prompt("请输入新的相册名称：", oldName);
+            if (!newName || newName.trim() === oldName) return;
 
-            fetch(`/rename_album/${oldName}`, {
+            fetch("/rename_album", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ new_name: newName })
+                body: JSON.stringify({ old_name: oldName, new_name: newName })
             })
-            .then(async response => {
-                const text = await response.text();
-                try {
-                    return JSON.parse(text);
-                } catch (e) {
-                    console.error("非JSON响应:", text);
-                    throw e;
-               }
-           })
-          .then(data => {
-             if (data.success) {
-                alert("相册改名成功！");
-            } else {
-               alert("改名失败：" + data.error);
-            }
-          })
-          .catch(err => console.error("请求出错", err));
-          })
-        }
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("重命名成功！");
+                    location.reload();
+                } else {
+                    alert("重命名失败：" + data.error);
+                }
+            })
+            .catch(err => alert("网络错误：" + err));
+        });
+    });
     </script>
 </body>
 </html>
