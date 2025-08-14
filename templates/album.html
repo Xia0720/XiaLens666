@@ -1,65 +1,56 @@
-{% extends "base.html" %}
-{% block title %}Albums - XiaCapture{% endblock %}
-{% block content %}
-<h1 style="text-align:center; margin-top:20px;">Albums</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Albums</title>
+    <style>
+        .album-card { display: inline-block; margin: 15px; padding: 10px; border: 1px solid #ccc; }
+        .album-name { font-weight: bold; margin-bottom: 5px; }
+        .album-actions button { margin-right: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Albums</h1>
 
-<div class="album-grid">
-  {% for album in albums %}
-    <div class="album-item">
-      <a href="{{ url_for('view_album', album_name=album.name) }}">
-        {% if album.cover %}
-          <img src="{{ album.cover }}" alt="{{ album.name }}">
-        {% else %}
-          <div style="width:200px; height:200px; background:#ccc; border-radius:8px; display:flex; align-items:center; justify-content:center;">
-            No cover
-          </div>
-        {% endif %}
-        <p>{{ album.name }}</p>
-      </a>
-
-      {% if logged_in %}
-      <!-- 重命名按钮 -->
-      <button onclick="renameAlbum('{{ album.name }}')">Rename</button>
-      {% endif %}
+    {% for album in albums %}
+    <div class="album-card">
+        <div class="album-name">{{ album.name }}</div>
+        <div class="album-actions">
+            <button onclick="renameAlbum('{{ album.name }}')">重命名</button>
+            <a href="{{ url_for('view_album', album_name=album.name) }}">查看</a>
+        </div>
     </div>
-  {% endfor %}
-</div>
+    {% endfor %}
 
-<script>
-function renameAlbum(oldName) {
-    console.log("renameAlbum clicked for:", oldName);
-    let newName = prompt("Enter new album name:", oldName);
-    console.log("User entered:", newName);
-
-    if (!newName || newName.trim() === oldName.trim()) {
-        console.log("Validation failed, no fetch");
-        alert("New album name must be different!");
-        return;
-    }
-
-    console.log("About to send fetch...");
-    fetch(`/rename_album/${encodeURIComponent(oldName)}`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({new_name: newName.trim()})
-    })
-    .then(res => res.json())
-    .then(data => {
-        console.log("Server response:", data);
-        if(data.success){
-            location.reload();
-        } else {
-            alert("Rename failed: " + (data.error || "Unknown error"));
+    <script>
+    function renameAlbum(oldName) {
+        const newName = prompt("请输入新的相册名：", oldName);
+        if (!newName || newName.trim() === "" || newName === oldName) {
+            return;
         }
-    })
-    .catch(err => {
-        console.error("Fetch error:", err);
-        alert("Rename failed: " + err);
-    });
-}
-</script>
 
-{% endblock %}
+        fetch(`/rename_album/${encodeURIComponent(oldName)}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ new_name: newName })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert("重命名成功！");
+                location.reload();
+            } else {
+                alert("重命名失败: " + data.error);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("请求出错");
+        });
+    }
+    </script>
+</body>
+</html>
 
 
 
