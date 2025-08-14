@@ -29,38 +29,34 @@
     {% endfor %}
 
     <script>
+    // 绑定所有 rename 按钮点击事件
     document.querySelectorAll('.rename-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const oldName = this.dataset.old;
-            const newName = prompt("请输入新的相册名称：", oldName);
-
+            const newName = prompt("Enter new album name:", oldName);
             if (!newName || newName.trim() === oldName) return;
 
             fetch("/rename_album", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ old_name: oldName, new_name: newName })
+                body: JSON.stringify({ old_name: oldName, new_name: newName, space: "public" })
             })
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}`);
-                }
-                return res.json();
-            })
+            .then(res => res.json())
             .then(data => {
                 if (data.success) {
                     alert("重命名成功！");
                     location.reload();
                 } else {
-                    alert("重命名失败：" + (data.error || "未知错误"));
+                    alert("重命名失败：" + data.error);
                 }
             })
-            .catch(err => alert("网络错误：" + err.message));
+            .catch(err => alert("网络错误：" + err));
         });
     });
     </script>
 </body>
 </html>
+
 
 
 
