@@ -107,32 +107,36 @@ from flask import Flask, request, jsonify
 import cloudinary
 from cloudinary import api, uploader
 
-@app.route('/rename_album', methods=['POST'])
+@app.route("/rename_album", methods=["POST"])
 def rename_album():
-    data = request.json
-    old_name = data.get('old_name')
-    new_name = data.get('new_name')
+    data = request.get_json()
+    old_name = data.get("old_name", "").strip()
+    new_name = data.get("new_name", "").strip()
 
     if not old_name or not new_name:
-        return jsonify({'success': False, 'error': 'Missing album names'}), 400
+        return jsonify(success=False, error="Missing old_name or new_name"), 400
 
     try:
-        # 找到所有以 old_name/ 开头的文件
-        resources = api.resources(prefix=f"{old_name}/", type="upload", max_results=500)
+        # 获取所有以 old_name/ 开头的资源
+        res = cloudinary.api.resources(
+            type="upload",
+            prefix=f"{old_name}/",
+            max_results=500
+        )
+        files = res.get("resources", [])
 
-        if not resources.get('resources'):
-            return jsonify({'success': False, 'error': 'No files matched — check folder name'}), 404
+        if not files:
+            return jsonify(success=False, error="No files matched — check folder name")
 
-        # 批量重命名
-        for res in resources['resources']:
-            public_id = res['public_id']  # 例: old_name/photo1
-            new_public_id = public_id.replace(f"{old_name}/", f"{new_name}/", 1)
-            uploader.rename(public_id, new_public_id, overwrite=True)
+        for file in files:
+            old_id = file["public_id"]  # e.g. "12/t7jqxllm9njzhkeakv9s"
+            new_id = old_id.replace(f"{old_name}/", f"{new_name}/", 1)
+            cloudinary.uploader.rename(old_id, new_id, overwrite=True)
 
-        return jsonify({'success': True, 'message': f'Album renamed from {old_name} to {new_name}'})
-    
+        return jsonify(success=True, message=f"Renamed {len(files)} files from '{old_name}' to '{new_name}'")
+
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify(success=False, error=str(e)), 500
 
 @app.route("/debug_list_cloudinary")
 @login_required
