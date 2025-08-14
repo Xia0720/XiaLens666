@@ -106,38 +106,43 @@ def view_album(album_name):
 @app.route("/rename_album", methods=["POST"])
 @login_required
 def rename_album():
+    """
+    只重命名 Cloudinary 中的相册（文件夹）。
+    body JSON: { old_name: "oldAlbum", new_name: "newAlbum", space: "public" or "private" }
+    """
+    import cloudinary.uploader
+    import cloudinary.api
     from flask import request, jsonify
 
     data = request.get_json()
-    old_name = data.get("old_name", "").strip()
-    new_name = data.get("new_name", "").strip()
-    space = data.get("space", "public")  # "public" 或 "private"
+    old_name = data.get("old_name")
+    new_name = data.get("new_name")
+    space = data.get("space", "public")  # public 或 private
 
     if not old_name or not new_name or old_name == new_name:
         return jsonify({"success": False, "error": "Invalid names"}), 400
 
-    prefix = f"{old_name}/" if space == "public" else f"private/{old_name}/"
+    prefix = f"{space}/{old_name}" if space == "private" else old_name
 
     try:
+        # 获取该文件夹下所有资源
         resources = cloudinary.api.resources(type="upload", prefix=prefix, max_results=500)
-        for img in resources.get("resources", []):
+        for img in resources["resources"]:
             old_public_id = img["public_id"]
-            new_public_id = old_public_id.replace(prefix, f"{'private/' if space=='private' else ''}{new_name}/", 1)
-            cloudinary.uploader.rename(old_public_id, new_public_id, overwrite=True)
+            # 构建新 public_id
+            if space == "private":
+                new_public_id = old_public_id.replace(f"{space}/{old_name}/", f"{space}/{new_name}/", 1)
+            else:
+                new_public_id = old_public_id.replace(f"{old_name}/", f"{new_name}/", 1)
 
-        # 如果数据库有 Album 表，再改数据库
-        album = Album.query.filter_by(name=old_name).first()
-        if album:
-            album.name = new_name
-            db.session.commit()
+            if new_public_id != old_public_id:
+                cloudinary.uploader.rename(old_public_id, new_public_id, overwrite=True)
 
         return jsonify({"success": True})
-
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({"success": False, "error": str(e)}), 500
-
+        return jsonify({"success": False, "error": str(e)})
         
 @app.route("/delete_images", methods=["POST"])
 @login_required
