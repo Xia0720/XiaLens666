@@ -57,6 +57,38 @@ class Image(db.Model):
     image_url = db.Column(db.String(255), nullable=False)
     story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
 
+def batch_rename_album(old_name, new_name):
+    renamed_count = 0
+    next_cursor = None
+    prefix = f"{old_name}/"  # 精确匹配旧相册路径
+
+    while True:
+        resources = cloudinary.api.resources(
+            type="upload",
+            prefix=prefix,
+            max_results=500,
+            next_cursor=next_cursor
+        )
+
+        for img in resources["resources"]:
+            old_public_id = img["public_id"]
+            parts = old_public_id.split("/", 1)
+            if len(parts) == 2:
+                new_public_id = f"{new_name}/{parts[1]}"
+            else:
+                new_public_id = f"{new_name}/{old_public_id}"
+
+            print(f"Renaming: {old_public_id} → {new_public_id}")
+            cloudinary.uploader.rename(old_public_id, new_public_id, overwrite=True)
+            renamed_count += 1
+
+        if "next_cursor" in resources:
+            next_cursor = resources["next_cursor"]
+        else:
+            break
+
+    return renamed_count
+
 # ---------- 路由 ----------
 @app.route("/")
 def index():
@@ -367,31 +399,15 @@ def rename_album():
             return redirect(url_for("rename_album"))
 
         try:
-            # 获取旧相册里的所有图片
-            resources = cloudinary.api.resources(type="upload", prefix=old_name, max_results=500)
-            renamed_count = 0
-
-            for img in resources["resources"]:
-                old_public_id = img["public_id"]  # old_album/image.jpg
-                # 只替换前缀部分
-                parts = old_public_id.split("/", 1)
-                if len(parts) == 2:
-                    new_public_id = f"{new_name}/{parts[1]}"
-                else:
-                    new_public_id = f"{new_name}/{old_public_id}"
-
-                cloudinary.uploader.rename(old_public_id, new_public_id, overwrite=True)
-                renamed_count += 1
-
+            renamed_count = batch_rename_album(old_name, new_name)
             flash(f"Album renamed successfully! {renamed_count} images moved to '{new_name}'.", "success")
         except Exception as e:
             flash(f"Rename failed: {str(e)}", "error")
 
         return redirect(url_for("albums"))
-
-    # GET 请求 → 显示表单
+    
+    # GET
     try:
-        # 获取现有相册名
         folders = cloudinary.api.root_folders()
         album_names = [folder['name'] for folder in folders.get('folders', []) if folder['name'] != "private"]
     except:
