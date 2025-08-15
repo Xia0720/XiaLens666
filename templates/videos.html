@@ -1,21 +1,8 @@
 {% extends "base.html" %}
-
-{% block title %}Videos{% endblock %}
-
 {% block content %}
-<h1>My Video Gallery</h1>
-
-<div style="display:flex; flex-wrap:wrap; gap:15px;">
-  {% if videos %}
-    {% for url in videos %}
-      <video controls
-             style="width:300px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,.2); background:black;">
-        <source src="{{ url }}" type="video/mp4">
-        Your browser does not support the video tag.
-      </video>
-    {% endfor %}
-  {% else %}
-    <p>暂时没有视频。</p>
-  {% endif %}
-</div>
+<h1>Video Gallery</h1>
+{% for video in videos %}
+    <video src="{{ video.url }}" controls style="width:400px; margin:10px;"></video>
+{% endfor %}
 {% endblock %}
+
