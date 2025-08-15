@@ -60,6 +60,11 @@ class Image(db.Model):
     image_url = db.Column(db.String(255), nullable=False)
     story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
 
+# 这个函数用来获取 Cloudinary 相册文件夹列表
+def get_album_list_from_cloudinary():
+    result = cloudinary.api.root_folders()
+    return [folder["name"] for folder in result.get("folders", [])]
+
 def debug_list_public_ids(prefix):
     next_cursor = None
     all_ids = []
@@ -418,22 +423,22 @@ def test_log():
     logging.info("✅ /test_log 被访问了！")
     return "终端应该出现 ✅ /test_log 被访问了！"
 
-@app.route("/rename_album", methods=["GET", "POST"])
+app.route("/rename_album", methods=["GET", "POST"])
 @login_required
 def rename_album():
-    import logging
-    logging.basicConfig(level=logging.INFO)
-
     if request.method == "POST":
         old_name = request.form.get("old_name", "").strip()
         new_name = request.form.get("new_name", "").strip()
 
-        logging.info("🚀 /rename_album 被执行了！")
-        logging.info(f"old_name={old_name}, new_name={new_name}")
+        logging.basicConfig(level=logging.INFO)
+        logging.info(f"🚀 rename_album 路由被触发！ old_name={old_name}, new_name={new_name}")
 
+        flash(f"测试：{old_name} 改成 {new_name}", "info")
         return redirect(url_for("albums"))
 
-    return render_template("rename_album.html")
+    # GET 请求时获取 Cloudinary 的相册列表
+    album_names = get_album_list_from_cloudinary()
+    return render_template("rename_album.html", album_names=album_names)
 
 if __name__ == "__main__":
     app.run(debug=True, use_reloader=False)
