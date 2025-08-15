@@ -72,11 +72,21 @@ def index():
 
 @app.route("/gallery")
 def gallery():
-    # 获取 Cloudinary 中的图片
     images = cloudinary.api.resources(type="upload", prefix="photos/", resource_type="image")["resources"]
     videos = cloudinary.api.resources(type="upload", prefix="videos/", resource_type="video")["resources"]
 
-    return render_template("gallery.html", images=images, videos=videos)
+    media_files = []
+
+    # 添加图片
+    for img in images:
+        media_files.append({"url": img["secure_url"], "type": "image"})
+
+    # 添加视频
+    for vid in videos:
+        media_files.append({"url": vid["secure_url"], "type": "video"})
+
+    return render_template("gallery.html", media_files=media_files)
+    
 
 @app.route("/about")
 def about():
