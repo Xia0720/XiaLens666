@@ -8,6 +8,7 @@ import cloudinary.api
 import os
 from datetime import datetime
 from functools import wraps
+from flask_login import login_required, current_user
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET", "xia0720_secret")
@@ -69,6 +70,59 @@ def gallery():
 @app.route("/about")
 def about():
     return render_template("about.html")
+
+@app.route("/videos")
+def videos():
+    # 获取 Cloudinary videos 文件夹列表
+    try:
+        result = cloudinary.api.resources(type="upload", resource_type="video", prefix="videos/")
+        video_urls = [res['secure_url'] for res in result.get('resources', [])]
+    except Exception as e:
+        print("Error fetching videos:", e)
+        video_urls = []
+
+    return render_template("videos.html", video_urls=video_urls)
+
+@app.route("/upload_video", methods=["GET", "POST"])
+@login_required
+def upload_video():
+    if request.method == "POST":
+        files = request.files.getlist("video_files")
+        folder_name = request.form.get("folder", "").strip()
+
+        if not folder_name:
+            flash("请输入文件夹名", "error")
+            return redirect(request.url)
+
+        if not files or all(f.filename == '' for f in files):
+            flash("请选择至少一个视频文件", "warning")
+            return redirect(request.url)
+
+        success_count = 0
+        errors = []
+
+        for f in files:
+            if f and f.mimetype.startswith("video/"):
+                try:
+                    cloudinary.uploader.upload(
+                        f,
+                        folder=f"videos/{folder_name}",
+                        resource_type="video"
+                    )
+                    success_count += 1
+                except Exception as e:
+                    errors.append(f"{f.filename}: {str(e)}")
+            else:
+                errors.append(f"{f.filename} 不是视频文件")
+
+        if success_count:
+            flash(f"成功上传 {success_count} 个视频！", "success")
+        if errors:
+            flash("部分视频上传失败：" + "；".join(errors), "error")
+
+        return redirect(url_for("videos"))
+
+    return render_template("upload_video.html")
 
 # 原来不设置相册密码：Album 列表（Cloudinary folders）
 @app.route("/album")
