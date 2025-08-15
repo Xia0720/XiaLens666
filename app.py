@@ -10,6 +10,8 @@ import logging
 from datetime import datetime
 from functools import wraps
 
+print("✅ 当前运行的 app 文件:", __file__)
+
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET", "xia0720_secret")
 
