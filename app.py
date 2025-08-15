@@ -10,6 +10,10 @@ from datetime import datetime
 from functools import wraps
 from flask_login import LoginManager, login_required, current_user
 
+import flask
+import flask_login
+print("All imports are OK!")
+
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET", "xia0720_secret")
