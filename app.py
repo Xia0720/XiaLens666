@@ -202,7 +202,7 @@ def upload():
     # 获取 Cloudinary 已有相册（文件夹）
     try:
         result = cloudinary.api.root_folders()
-        album_names = [folder['name'] for folder in result.get('folders', [])]
+        album_names = [folder['name'] for folder in result.get('folders', []) if folder['name'] != 'private']
     except Exception as e:
         album_names = []
         print("Error fetching folders:", e)
