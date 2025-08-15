@@ -2,6 +2,41 @@
 {% block title %}Albums - XiaCapture{% endblock %}
 {% block content %}
 <h1 style="text-align:center; margin-top:20px;">Albums</h1>
+
+<!-- 上传按钮 -->
+<div style="text-align:center; margin-bottom:20px;">
+    <button id="uploadBtn" onclick="document.getElementById('uploadFormDiv').style.display='block';">
+        Upload Photos
+    </button>
+</div>
+
+<!-- 上传表单 -->
+<div id="uploadFormDiv" style="display:none; margin-bottom:20px;">
+    <form method="POST" enctype="multipart/form-data" action="{{ url_for('upload_private') }}">
+        <div>
+            <label for="albumSelect">选择相册</label><br>
+            <select name="album" id="albumSelect" onchange="toggleNewAlbumInput()">
+                {% for album in album_names %}
+                    <option value="{{ album }}">{{ album }}</option>
+                {% endfor %}
+                <option value="new">+ 创建新相册</option>
+            </select>
+        </div>
+
+        <div id="newAlbumDiv" style="display:none; margin-top:10px;">
+            <label for="new_album">新相册名</label><br>
+            <input type="text" name="new_album" placeholder="输入新相册名">
+        </div>
+
+        <div style="margin-top:15px;">
+            <label for="photo">选择照片</label><br>
+            <input type="file" name="photo" id="photo" multiple required>
+        </div>
+
+        <button type="submit" style="margin-top:15px;">上传</button>
+    </form>
+</div>
+
 <div class="album-grid">
   {% for album in albums %}
     <div class="album-item">
@@ -18,5 +53,14 @@
     </div>
   {% endfor %}
 </div>
+
+<script>
+function toggleNewAlbumInput() {
+    var select = document.getElementById('albumSelect');
+    var newAlbumDiv = document.getElementById('newAlbumDiv');
+    newAlbumDiv.style.display = (select.value === 'new') ? 'block' : 'none';
+}
+</script>
 {% endblock %}
+
 
