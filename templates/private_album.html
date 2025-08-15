@@ -56,15 +56,20 @@
 
 <!-- JS 控制显示隐藏 -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
+window.addEventListener('load', function() {
     var uploadBtn = document.getElementById('uploadBtn');
     var uploadFormDiv = document.getElementById('uploadFormDiv');
     var select = document.getElementById('albumSelect');
     var newAlbumDiv = document.getElementById('newAlbumDiv');
 
+    if (!uploadBtn || !uploadFormDiv || !select || !newAlbumDiv) {
+        console.error("Upload form elements not found!");
+        return;
+    }
+
     // 上传按钮点击显示/隐藏表单
     uploadBtn.addEventListener('click', function() {
-        if (uploadFormDiv.style.display === 'none') {
+        if (uploadFormDiv.style.display === 'none' || uploadFormDiv.style.display === '') {
             uploadFormDiv.style.display = 'block';
         } else {
             uploadFormDiv.style.display = 'none';
@@ -82,6 +87,5 @@ document.addEventListener('DOMContentLoaded', function() {
     toggleNewAlbumInput();
 });
 </script>
-
 {% endblock %}
 
