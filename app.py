@@ -295,16 +295,12 @@ def upload():
 @app.route("/videos")
 def videos():
     try:
-        res = cloudinary.api.resources(
-            resource_type="video",
-            type="upload",
-            prefix="videos",   # 只看 videos/ 下的视频
-            max_results=500
-        )
-        videos = [r["secure_url"] for r in res.get("resources", [])]
+        # 获取 videos 文件夹下的视频
+        resources = cloudinary.api.resources(type="upload", prefix="videos", max_results=500, resource_type="video")
+        videos = [{"url": r["secure_url"], "public_id": r["public_id"]} for r in resources["resources"]]
+        return render_template("videos.html", videos=videos)
     except Exception as e:
         return f"Error fetching videos: {str(e)}"
-    return render_template("videos.html", videos=videos)
 
 # Login / Logout（路由存在，但不在导航栏展示）
 @app.route("/login", methods=["GET", "POST"])
