@@ -1,18 +1,15 @@
 {% extends "base.html" %}
+
 {% block title %}Gallery{% endblock %}
 
 {% block content %}
-<h1>My Cloud Photo Gallery</h1>
+<h1>{{ album_name }} 相册</h1>
 
 {% if photos %}
-    <div style="display:flex; flex-wrap:wrap;">
-    {% for photo in photos %}
-        <div style="margin:10px;">
-            <img src="{{ photo.secure_url }}" style="width:300px; height:auto; object-fit:cover;">
-        </div>
+    {% for photo_url in photos %}
+        <img src="{{ photo_url }}" style="width:300px; margin:10px;">
     {% endfor %}
-    </div>
 {% else %}
-    <p>No photos yet.</p>
+    <p>相册为空。</p>
 {% endif %}
 {% endblock %}
