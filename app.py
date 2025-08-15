@@ -440,5 +440,7 @@ def rename_album():
     album_names = get_album_list_from_cloudinary()
     return render_template("rename_album.html", album_names=album_names)
 
+
+
 if __name__ == "__main__":
     app.run(debug=True, use_reloader=False)
