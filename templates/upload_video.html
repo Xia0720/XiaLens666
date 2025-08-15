@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Upload Video{% endblock %}
+
+{% block content %}
+<h2>Upload Video</h2>
+
+<form method="POST" enctype="multipart/form-data">
+    <div>
+        <label for="folder">文件夹名称</label><br>
+        <input type="text" name="folder" id="folder" placeholder="输入新文件夹名" required>
+    </div>
+
+    <div style="margin-top:15px;">
+        <label for="video_files">选择视频</label><br>
+        <input type="file" name="video_files" id="video_files" accept="video/*" multiple required>
+    </div>
+
+    <button type="submit" style="margin-top:15px;">上传视频</button>
+</form>
+{% endblock %}
