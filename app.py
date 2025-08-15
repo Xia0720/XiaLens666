@@ -411,6 +411,13 @@ def upload_private():
 
     return render_template("upload_private.html", album_names=album_names)
 
+@app.route("/test_log")
+def test_log():
+    import logging
+    logging.basicConfig(level=logging.INFO)
+    logging.info("✅ /test_log 被访问了！")
+    return "终端应该出现 ✅ /test_log 被访问了！"
+
 @app.route("/rename_album", methods=["GET", "POST"])
 @login_required
 def rename_album():
