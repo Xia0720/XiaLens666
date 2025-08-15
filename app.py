@@ -6,16 +6,11 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 import os
-import logging
 from datetime import datetime
 from functools import wraps
 
-print("✅ 当前运行的 app 文件:", __file__)
-
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET", "xia0720_secret")
-
-logging.basicConfig(level=logging.INFO)
 
 # 配置 Cloudinary
 cloudinary.config(
@@ -62,65 +57,7 @@ class Image(db.Model):
     image_url = db.Column(db.String(255), nullable=False)
     story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
 
-# 这个函数用来获取 Cloudinary 相册文件夹列表
-def get_album_list_from_cloudinary():
-    # 这里放你原来的逻辑
-    return ["相册1", "相册2", "相册3"]
-
-def debug_list_public_ids(prefix):
-    next_cursor = None
-    all_ids = []
-    while True:
-        resources = cloudinary.api.resources(
-            type="upload",
-            prefix=prefix,
-            max_results=500,
-            next_cursor=next_cursor
-        )
-        for img in resources["resources"]:
-            all_ids.append(img["public_id"])
-        if "next_cursor" in resources:
-            next_cursor = resources["next_cursor"]
-        else:
-            break
-
-    logging.info(f"Found {len(all_ids)} images with prefix '{prefix}':")
-    for pid in all_ids:
-        logging.info(pid)
-
-def batch_rename_album(old_name, new_name):
-    renamed_count = 0
-    next_cursor = None
-    prefix = f"{old_name}/"  # 精确匹配旧相册路径
-
-    while True:
-        resources = cloudinary.api.resources(
-            type="upload",
-            prefix=prefix,
-            max_results=500,
-            next_cursor=next_cursor
-        )
-
-        for img in resources["resources"]:
-            old_public_id = img["public_id"]
-            parts = old_public_id.split("/", 1)
-            if len(parts) == 2:
-                new_public_id = f"{new_name}/{parts[1]}"
-            else:
-                new_public_id = f"{new_name}/{old_public_id}"
-
-            print(f"Renaming: {old_public_id} → {new_public_id}")
-            cloudinary.uploader.rename(old_public_id, new_public_id, overwrite=True)
-            renamed_count += 1
-
-        if "next_cursor" in resources:
-            next_cursor = resources["next_cursor"]
-        else:
-            break
-
-    return renamed_count
-
-# ---------- 路由 ---------- 
+# ---------- 路由 ----------
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -418,30 +355,5 @@ def upload_private():
 
     return render_template("upload_private.html", album_names=album_names)
 
-@app.route("/test_log")
-def test_log():
-    import logging
-    logging.basicConfig(level=logging.INFO)
-    logging.info("✅ /test_log 被访问了！")
-    return "终端应该出现 ✅ /test_log 被访问了！"
-
-@app.route("/rename_album", methods=["GET", "POST"])
-@login_required
-def rename_album():
-    if request.method == "POST":
-        old_name = request.form.get("old_name", "").strip()
-        new_name = request.form.get("new_name", "").strip()
-
-        logging.basicConfig(level=logging.INFO)
-        logging.info(f"🚀 rename_album 路由被触发！ old_name={old_name}, new_name={new_name}")
-
-        flash(f"测试：{old_name} 改成 {new_name}", "info")
-        return redirect(url_for("albums"))
-
-    # GET 请求时获取 Cloudinary 的相册列表
-    album_names = get_album_list_from_cloudinary()
-    return render_template("rename_album.html", album_names=album_names)
-
-
 if __name__ == "__main__":
-    app.run(debug=True, use_reloader=False)
+    app.run(debug=True)
