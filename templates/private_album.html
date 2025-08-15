@@ -16,11 +16,6 @@
         {% endif %}
         <p>{{ album.name }}</p>
       </a>
-
-      {% if logged_in %}
-      <!-- 重命名按钮 -->
-      <button onclick="renameAlbum('{{ album.name }}')">Rename</button>
-      {% endif %}
     </div>
   {% endfor %}
 </div>
