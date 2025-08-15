@@ -14,6 +14,11 @@ from flask_login import LoginManager, login_required, current_user
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET", "xia0720_secret")
 
+# 初始化 Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)                 # 绑定到 Flask app
+login_manager.login_view = "login"          # 用户未登录时重定向的路由
+
 # 配置 Cloudinary
 cloudinary.config(
     cloud_name='dpr0pl2tf',
