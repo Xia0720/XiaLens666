@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="text-3xl font-bold mb-6">Videos</h1>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  {% for video in videos %}
+  <div class="border rounded p-3 shadow">
+    {% if video.title %}<h2 class="font-semibold mb-2">{{ video.title }}</h2>{% endif %}
+    <video width="100%" controls poster="">
+      <source src="{{ video.video_url }}" type="video/mp4">
+      Your browser does not support HTML video.
+    </video>
+    {% if video.description %}<p class="mt-2 text-sm">{{ video.description }}</p>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
