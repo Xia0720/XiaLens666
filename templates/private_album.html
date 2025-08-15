@@ -1,42 +1,45 @@
 {% extends "base.html" %}
-{% block title %}Albums - XiaCapture{% endblock %}
+{% block title %}Private-space - XiaCapture{% endblock %}
+
 {% block content %}
-<h1 style="text-align:center; margin-top:20px;">Albums</h1>
+<h1 style="text-align:center; margin-top:20px;">Private-space Albums</h1>
 
-<!-- 上传按钮 -->
-<div style="text-align:center; margin-bottom:20px;">
-    <button id="uploadBtn" onclick="document.getElementById('uploadFormDiv').style.display='block';">
-        Upload Photos
-    </button>
-</div>
+<!-- ✅ 无JS也能用的折叠面板 -->
+<details id="uploadAccordion" style="max-width:720px; margin: 0 auto 24px auto; border:1px solid #e5e7eb; border-radius:10px; padding:12px;">
+  <summary style="cursor:pointer; font-weight:600; list-style:none; outline:none;">
+    ⬆️ Upload Photos
+  </summary>
 
-<!-- 上传表单 -->
-<div id="uploadFormDiv" style="display:none; margin-bottom:20px;">
-    <form method="POST" enctype="multipart/form-data" action="{{ url_for('upload_private') }}">
-        <div>
-            <label for="albumSelect">选择相册</label><br>
-            <select name="album" id="albumSelect" onchange="toggleNewAlbumInput()">
-                {% for album in album_names %}
-                    <option value="{{ album }}">{{ album }}</option>
-                {% endfor %}
-                <option value="new">+ 创建新相册</option>
-            </select>
-        </div>
+  <!-- 上传表单（提交到后端 upload_private 路由） -->
+  <form method="POST" enctype="multipart/form-data" action="{{ url_for('upload_private') }}" style="margin-top:12px;">
+      <div style="margin-bottom:10px;">
+          <label for="albumSelect">选择相册</label><br>
+          <select name="album" id="albumSelect" style="min-width:260px;">
+              {% if album_names is defined and album_names %}
+                  {% for album in album_names %}
+                      <option value="{{ album }}">{{ album }}</option>
+                  {% endfor %}
+              {% endif %}
+              <option value="new">+ 创建新相册</option>
+          </select>
+      </div>
 
-        <div id="newAlbumDiv" style="display:none; margin-top:10px;">
-            <label for="new_album">新相册名</label><br>
-            <input type="text" name="new_album" placeholder="输入新相册名">
-        </div>
+      <!-- 默认隐藏，用 hidden 避免被外部 CSS 干扰 -->
+      <div id="newAlbumDiv" hidden style="margin-top:10px;">
+          <label for="new_album">新相册名</label><br>
+          <input type="text" id="new_album" name="new_album" placeholder="输入新相册名" style="min-width:260px;">
+      </div>
 
-        <div style="margin-top:15px;">
-            <label for="photo">选择照片</label><br>
-            <input type="file" name="photo" id="photo" multiple required>
-        </div>
+      <div style="margin-top:15px;">
+          <label for="photo">选择照片</label><br>
+          <input type="file" name="photo" id="photo" multiple required>
+      </div>
 
-        <button type="submit" style="margin-top:15px;">上传</button>
-    </form>
-</div>
+      <button type="submit" style="margin-top:15px;">上传</button>
+  </form>
+</details>
 
+<!-- 相册列表 -->
 <div class="album-grid">
   {% for album in albums %}
     <div class="album-item">
@@ -54,38 +57,20 @@
   {% endfor %}
 </div>
 
-<!-- JS 控制显示隐藏 -->
+<!-- 极简稳健JS：只负责“新建相册”输入框的显隐；放在页面底部，避免执行时机问题 -->
 <script>
-window.addEventListener('load', function() {
-    var uploadBtn = document.getElementById('uploadBtn');
-    var uploadFormDiv = document.getElementById('uploadFormDiv');
+(function () {
+  function onReady(fn){ if (document.readyState !== 'loading') fn(); else document.addEventListener('DOMContentLoaded', fn); }
+  onReady(function () {
     var select = document.getElementById('albumSelect');
     var newAlbumDiv = document.getElementById('newAlbumDiv');
+    if (!select || !newAlbumDiv) return;
 
-    if (!uploadBtn || !uploadFormDiv || !select || !newAlbumDiv) {
-        console.error("Upload form elements not found!");
-        return;
-    }
-
-    // 上传按钮点击显示/隐藏表单
-    uploadBtn.addEventListener('click', function() {
-        if (uploadFormDiv.style.display === 'none' || uploadFormDiv.style.display === '') {
-            uploadFormDiv.style.display = 'block';
-        } else {
-            uploadFormDiv.style.display = 'none';
-        }
-    });
-
-    // 下拉框切换显示新相册输入框
-    function toggleNewAlbumInput() {
-        newAlbumDiv.style.display = (select.value === 'new') ? 'block' : 'none';
-    }
-
-    select.addEventListener('change', toggleNewAlbumInput);
-
-    // 页面初始检查
-    toggleNewAlbumInput();
-});
+    function apply() { newAlbumDiv.hidden = (select.value !== 'new'); }
+    select.addEventListener('change', apply);
+    apply(); // 初始化一次
+  });
+})();
 </script>
 {% endblock %}
 
