@@ -54,13 +54,34 @@
   {% endfor %}
 </div>
 
+<!-- JS 控制显示隐藏 -->
 <script>
-function toggleNewAlbumInput() {
+document.addEventListener('DOMContentLoaded', function() {
+    var uploadBtn = document.getElementById('uploadBtn');
+    var uploadFormDiv = document.getElementById('uploadFormDiv');
     var select = document.getElementById('albumSelect');
     var newAlbumDiv = document.getElementById('newAlbumDiv');
-    newAlbumDiv.style.display = (select.value === 'new') ? 'block' : 'none';
-}
-</script>
-{% endblock %}
 
+    // 上传按钮点击显示/隐藏表单
+    uploadBtn.addEventListener('click', function() {
+        if (uploadFormDiv.style.display === 'none') {
+            uploadFormDiv.style.display = 'block';
+        } else {
+            uploadFormDiv.style.display = 'none';
+        }
+    });
+
+    // 下拉框切换显示新相册输入框
+    function toggleNewAlbumInput() {
+        newAlbumDiv.style.display = (select.value === 'new') ? 'block' : 'none';
+    }
+
+    select.addEventListener('change', toggleNewAlbumInput);
+
+    // 页面初始检查
+    toggleNewAlbumInput();
+});
+</script>
+
+{% endblock %}
 
