@@ -355,5 +355,39 @@ def upload_private():
 
     return render_template("upload_private.html", album_names=album_names)
 
+# 视频列表页
+@app.route("/videos")
+def videos():
+    videos_list = Video.query.order_by(Video.created_at.desc()).all()
+    return render_template("videos.html", videos=videos_list)
+
+# 视频上传页（仅登录可用）
+@app.route("/upload_video", methods=["GET", "POST"])
+@login_required
+def upload_video():
+    if request.method == "POST":
+        title = request.form.get("title", "").strip()
+        description = request.form.get("description", "").strip()
+        file = request.files.get("video_file")
+
+        if not file or file.filename == "":
+            flash("Please select a video file.", "error")
+            return redirect(request.url)
+
+        try:
+            upload_result = cloudinary.uploader.upload(file, resource_type="video")
+            video_url = upload_result.get("secure_url")
+
+            new_video = Video(title=title, description=description, video_url=video_url)
+            db.session.add(new_video)
+            db.session.commit()
+            flash("Video uploaded successfully!", "success")
+            return redirect(url_for("videos"))
+        except Exception as e:
+            flash(f"Upload failed: {str(e)}", "error")
+            return redirect(request.url)
+
+    return render_template("upload_video.html")
+
 if __name__ == "__main__":
     app.run(debug=True)
