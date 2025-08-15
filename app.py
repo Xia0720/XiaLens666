@@ -8,7 +8,8 @@ import cloudinary.api
 import os
 from datetime import datetime
 from functools import wraps
-from flask_login import login_required, current_user
+from flask_login import LoginManager, login_required, current_user
+
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET", "xia0720_secret")
