@@ -2,7 +2,7 @@
 {% block content %}
 <h2>Upload Media</h2>
 
-<form id="uploadForm" enctype="multipart/form-data" onsubmit="return false;">
+<form id="uploadForm">
     <div>
         <label for="albumSelect">选择相册</label><br>
         <select name="album" id="albumSelect" onchange="toggleNewAlbumInput()">
@@ -15,60 +15,75 @@
 
     <div id="newAlbumDiv" style="display:none; margin-top:10px;">
         <label for="new_album">新相册名</label><br>
-        <input type="text" id="new_album" placeholder="输入新相册名">
+        <input type="text" name="new_album" id="new_album" placeholder="输入新相册名">
     </div>
 
     <div style="margin-top:15px;">
         <label for="media">选择图片或视频</label><br>
-        <input type="file" id="media" accept="image/*,video/*" multiple required>
+        <input type="file" id="media" multiple accept="image/*,video/*" required>
     </div>
 
-    <button id="uploadBtn" style="margin-top:15px;">上传</button>
+    <button type="submit" style="margin-top:15px;">上传</button>
 </form>
 
-<script src="https://widget.cloudinary.com/v2.0/global/all.js"></script>
+<div id="status" style="margin-top:15px;"></div>
+
 <script>
 function toggleNewAlbumInput() {
     var select = document.getElementById('albumSelect');
     var newAlbumDiv = document.getElementById('newAlbumDiv');
-    if (select.value === 'new') {
-        newAlbumDiv.style.display = 'block';
-    } else {
-        newAlbumDiv.style.display = 'none';
-    }
+    newAlbumDiv.style.display = (select.value === 'new') ? 'block' : 'none';
 }
 
-// 上传按钮点击事件
-document.getElementById("uploadBtn").addEventListener("click", function() {
-    var files = document.getElementById("media").files;
+// 上传逻辑
+document.getElementById("uploadForm").addEventListener("submit", async function(e) {
+    e.preventDefault();
+    const files = document.getElementById("media").files;
     if (!files.length) return alert("请选择文件");
 
-    Array.from(files).forEach(file => {
-        var folder = file.type.startsWith("video/") ? "videos" : document.getElementById("albumSelect").value;
-        if (folder === "new") {
-            folder = document.getElementById("new_album").value.trim();
-            if (!folder) return alert("请输入新相册名");
-        }
+    const select = document.getElementById("albumSelect");
+    let folder = select.value;
+    const newAlbumInput = document.getElementById("new_album").value.trim();
+    if (folder === "new") {
+        if (!newAlbumInput) return alert("请输入新相册名");
+        folder = newAlbumInput;
+    }
 
-        var formData = new FormData();
+    const statusDiv = document.getElementById("status");
+    statusDiv.innerHTML = "上传中...";
+
+    for (const file of files) {
+        const formData = new FormData();
         formData.append("file", file);
         formData.append("upload_preset", file.type.startsWith("video/") ? "video_upload_preset" : "image_upload_preset");
-        formData.append("folder", folder);
 
-        fetch("https://api.cloudinary.com/v1_1/dpr0pl2tf/auto/upload", {
-            method: "POST",
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log("上传成功:", data.secure_url);
-            alert(file.name + " 上传成功");
-        })
-        .catch(err => {
-            console.error("上传失败:", err);
-            alert(file.name + " 上传失败");
-        });
-    });
+        // 自动分流到 image 或 video 文件夹
+        const cloudFolder = file.type.startsWith("video/") ? "videos" : folder;
+        formData.append("folder", cloudFolder);
+
+        try {
+            const uploadUrl = file.type.startsWith("video/") 
+                ? "https://api.cloudinary.com/v1_1/dpr0pl2tf/video/upload"
+                : "https://api.cloudinary.com/v1_1/dpr0pl2tf/image/upload";
+
+            const res = await fetch(uploadUrl, {
+                method: "POST",
+                body: formData
+            });
+            const data = await res.json();
+            if (data.secure_url) {
+                statusDiv.innerHTML += `<p>上传成功: ${file.name} → <a href="${data.secure_url}" target="_blank">查看</a></p>`;
+            } else {
+                statusDiv.innerHTML += `<p style="color:red;">上传失败: ${file.name}</p>`;
+            }
+        } catch (err) {
+            console.error(err);
+            statusDiv.innerHTML += `<p style="color:red;">上传出错: ${file.name}</p>`;
+        }
+    }
+
+    statusDiv.innerHTML += "<p>所有文件上传完成！</p>";
 });
 </script>
 {% endblock %}
+
