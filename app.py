@@ -8,6 +8,7 @@ import cloudinary.api
 import os
 from datetime import datetime
 from functools import wraps
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET", "xia0720_secret")
@@ -18,6 +19,13 @@ cloudinary.config(
     api_key='548549517251566',
     api_secret='9o-PlPBRQzQPfuVCQfaGrUV3_IE'
 )
+
+# 支持的类型
+IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
+VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'webm'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in IMAGE_EXTENSIONS.union(VIDEO_EXTENSIONS)
 
 # 数据库配置（优先 Railway）
 database_url = os.getenv("DATABASE_URL")
@@ -64,7 +72,11 @@ def index():
 
 @app.route("/gallery")
 def gallery():
-    return render_template("gallery.html")
+    # 获取 Cloudinary 中的图片
+    images = cloudinary.api.resources(type="upload", prefix="photos/", resource_type="image")["resources"]
+    videos = cloudinary.api.resources(type="upload", prefix="videos/", resource_type="video")["resources"]
+
+    return render_template("gallery.html", images=images, videos=videos)
 
 @app.route("/about")
 def about():
@@ -197,43 +209,41 @@ def delete_story(story_id):
 
 # Cloudinary folder 上传：仅登录后可见/可用
 @app.route("/upload", methods=["GET", "POST"])
-@login_required
 def upload():
-    # 获取 Cloudinary 已有相册（文件夹）
-    try:
-        result = cloudinary.api.root_folders()
-        album_names = [folder['name'] for folder in result.get('folders', [])]
-    except Exception as e:
-        album_names = []
-        print("Error fetching folders:", e)
-
     if request.method == "POST":
-        photos = request.files.getlist("photo")
-        selected_album = request.form.get("album")
-        new_album = request.form.get("new_album", "").strip()
+        if "file" not in request.files:
+            return "没有文件", 400
+        file = request.files["file"]
 
-        if not photos or all(p.filename == '' for p in photos):
-            return "No selected photo file", 400
+        if file.filename == "":
+            return "未选择文件", 400
 
-        # 如果选择了“新建相册”
-        if selected_album == "new" and new_album:
-            folder = new_album
-        else:
-            folder = selected_album
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            ext = filename.rsplit('.', 1)[1].lower()
 
-        if not folder:
-            return "Folder name is required", 400
+            # 根据类型选择 Cloudinary 文件夹
+            if ext in IMAGE_EXTENSIONS:
+                folder = "photos"
+                resource_type = "image"
+            elif ext in VIDEO_EXTENSIONS:
+                folder = "videos"
+                resource_type = "video"
+            else:
+                return "不支持的文件类型", 400
 
-        try:
-            for photo in photos:
-                if photo and photo.filename != '':
-                    cloudinary.uploader.upload(photo, folder=folder)
-            flash("Uploaded successfully.")
-            return redirect(url_for("upload"))
-        except Exception as e:
-            return f"Error uploading file: {str(e)}"
+            # 上传到 Cloudinary
+            upload_result = cloudinary.uploader.upload(
+                file,
+                folder=folder,
+                resource_type=resource_type
+            )
+            print("上传结果：", upload_result)
 
-    return render_template("upload.html", album_names=album_names)
+            return redirect(url_for("gallery"))
+
+    return render_template("upload.html")
+    
 
 # Login / Logout（路由存在，但不在导航栏展示）
 @app.route("/login", methods=["GET", "POST"])
@@ -355,39 +365,6 @@ def upload_private():
 
     return render_template("upload_private.html", album_names=album_names)
 
-# 视频列表页
-@app.route("/videos")
-def videos():
-    videos_list = Video.query.order_by(Video.created_at.desc()).all()
-    return render_template("videos.html", videos=videos_list)
-
-# 视频上传页（仅登录可用）
-@app.route("/upload_video", methods=["GET", "POST"])
-@login_required
-def upload_video():
-    if request.method == "POST":
-        title = request.form.get("title", "").strip()
-        description = request.form.get("description", "").strip()
-        file = request.files.get("video_file")
-
-        if not file or file.filename == "":
-            flash("Please select a video file.", "error")
-            return redirect(request.url)
-
-        try:
-            upload_result = cloudinary.uploader.upload(file, resource_type="video")
-            video_url = upload_result.get("secure_url")
-
-            new_video = Video(title=title, description=description, video_url=video_url)
-            db.session.add(new_video)
-            db.session.commit()
-            flash("Video uploaded successfully!", "success")
-            return redirect(url_for("videos"))
-        except Exception as e:
-            flash(f"Upload failed: {str(e)}", "error")
-            return redirect(request.url)
-
-    return render_template("upload_video.html")
 
 if __name__ == "__main__":
     app.run(debug=True)
