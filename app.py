@@ -8,12 +8,9 @@ import cloudinary.api
 import os
 from datetime import datetime
 from functools import wraps
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET", "xia0720_secret")
-# 限制上传文件最大 200MB
-app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 
 # 配置 Cloudinary
 cloudinary.config(
@@ -21,13 +18,6 @@ cloudinary.config(
     api_key='548549517251566',
     api_secret='9o-PlPBRQzQPfuVCQfaGrUV3_IE'
 )
-
-# 支持的类型
-IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'}
-VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'webm'}
-
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in IMAGE_EXTENSIONS.union(VIDEO_EXTENSIONS)
 
 # 数据库配置（优先 Railway）
 database_url = os.getenv("DATABASE_URL")
@@ -74,13 +64,8 @@ def index():
 
 @app.route("/gallery")
 def gallery():
-    try:
-        resources = cloudinary.api.resources(type="upload", prefix="album", max_results=500)
-        photos = [res for res in resources["resources"] if res["resource_type"] == "image"]
-        return render_template("gallery.html", photos=photos)
-    except Exception as e:
-        return f"Error loading gallery: {str(e)}"
-    
+    return render_template("gallery.html")
+
 @app.route("/about")
 def about():
     return render_template("about.html")
@@ -93,16 +78,10 @@ def albums():
         albums = []
         for folder in folders.get('folders', []):
             folder_name = folder['name']
-            # 忽略私密区与视频根目录
-            if folder_name in ("private", "videos"):
+            if folder_name == "private":  # 忽略 Private-space 文件夹
                 continue
-            # 仅用图片做封面
-            resources = cloudinary.api.resources(
-                type="upload",
-                prefix=folder_name,
-                resource_type="image",
-                max_results=1
-            )
+            # 获取相册封面
+            resources = cloudinary.api.resources(type="upload", prefix=folder_name, max_results=1)
             cover_url = resources['resources'][0]['secure_url'] if resources['resources'] else ""
             albums.append({'name': folder_name, 'cover': cover_url})
         return render_template("album.html", albums=albums)
@@ -112,14 +91,13 @@ def albums():
 @app.route("/album/<album_name>", methods=["GET", "POST"])
 def view_album(album_name):
     try:
-        resources = cloudinary.api.resources(
-            type="upload",
-            prefix=album_name,
-            resource_type="image",   # 只取图片
-            max_results=500
-        )
-        images = [{"public_id": img["public_id"], "secure_url": img["secure_url"]}
-                  for img in resources.get("resources", [])]
+        resources = cloudinary.api.resources(type="upload", prefix=album_name, max_results=500)
+        images = []
+        for img in resources["resources"]:
+            images.append({
+                "public_id": img["public_id"],
+                "secure_url": img["secure_url"]
+            })
         logged_in = session.get("logged_in", False)
         return render_template("view_album.html", album_name=album_name, images=images, logged_in=logged_in)
     except Exception as e:
@@ -221,90 +199,41 @@ def delete_story(story_id):
 @app.route("/upload", methods=["GET", "POST"])
 @login_required
 def upload():
-    # 取已有相册列表，用于下拉框（排除 private 与 videos）
+    # 获取 Cloudinary 已有相册（文件夹）
     try:
         result = cloudinary.api.root_folders()
-        album_names = [folder['name'] for folder in result.get('folders', [])
-                       if folder['name'] not in ("private", "videos")]
+        album_names = [folder['name'] for folder in result.get('folders', [])]
     except Exception as e:
         album_names = []
         print("Error fetching folders:", e)
 
     if request.method == "POST":
-        files = request.files.getlist("media_files")
+        photos = request.files.getlist("photo")
         selected_album = request.form.get("album")
         new_album = request.form.get("new_album", "").strip()
 
-        if not files or all(f.filename == '' for f in files):
-            flash("请选择至少一个文件。", "warning")
-            return redirect(request.url)
+        if not photos or all(p.filename == '' for p in photos):
+            return "No selected photo file", 400
 
-        # 决定图片存放到哪个相册
-        if selected_album == "new":
-            if not new_album:
-                flash("请输入新相册名。", "error")
-                return redirect(request.url)
-            album_folder = new_album
+        # 如果选择了“新建相册”
+        if selected_album == "new" and new_album:
+            folder = new_album
         else:
-            album_folder = selected_album
+            folder = selected_album
 
-        if not album_folder:
-            flash("相册名不能为空。", "error")
-            return redirect(request.url)
+        if not folder:
+            return "Folder name is required", 400
 
-        img_count, vid_count = 0, 0
-        errors = []
-
-        for f in files:
-            if not f or f.filename == "":
-                continue
-            try:
-                # 根据 mimetype 分流
-                if f.mimetype.startswith("image/"):
-                    # 图片 -> 选中的相册文件夹
-                    cloudinary.uploader.upload(
-                        f,
-                        folder=album_folder,
-                        resource_type="image"
-                    )
-                    img_count += 1
-                elif f.mimetype.startswith("video/"):
-                    # 视频 -> 统一放到 videos 根目录
-                    cloudinary.uploader.upload(
-                        f,
-                        folder="videos",
-                        resource_type="video"
-                    )
-                    vid_count += 1
-                else:
-                    errors.append(f"不支持的文件类型：{f.filename}")
-            except Exception as e:
-                errors.append(f"{f.filename}: {str(e)}")
-
-        if img_count or vid_count:
-            flash(f"上传成功：{img_count} 张图片，{vid_count} 个视频。", "success")
-        if errors:
-            flash("部分文件上传失败： " + "；".join(errors), "error")
-
-        # 根据本次上传内容决定跳转
-        if img_count > 0 and vid_count == 0:
-            return redirect(url_for("view_album", album_name=album_folder))
-        elif vid_count > 0 and img_count == 0:
-            return redirect(url_for("videos"))
-        else:
-            # 混合上传或全部失败，就回上传页
+        try:
+            for photo in photos:
+                if photo and photo.filename != '':
+                    cloudinary.uploader.upload(photo, folder=folder)
+            flash("Uploaded successfully.")
             return redirect(url_for("upload"))
+        except Exception as e:
+            return f"Error uploading file: {str(e)}"
 
     return render_template("upload.html", album_names=album_names)
-
-@app.route("/videos")
-def videos():
-    try:
-        resources = cloudinary.api.resources(type="upload", prefix="video", max_results=500)
-        videos = [res for res in resources["resources"] if res["resource_type"] == "video"]
-        return render_template("video.html", videos=videos)
-    except Exception as e:
-        return f"Error loading videos: {str(e)}"
 
 # Login / Logout（路由存在，但不在导航栏展示）
 @app.route("/login", methods=["GET", "POST"])
@@ -425,7 +354,6 @@ def upload_private():
             return f"Error uploading file: {str(e)}"
 
     return render_template("upload_private.html", album_names=album_names)
-
 
 if __name__ == "__main__":
     app.run(debug=True)
