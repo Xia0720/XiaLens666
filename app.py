@@ -119,6 +119,23 @@ def batch_rename_album(old_name, new_name):
     return renamed_count
 
 # ---------- 路由 ----------
+@app.route("/rename_album", methods=["GET", "POST"])
+@login_required
+def rename_album():
+    if request.method == "POST":
+        old_name = request.form.get("old_name", "").strip()
+        new_name = request.form.get("new_name", "").strip()
+
+        logging.basicConfig(level=logging.INFO)
+        logging.info(f"🚀 rename_album 路由被触发！ old_name={old_name}, new_name={new_name}")
+
+        flash(f"测试：{old_name} 改成 {new_name}", "info")
+        return redirect(url_for("albums"))
+
+    # GET 请求时获取 Cloudinary 的相册列表
+    album_names = get_album_list_from_cloudinary()
+    return render_template("rename_album.html", album_names=album_names)
+    
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -422,24 +439,6 @@ def test_log():
     logging.basicConfig(level=logging.INFO)
     logging.info("✅ /test_log 被访问了！")
     return "终端应该出现 ✅ /test_log 被访问了！"
-
-@app.route("/rename_album", methods=["GET", "POST"])
-@login_required
-def rename_album():
-    if request.method == "POST":
-        old_name = request.form.get("old_name", "").strip()
-        new_name = request.form.get("new_name", "").strip()
-
-        logging.basicConfig(level=logging.INFO)
-        logging.info(f"🚀 rename_album 路由被触发！ old_name={old_name}, new_name={new_name}")
-
-        flash(f"测试：{old_name} 改成 {new_name}", "info")
-        return redirect(url_for("albums"))
-
-    # GET 请求时获取 Cloudinary 的相册列表
-    album_names = get_album_list_from_cloudinary()
-    return render_template("rename_album.html", album_names=album_names)
-
 
 
 if __name__ == "__main__":
