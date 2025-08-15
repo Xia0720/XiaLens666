@@ -423,7 +423,7 @@ def test_log():
     logging.info("✅ /test_log 被访问了！")
     return "终端应该出现 ✅ /test_log 被访问了！"
 
-app.route("/rename_album", methods=["GET", "POST"])
+@app.route("/rename_album", methods=["GET", "POST"])
 @login_required
 def rename_album():
     if request.method == "POST":
