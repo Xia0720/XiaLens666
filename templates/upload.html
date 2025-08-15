@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<h2>Upload Photos</h2>
+<h2>Upload Media</h2>
 
 <form method="POST" enctype="multipart/form-data">
     <div>
@@ -19,8 +19,9 @@
     </div>
 
     <div style="margin-top:15px;">
-        <label for="photo">选择照片</label><br>
-        <input type="file" name="photo" id="photo" multiple required>
+        <label for="media">选择图片或视频</label><br>
+        <!-- 修改这里：允许选择图片和视频，同时多选 -->
+        <input type="file" name="media_files" id="media" accept="image/*,video/*" multiple required>
     </div>
 
     <button type="submit" style="margin-top:15px;">上传</button>
@@ -38,6 +39,4 @@ function toggleNewAlbumInput() {
 }
 </script>
 {% endblock %}
-
-
 
