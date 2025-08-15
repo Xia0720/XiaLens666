@@ -2,57 +2,73 @@
 {% block content %}
 <h2>Upload Media</h2>
 
-<div>
-    <label for="albumSelect">选择相册</label><br>
-    <select name="album" id="albumSelect" onchange="toggleNewAlbumInput()">
-        {% for album in album_names %}
-            <option value="{{ album }}">{{ album }}</option>
-        {% endfor %}
-        <option value="new">+ 创建新相册</option>
-    </select>
-</div>
+<form id="uploadForm" enctype="multipart/form-data" onsubmit="return false;">
+    <div>
+        <label for="albumSelect">选择相册</label><br>
+        <select name="album" id="albumSelect" onchange="toggleNewAlbumInput()">
+            {% for album in album_names %}
+                <option value="{{ album }}">{{ album }}</option>
+            {% endfor %}
+            <option value="new">+ 创建新相册</option>
+        </select>
+    </div>
 
-<div id="newAlbumDiv" style="display:none; margin-top:10px;">
-    <label for="new_album">新相册名</label><br>
-    <input type="text" id="new_album" placeholder="输入新相册名">
-</div>
+    <div id="newAlbumDiv" style="display:none; margin-top:10px;">
+        <label for="new_album">新相册名</label><br>
+        <input type="text" id="new_album" placeholder="输入新相册名">
+    </div>
 
-<div style="margin-top:15px;">
-    <label for="media">选择图片或视频</label><br>
-    <input type="file" id="media" accept="image/*,video/*" multiple required>
-</div>
+    <div style="margin-top:15px;">
+        <label for="media">选择图片或视频</label><br>
+        <input type="file" id="media" accept="image/*,video/*" multiple required>
+    </div>
 
-<button id="uploadBtn" style="margin-top:15px;">上传</button>
+    <button id="uploadBtn" style="margin-top:15px;">上传</button>
+</form>
 
 <script src="https://widget.cloudinary.com/v2.0/global/all.js"></script>
 <script>
 function toggleNewAlbumInput() {
     var select = document.getElementById('albumSelect');
     var newAlbumDiv = document.getElementById('newAlbumDiv');
-    newAlbumDiv.style.display = select.value === 'new' ? 'block' : 'none';
+    if (select.value === 'new') {
+        newAlbumDiv.style.display = 'block';
+    } else {
+        newAlbumDiv.style.display = 'none';
+    }
 }
 
+// 上传按钮点击事件
 document.getElementById("uploadBtn").addEventListener("click", function() {
     var files = document.getElementById("media").files;
     if (!files.length) return alert("请选择文件");
 
-    var folder = document.getElementById("albumSelect").value;
-    var newAlbum = document.getElementById("new_album").value.trim();
-    if (folder === "new" && newAlbum) folder = newAlbum;
-
     Array.from(files).forEach(file => {
-        var uploadPreset = file.type.startsWith("video/") ? "video_upload_preset" : "image_upload_preset";
+        var folder = file.type.startsWith("video/") ? "videos" : document.getElementById("albumSelect").value;
+        if (folder === "new") {
+            folder = document.getElementById("new_album").value.trim();
+            if (!folder) return alert("请输入新相册名");
+        }
 
-        cloudinary.v2.uploader.upload(file, {
-            upload_preset: uploadPreset,
-            folder: file.type.startsWith("video/") ? "videos" : folder
-        }, (error, result) => {
-            if (error) console.error(error);
-            else console.log("上传成功:", result.secure_url);
+        var formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", file.type.startsWith("video/") ? "video_upload_preset" : "image_upload_preset");
+        formData.append("folder", folder);
+
+        fetch("https://api.cloudinary.com/v1_1/dpr0pl2tf/auto/upload", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log("上传成功:", data.secure_url);
+            alert(file.name + " 上传成功");
+        })
+        .catch(err => {
+            console.error("上传失败:", err);
+            alert(file.name + " 上传失败");
         });
     });
-
-    alert("文件已开始上传，稍后刷新页面查看");
 });
 </script>
 {% endblock %}
