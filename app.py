@@ -74,7 +74,12 @@ def index():
 
 @app.route("/gallery")
 def gallery():
-    return render_template("gallery.html")
+    try:
+        resources = cloudinary.api.resources(type="upload", prefix="album", max_results=500)
+        photos = [res for res in resources["resources"] if res["resource_type"] == "image"]
+        return render_template("gallery.html", photos=photos)
+    except Exception as e:
+        return f"Error loading gallery: {str(e)}"
     
 @app.route("/about")
 def about():
@@ -295,12 +300,11 @@ def upload():
 @app.route("/videos")
 def videos():
     try:
-        # 获取 videos 文件夹下的视频
-        resources = cloudinary.api.resources(type="upload", prefix="videos", max_results=500, resource_type="video")
-        videos = [{"url": r["secure_url"], "public_id": r["public_id"]} for r in resources["resources"]]
-        return render_template("videos.html", videos=videos)
+        resources = cloudinary.api.resources(type="upload", prefix="video", max_results=500)
+        videos = [res for res in resources["resources"] if res["resource_type"] == "video"]
+        return render_template("video.html", videos=videos)
     except Exception as e:
-        return f"Error fetching videos: {str(e)}"
+        return f"Error loading videos: {str(e)}"
 
 # Login / Logout（路由存在，但不在导航栏展示）
 @app.route("/login", methods=["GET", "POST"])
