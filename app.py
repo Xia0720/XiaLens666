@@ -6,11 +6,14 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 import os
+import logging
 from datetime import datetime
 from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET", "xia0720_secret")
+
+logging.basicConfig(level=logging.INFO)
 
 # 配置 Cloudinary
 cloudinary.config(
@@ -74,9 +77,9 @@ def debug_list_public_ids(prefix):
         else:
             break
 
-    print(f"Found {len(all_ids)} images with prefix '{prefix}':")
+    logging.info(f"Found {len(all_ids)} images with prefix '{prefix}':")
     for pid in all_ids:
-        print(pid)
+        logging.info(pid)
 
 def batch_rename_album(old_name, new_name):
     renamed_count = 0
