@@ -24,7 +24,7 @@
 
             <!-- 只有 story 或 upload 路径时才显示 login/logout / 上传按钮（保持你原来的逻辑不变） -->
             <div class="nav-right">
-                {% if (request.path.startswith('/story') or request.path.startswith('/upload')) %}
+                {% if (request.path.startswith('/story_list') or request.path.startswith('/upload')) %}
                     {% if logged_in %}
                         <a href="{{ url_for('upload_story') }}" class="upload-btn">+ Upload New Story</a>
                         <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
