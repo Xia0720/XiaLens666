@@ -8,7 +8,7 @@
 </head>
 <body>
     <!-- 导航栏：非 story 页居中，story 页左右分布 -->
-    <nav class="navbar {% if request.path.startswith('/story') %}story-navbar{% endif %}">
+    <nav class="navbar {% if request.path.startswith('/story_list') %}story-navbar{% endif %}">
         <div class="nav-container">
             <div class="nav-left">
                 <a href="{{ url_for('index') }}">Home</a>
