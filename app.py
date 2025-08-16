@@ -119,7 +119,7 @@ def delete_images():
     return redirect(url_for("view_album", album_name=album_name))
 
 
-@app.route("/story")
+@app.route("/story_list")
 def story_list():
     stories = Story.query.order_by(Story.created_at.desc()).all()
     return render_template("story_list.html", stories=stories)
