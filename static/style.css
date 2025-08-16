@@ -24,7 +24,7 @@ body, html {
     padding: 0 12px;
 }
 .nav-left { display:flex; gap:18px; align-items:center; }
-.nav-right { display:none; gap:12px; align-items:center; }
+.nav-right { display:flex; gap:12px; align-items:center; }
 
 /* story 页面：默认居中 */
 .navbar.story-navbar .nav-container {
