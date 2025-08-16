@@ -119,8 +119,8 @@ def delete_images():
     return redirect(url_for("view_album", album_name=album_name))
 
 
-@app.route("/story_list")
-def story():
+@app.route("/story")
+def story_list():
     stories = Story.query.order_by(Story.created_at.desc()).all()
     return render_template("story_list.html", stories=stories)
 
@@ -159,7 +159,7 @@ def upload_story():
     return render_template("upload_story.html")
 
 # 仅登录后可编辑
-@app.route("/story_list/<int:story_id>/edit", methods=["GET", "POST"])
+@app.route("/story/<int:story_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit_story(story_id):
     story = Story.query.get_or_404(story_id)
