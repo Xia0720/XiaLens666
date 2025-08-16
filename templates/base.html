@@ -7,12 +7,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <!-- 导航栏 -->
     <nav class="navbar {% if request.path.startswith('/story_list') %}story-navbar{% endif %}">
-        <div class="nav-container 
-            {% if logged_in and (request.path.startswith('/story_list') or request.path.startswith('/upload')) %}has-right{% endif %}">
-            
-            <!-- 左侧导航 -->
+        <div class="nav-container {% if logged_in and request.path.startswith('/story_list') %}has-right{% endif %}">
             <div class="nav-left">
                 <a href="{{ url_for('index') }}">Home</a>
                 <a href="{{ url_for('albums') }}">Album</a>
@@ -24,15 +20,10 @@
                 {% endif %}
             </div>
 
-            <!-- 右侧按钮 -->
             <div class="nav-right">
-                {% if request.path.startswith('/story_list') or request.path.startswith('/upload') %}
-                    {% if logged_in %}
-                        <a href="{{ url_for('upload_story') }}" class="upload-btn">+ Upload New Story</a>
-                        <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
-                    {% else %}
-                        <a href="{{ url_for('login') }}" class="nav-link">Login</a>
-                    {% endif %}
+                {% if logged_in and request.path.startswith('/story_list') %}
+                    <a href="{{ url_for('upload_story') }}" class="upload-btn">+ Upload New Story</a>
+                    <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
                 {% endif %}
             </div>
         </div>
@@ -42,9 +33,7 @@
         {% with messages = get_flashed_messages() %}
           {% if messages %}
             <div class="flash-messages">
-              {% for m in messages %}
-                <div class="flash">{{ m }}</div>
-              {% endfor %}
+              {% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}
             </div>
           {% endif %}
         {% endwith %}
