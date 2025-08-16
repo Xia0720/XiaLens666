@@ -7,6 +7,16 @@
     <label for="text">故事内容：</label><br>
     <textarea name="text" id="text" rows="10" cols="60" required>{{ story.text }}</textarea><br><br>
 
+    <label>已有图片（点击选中后将被删除）：</label><br>
+    <div class="existing-images">
+        {% for img in story.images %}
+            <div class="image-item" data-img-id="{{ img.id }}">
+                <img src="{{ img.image_url }}" alt="story image">
+            </div>
+        {% endfor %}
+    </div>
+    <input type="hidden" name="delete_images" id="delete_images">
+
     <label for="story_images">上传新图片（可多选）：</label><br>
     <input type="file" name="story_images" id="story_images" multiple><br><br>
 
@@ -14,7 +24,50 @@
 </form>
 
 <a href="{{ url_for('story_detail', story_id=story.id) }}">取消返回故事详情</a>
+
+<script>
+    const imageItems = document.querySelectorAll('.image-item');
+    const deleteInput = document.getElementById('delete_images');
+    const selectedImages = new Set();
+
+    imageItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const imgId = item.dataset.imgId;
+            if (selectedImages.has(imgId)) {
+                selectedImages.delete(imgId);
+                item.classList.remove('selected');
+            } else {
+                selectedImages.add(imgId);
+                item.classList.add('selected');
+            }
+            deleteInput.value = Array.from(selectedImages).join(',');
+        });
+    });
+</script>
+
+<style>
+.existing-images {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.image-item {
+    border: 2px solid transparent;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border 0.2s;
+}
+.image-item.selected {
+    border: 2px solid red;
+}
+.image-item img {
+    display: block;
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+}
+</style>
 {% endblock %}
-
-
 
