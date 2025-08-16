@@ -163,7 +163,9 @@ def upload_story():
 @login_required
 def edit_story(story_id):
     story = Story.query.get_or_404(story_id)
+
     if request.method == "POST":
+        # 修改文字内容
         text = request.form.get("text")
         if not text or text.strip() == "":
             flash("故事内容不能为空", "error")
@@ -171,6 +173,15 @@ def edit_story(story_id):
 
         story.text = text.strip()
 
+        # 删除选中的图片
+        delete_image_ids = request.form.get("delete_images", "")
+        if delete_image_ids:
+            for img_id in delete_image_ids.split(","):
+                img = Image.query.get(int(img_id))
+                if img:
+                    db.session.delete(img)
+
+        # 上传新图片
         files = request.files.getlist("story_images")
         for file in files:
             if file and file.filename:
