@@ -154,7 +154,7 @@ def upload_story():
 
         db.session.commit()
         flash("Story uploaded successfully!", "success")
-        return redirect(url_for("story"))
+        return redirect(url_for("story_list"))
 
     return render_template("upload_story.html")
 
