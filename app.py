@@ -245,7 +245,7 @@ def login():
             session["logged_in"] = True
             flash("Logged in.")
             next_url = request.args.get("next")
-            return redirect(next_url or url_for("story"))
+            return redirect(next_url or url_for("story_list"))
         else:
             flash("Invalid credentials.")
             return redirect(url_for("login"))
