@@ -7,24 +7,26 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <!-- 导航栏：非 story 页居中，story 页左右分布 -->
+    <!-- 导航栏 -->
     <nav class="navbar {% if request.path.startswith('/story_list') %}story-navbar{% endif %}">
-        <div class="nav-container">
+        <div class="nav-container 
+            {% if logged_in and (request.path.startswith('/story_list') or request.path.startswith('/upload')) %}has-right{% endif %}">
+            
+            <!-- 左侧导航 -->
             <div class="nav-left">
                 <a href="{{ url_for('index') }}">Home</a>
                 <a href="{{ url_for('albums') }}">Album</a>
                 <a href="{{ url_for('story_list') }}">Story</a>
                 <a href="{{ url_for('about') }}">About</a>
                 {% if logged_in %}
-                    <!-- 只有登录后才显示 Upload -->
                     <a href="{{ url_for('upload') }}">Upload</a>
-                    <a href="{{ url_for('private_space') }}">Private-space</a> 
+                    <a href="{{ url_for('private_space') }}">Private-space</a>
                 {% endif %}
             </div>
 
-            <!-- 只有 story 或 upload 路径时才显示 login/logout / 上传按钮（保持你原来的逻辑不变） -->
+            <!-- 右侧按钮 -->
             <div class="nav-right">
-                {% if (request.path.startswith('/story_list') or request.path.startswith('/upload')) %}
+                {% if request.path.startswith('/story_list') or request.path.startswith('/upload') %}
                     {% if logged_in %}
                         <a href="{{ url_for('upload_story') }}" class="upload-btn">+ Upload New Story</a>
                         <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
@@ -40,7 +42,9 @@
         {% with messages = get_flashed_messages() %}
           {% if messages %}
             <div class="flash-messages">
-              {% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}
+              {% for m in messages %}
+                <div class="flash">{{ m }}</div>
+              {% endfor %}
             </div>
           {% endif %}
         {% endwith %}
