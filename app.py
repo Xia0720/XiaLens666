@@ -367,4 +367,6 @@ def upload_private():
     return render_template("upload_private.html", album_names=album_names)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+
