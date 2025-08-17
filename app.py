@@ -204,7 +204,7 @@ def delete_story(story_id):
     db.session.delete(story)
     db.session.commit()
     flash("Story deleted.", "info")
-    return redirect(url_for("story"))
+    return redirect(url_for("story_list"))
 
 # Cloudinary folder 上传：仅登录后可见/可用
 @app.route("/upload", methods=["GET", "POST"])
