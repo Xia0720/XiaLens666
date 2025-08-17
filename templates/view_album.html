@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 {% block title %}{{ album_name }} - Album{% endblock %}
+
+{% block head %}
+<!-- 引入 Lightbox CSS -->
+<link href="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/css/lightbox.min.css" rel="stylesheet" />
+{% endblock %}
+
 {% block content %}
 <h1 style="text-align:center; margin-top:20px;">{{ album_name }} Album</h1>
 
@@ -7,14 +13,15 @@
 <form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
 {% endif %}
 
-<div class="album-grid">
+<div class="album-grid" style="display:flex; flex-wrap: wrap; gap:10px; justify-content: center;">
   {% for img in images %}
     <div class="album-item" style="position: relative;">
       {% if logged_in %}
-      <input type="checkbox" name="public_ids" value="{{ img.public_id }}" style="position:absolute; top:5px; left:5px; z-index:10; width:20px; height:20px;">
+      <input type="checkbox" name="public_ids" value="{{ img.public_id }}" 
+             style="position:absolute; top:5px; left:5px; z-index:10; width:20px; height:20px;">
       {% endif %}
-      <a href="{{ img.secure_url }}" target="_blank">
-        <img src="{{ img.secure_url }}" alt="Photo">
+      <a href="{{ img.secure_url }}" data-lightbox="album" data-title="Photo">
+        <img src="{{ img.secure_url }}" alt="Photo" style="max-width:200px; max-height:200px; object-fit:cover;">
       </a>
     </div>
   {% endfor %}
@@ -22,12 +29,16 @@
 
 {% if logged_in %}
   <input type="hidden" name="album_name" value="{{ album_name }}">
-  <div style="text-align: right; margin-top: 500px;">
+  <div style="text-align: right; margin-top: 20px;">
     <button type="submit" style="padding: 5px 12px;">Delete Selected Images</button>
   </div>
 </form>
 {% endif %}
 {% endblock %}
 
+{% block scripts %}
+<!-- 引入 Lightbox JS -->
+<script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/js/lightbox.min.js"></script>
+{% endblock %}
 
 
