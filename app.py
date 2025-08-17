@@ -60,7 +60,7 @@ class Image(db.Model):
 # ---------- 路由 ----------
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return "Hello, Railway Flask is running!"
 
 @app.route("/gallery")
 def gallery():
