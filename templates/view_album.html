@@ -1,28 +1,41 @@
 {% extends "base.html" %}
 {% block title %}{{ album_name }} - Album{% endblock %}
 
-{% block head %}
-<!-- 引入 Lightbox2 的 CSS -->
-<link href="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/css/lightbox.min.css" rel="stylesheet" />
-{% endblock %}
-
 {% block content %}
+<!-- ✅ 直接在 content 里引入 CSS/JS，避免 base.html 未定义 head/scripts 的问题 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
+<script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
+
 <h1 style="text-align:center; margin-top:20px;">{{ album_name }} Album</h1>
 
 {% if logged_in %}
 <form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
 {% endif %}
 
-<div class="album-grid" style="display:flex; flex-wrap: wrap; gap:10px; justify-content: center;">
+<style>
+  .album-grid {
+    display:flex; flex-wrap: wrap; gap:10px; justify-content: center;
+  }
+  .album-item {
+    position: relative; width: 200px; height: 200px; overflow: hidden; border-radius: 8px;
+  }
+  .album-item img {
+    width:100%; height:100%; object-fit: cover; display:block;
+  }
+  .album-item input[type="checkbox"]{
+    position:absolute; top:6px; left:6px; z-index:10; width:20px; height:20px;
+  }
+</style>
+
+<div class="album-grid">
   {% for img in images %}
-    <div class="album-item" style="position: relative;">
+    <div class="album-item">
       {% if logged_in %}
-      <input type="checkbox" name="public_ids" value="{{ img.public_id }}" 
-             style="position:absolute; top:5px; left:5px; z-index:10; width:20px; height:20px;">
+      <input type="checkbox" name="public_ids" value="{{ img.public_id }}">
       {% endif %}
-      <!-- data-lightbox 用相册名分组 -->
-      <a href="{{ img.secure_url }}" data-lightbox="{{ album_name }}" data-title="Photo">
-        <img src="{{ img.secure_url }}" alt="Photo" style="max-width:200px; max-height:200px; object-fit:cover;">
+      <!-- 用 GLightbox：class="glightbox" + data-gallery 同名分组 -->
+      <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album">
+        <img src="{{ img.secure_url }}" alt="Photo">
       </a>
     </div>
   {% endfor %}
@@ -35,9 +48,15 @@
   </div>
 </form>
 {% endif %}
-{% endblock %}
 
-{% block scripts %}
-<!-- 引入 Lightbox2 的 JS -->
-<script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/js/lightbox.min.js"></script>
+<script>
+  // 初始化 GLightbox（支持左右切换、手势、键盘、循环）
+  const lightbox = GLightbox({
+    selector: '.glightbox',
+    loop: true,
+    touchNavigation: true,
+    keyboardNavigation: true,
+    closeOnOutsideClick: true
+  });
+</script>
 {% endblock %}
