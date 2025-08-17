@@ -1,21 +1,35 @@
 {% extends "base.html" %}
 {% block title %}{{ album_name }} - Private Album{% endblock %}
 
-{% block head %}
-<link href="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/css/lightbox.min.css" rel="stylesheet" />
-{% endblock %}
-
 {% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
+<script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
+
 <h1 style="text-align:center; margin-top:20px;">{{ album_name }} Private Album</h1>
 
 <form method="POST" action="{{ url_for('delete_private_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
-<div class="album-grid" style="display:flex; flex-wrap: wrap; gap:10px; justify-content: center;">
+
+<style>
+  .album-grid {
+    display:flex; flex-wrap: wrap; gap:10px; justify-content: center;
+  }
+  .album-item {
+    position: relative; width: 200px; height: 200px; overflow: hidden; border-radius: 8px;
+  }
+  .album-item img {
+    width:100%; height:100%; object-fit: cover; display:block;
+  }
+  .album-item input[type="checkbox"]{
+    position:absolute; top:6px; left:6px; z-index:10; width:20px; height:20px;
+  }
+</style>
+
+<div class="album-grid">
   {% for img in images %}
-    <div class="album-item" style="position: relative;">
-      <input type="checkbox" name="public_ids" value="{{ img.public_id }}" 
-             style="position:absolute; top:5px; left:5px; z-index:10; width:20px; height:20px;">
-      <a href="{{ img.secure_url }}" data-lightbox="{{ album_name }}" data-title="Photo">
-        <img src="{{ img.secure_url }}" alt="Photo" style="max-width:200px; max-height:200px; object-fit:cover;">
+    <div class="album-item">
+      <input type="checkbox" name="public_ids" value="{{ img.public_id }}">
+      <a href="{{ img.secure_url }}" class="glightbox" data-gallery="private-album">
+        <img src="{{ img.secure_url }}" alt="Photo">
       </a>
     </div>
   {% endfor %}
@@ -26,10 +40,16 @@
     <button type="submit" style="padding: 5px 12px;">Delete Selected Images</button>
   </div>
 </form>
-{% endblock %}
 
-{% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/js/lightbox.min.js"></script>
+<script>
+  const lightbox = GLightbox({
+    selector: '.glightbox',
+    loop: true,
+    touchNavigation: true,
+    keyboardNavigation: true,
+    closeOnOutsideClick: true
+  });
+</script>
 {% endblock %}
 
 
