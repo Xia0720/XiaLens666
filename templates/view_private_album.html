@@ -14,7 +14,7 @@
     <div class="album-item" style="position: relative;">
       <input type="checkbox" name="public_ids" value="{{ img.public_id }}" 
              style="position:absolute; top:5px; left:5px; z-index:10; width:20px; height:20px;">
-      <a href="{{ img.secure_url }}" data-lightbox="private_album" data-title="Photo">
+      <a href="{{ img.secure_url }}" data-lightbox="{{ album_name }}" data-title="Photo">
         <img src="{{ img.secure_url }}" alt="Photo" style="max-width:200px; max-height:200px; object-fit:cover;">
       </a>
     </div>
@@ -31,4 +31,5 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/js/lightbox.min.js"></script>
 {% endblock %}
+
 
