@@ -62,6 +62,7 @@ class Image(db.Model):
 @app.route("/test")
 def test():
     return "Hello World"
+    
 @app.route("/")
 def index():
     return render_template("index.html")
