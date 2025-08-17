@@ -2,7 +2,7 @@
 {% block title %}{{ album_name }} - Album{% endblock %}
 
 {% block head %}
-<!-- 引入 Lightbox CSS -->
+<!-- 引入 Lightbox2 的 CSS -->
 <link href="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/css/lightbox.min.css" rel="stylesheet" />
 {% endblock %}
 
@@ -20,7 +20,8 @@
       <input type="checkbox" name="public_ids" value="{{ img.public_id }}" 
              style="position:absolute; top:5px; left:5px; z-index:10; width:20px; height:20px;">
       {% endif %}
-      <a href="{{ img.secure_url }}" data-lightbox="album" data-title="Photo">
+      <!-- data-lightbox 用相册名分组 -->
+      <a href="{{ img.secure_url }}" data-lightbox="{{ album_name }}" data-title="Photo">
         <img src="{{ img.secure_url }}" alt="Photo" style="max-width:200px; max-height:200px; object-fit:cover;">
       </a>
     </div>
@@ -37,8 +38,6 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- 引入 Lightbox JS -->
+<!-- 引入 Lightbox2 的 JS -->
 <script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.4/dist/js/lightbox.min.js"></script>
 {% endblock %}
-
-
