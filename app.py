@@ -58,6 +58,10 @@ class Image(db.Model):
     story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
 
 # ---------- 路由 ----------
+
+@app.route("/test")
+def test():
+    return "Hello World"
 @app.route("/")
 def index():
     return render_template("index.html")
