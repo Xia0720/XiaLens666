@@ -138,8 +138,12 @@ def delete_images():
 # --------------------------
 @app.route("/story_list")
 def story_list():
-    stories = Story.query.order_by(Story.created_at.desc()).all()
-    return render_template("story_list.html", stories=stories)
+    try:
+        stories = Story.query.order_by(Story.created_at.desc()).all()
+        return render_template("story_list.html", stories=stories)
+    except Exception as e:
+        # 直接显示具体异常
+        return f"Error fetching stories: {e}"
 
 # --------------------------
 # Story 详情
