@@ -10,6 +10,7 @@ from datetime import datetime
 from functools import wraps
 from sqlalchemy import text
 import socket
+import psycopg2
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
@@ -295,10 +296,21 @@ def logout():
 @app.route("/test-db")
 def test_db():
     try:
-        db.session.execute(text("SELECT 1"))
-        return "DB OK"
+        conn = psycopg2.connect(
+            host="db.wwvqnialzwmdivqxqvjo.supabase.co",
+            port=5432,
+            dbname="postgres",
+            user="你的数据库用户名",
+            password="你的数据库密码",
+            sslmode="require"
+        )
+        cur = conn.cursor()
+        cur.execute("SELECT NOW();")
+        result = cur.fetchone()
+        conn.close()
+        return f"数据库连接成功！当前时间: {result}"
     except Exception as e:
-        return f"DB failed: {str(e)}", 500
+        return f"数据库连接失败: {e}"
 
 @app.route("/test-dns")
 def test_dns():
