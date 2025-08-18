@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 from functools import wraps
 from models import db, Story  
+import json
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET", "xia0720_secret")
