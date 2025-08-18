@@ -7,8 +7,7 @@ import cloudinary.uploader
 import cloudinary.api
 import os
 from datetime import datetime
-from functools import wraps 
-import json
+from functools import wraps
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET", "xia0720_secret")
@@ -51,7 +50,7 @@ class Story(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    images = db.Column(db.Text)  # JSON 存多张图片 URL
+    images = db.relationship("Image", backref="story", cascade="all, delete-orphan")
 
 class Image(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -119,58 +118,42 @@ def delete_images():
         flash(f"Delete failed: {str(e)}", "error")
     return redirect(url_for("view_album", album_name=album_name))
 
-# story 列表页
+
 @app.route("/story_list")
 def story_list():
     stories = Story.query.order_by(Story.created_at.desc()).all()
     return render_template("story_list.html", stories=stories)
-    
-# story 详情页
+
 @app.route("/story/<int:story_id>")
 def story_detail(story_id):
     story = Story.query.get_or_404(story_id)
     return render_template("story_detail.html", story=story)
 
-@app.route("/story/new", methods=["GET", "POST"])
-def new_story():
-    if request.method == "POST":
-        text = request.form.get("text")
-        image = request.files.get("image")
-
-        image_url = None
-        if image:
-            upload_result = cloudinary.uploader.upload(image)
-            image_url = upload_result.get("secure_url")
-
-        new_story = Story(text=text, image_url=image_url)
-        db.session.add(new_story)
-        db.session.commit()
-
-        return redirect(url_for("story_list"))
-
-    return render_template("new_story.html")
-
 # 仅登录后可发布新 Story
 @app.route("/upload_story", methods=["GET", "POST"])
+@login_required
 def upload_story():
     if request.method == "POST":
         story_text = request.form.get("story_text")
-        uploaded_files = request.files.getlist("story_images")
+        files = request.files.getlist("story_images")
 
-        image_urls = []
-        for file in uploaded_files:
-            if file:
+        if not story_text or story_text.strip() == "":
+            flash("Story content is required.", "error")
+            return redirect(request.url)
+
+        new_story = Story(text=story_text.strip())
+        db.session.add(new_story)
+        db.session.flush()
+
+        for file in files:
+            if file and file.filename:
                 upload_result = cloudinary.uploader.upload(file)
-                image_urls.append(upload_result["secure_url"])
+                img_url = upload_result.get("secure_url")
+                if img_url:
+                    db.session.add(Image(image_url=img_url, story=new_story))
 
-        # 存入数据库
-        story = Story(
-            text=story_text,
-            images=json.dumps(image_urls) if image_urls else None
-        )
-        db.session.add(story)
         db.session.commit()
-
+        flash("Story uploaded successfully!", "success")
         return redirect(url_for("story_list"))
 
     return render_template("upload_story.html")
