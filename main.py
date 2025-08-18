@@ -293,10 +293,11 @@ def logout():
 @app.route("/test-db")
 def test_db():
     try:
-        db.session.execute("SELECT 1")
-        return "DB OK"
+        result = db.session.execute("SELECT COUNT(*) FROM story")
+        count = result.scalar()
+        return f"Story table has {count} rows."
     except Exception as e:
-        return f"DB failed: {str(e)}", 500
+        return f"DB Error: {str(e)}"
 
 # --------------------------
 # Private-space（仅登录）
