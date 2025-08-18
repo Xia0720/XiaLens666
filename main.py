@@ -10,10 +10,10 @@ from datetime import datetime
 from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET", "xia0720_secret")
+app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
 
 # 配置 Cloudinary
-cloudinary.config(
+cloudinary.config(cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'), api_key=os.environ.get('CLOUDINARY_API_KEY'), api_secret=os.environ.get('CLOUDINARY_API_SECRET')))
     cloud_name='dpr0pl2tf',
     api_key='548549517251566',
     api_secret='9o-PlPBRQzQPfuVCQfaGrUV3_IE'
@@ -22,9 +22,9 @@ cloudinary.config(
 # 数据库配置（优先 Railway）
 database_url = os.getenv("DATABASE_URL")
 if database_url:
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:////mnt/data/stories.db')
 else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///stories.db"
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:////mnt/data/stories.db')
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
