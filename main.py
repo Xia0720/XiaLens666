@@ -152,29 +152,25 @@ def new_story():
 
 # 仅登录后可发布新 Story
 @app.route("/upload_story", methods=["GET", "POST"])
-@login_required
 def upload_story():
     if request.method == "POST":
         story_text = request.form.get("story_text")
-        files = request.files.getlist("story_images")
+        uploaded_files = request.files.getlist("story_images")
 
-        if not story_text or story_text.strip() == "":
-            flash("Story content is required.", "error")
-            return redirect(request.url)
-
-        new_story = Story(text=story_text.strip())
-        db.session.add(new_story)
-        db.session.flush()
-
-        for file in files:
-            if file and file.filename:
+        image_urls = []
+        for file in uploaded_files:
+            if file:
                 upload_result = cloudinary.uploader.upload(file)
-                img_url = upload_result.get("secure_url")
-                if img_url:
-                    db.session.add(Image(image_url=img_url, story=new_story))
+                image_urls.append(upload_result["secure_url"])
 
+        # 存入数据库
+        story = Story(
+            text=story_text,
+            images=json.dumps(image_urls) if image_urls else None
+        )
+        db.session.add(story)
         db.session.commit()
-        flash("Story uploaded successfully!", "success")
+
         return redirect(url_for("story_list"))
 
     return render_template("upload_story.html")
