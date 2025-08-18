@@ -9,6 +9,7 @@ import os
 from datetime import datetime
 from functools import wraps
 from sqlalchemy import text
+import socket
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
@@ -138,12 +139,8 @@ def delete_images():
 # --------------------------
 @app.route("/story_list")
 def story_list():
-    try:
-        stories = Story.query.order_by(Story.created_at.desc()).all()
-        return render_template("story_list.html", stories=stories)
-    except Exception as e:
-        # 直接显示具体异常
-        return f"Error fetching stories: {e}"
+    stories = Story.query.order_by(Story.created_at.desc()).all()
+    return render_template("story_list.html", stories=stories)
 
 # --------------------------
 # Story 详情
@@ -302,6 +299,14 @@ def test_db():
         return "DB OK"
     except Exception as e:
         return f"DB failed: {str(e)}", 500
+
+@app.route("/test-dns")
+def test_dns():
+    try:
+        result = socket.getaddrinfo("db.wwvqnialzwmdivqxqvjo.supabase.co", 5432, proto=socket.IPPROTO_TCP)
+        return str(result)
+    except Exception as e:
+        return str(e)
         
 # --------------------------
 # Private-space（仅登录）
