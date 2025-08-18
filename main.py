@@ -54,7 +54,7 @@ class Story(db.Model):
 
 class Image(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    image_url = db.Column(db.String(255), nullable=False)
+    image_url = db.Column(db.String(500), nullable=False)
     story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
 
 # ---------- 路由 ----------
