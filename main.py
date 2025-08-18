@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -12,40 +12,50 @@ from functools import wraps
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
 
-# 配置 Cloudinary
-cloudinary.config(cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'), api_key=os.environ.get('CLOUDINARY_API_KEY'), api_secret=os.environ.get('CLOUDINARY_API_SECRET')))
-    cloud_name='dpr0pl2tf',
-    api_key='548549517251566',
-    api_secret='9o-PlPBRQzQPfuVCQfaGrUV3_IE'
+# --------------------------
+# Cloudinary 配置
+# --------------------------
+cloudinary.config(
+    cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME', 'dpr0pl2tf'),
+    api_key=os.getenv('CLOUDINARY_API_KEY', '548549517251566'),
+    api_secret=os.getenv('CLOUDINARY_API_SECRET', '9o-PlPBRQzQPfuVCQfaGrUV3_IE')
 )
 
-# 数据库配置（优先 Railway）
-database_url = os.getenv("DATABASE_URL")
+# --------------------------
+# 数据库配置
+# --------------------------
+database_url = os.getenv("DATABASE_URL")  # Render 环境变量 / Supabase
 if database_url:
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:////mnt/data/stories.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:////mnt/data/stories.db')
+    # 本地调试用 SQLite
+    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///stories.db"
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-# ---------- 模板全局变量：所有模板都能拿到 logged_in ----------
+# --------------------------
+# 模板全局变量：所有模板可用 logged_in
+# --------------------------
 @app.context_processor
 def inject_logged_in():
     return dict(logged_in=session.get("logged_in", False))
 
-# ---------- 简单的登录保护装饰器 ----------
+# --------------------------
+# 登录保护装饰器
+# --------------------------
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not session.get("logged_in"):
-            # 不在导航栏暴露 login，但你可手动访问 /login
             return redirect(url_for("login", next=request.path))
         return f(*args, **kwargs)
     return decorated
 
-# ---------- 数据模型 ----------
+# --------------------------
+# 数据模型
+# --------------------------
 class Story(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text, nullable=False)
@@ -57,7 +67,9 @@ class Image(db.Model):
     image_url = db.Column(db.String(500), nullable=False)
     story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
 
-# ---------- 路由 ----------
+# --------------------------
+# 路由示例（保持原功能）
+# --------------------------
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -70,7 +82,9 @@ def gallery():
 def about():
     return render_template("about.html")
 
-# 原来不设置相册密码：Album 列表（Cloudinary folders）
+# --------------------------
+# 相册列表
+# --------------------------
 @app.route("/album")
 def albums():
     try:
@@ -78,9 +92,8 @@ def albums():
         albums = []
         for folder in folders.get('folders', []):
             folder_name = folder['name']
-            if folder_name == "private":  # 忽略 Private-space 文件夹
+            if folder_name == "private":
                 continue
-            # 获取相册封面
             resources = cloudinary.api.resources(type="upload", prefix=folder_name, max_results=1)
             cover_url = resources['resources'][0]['secure_url'] if resources['resources'] else ""
             albums.append({'name': folder_name, 'cover': cover_url})
@@ -88,21 +101,22 @@ def albums():
     except Exception as e:
         return f"Error fetching albums: {str(e)}"
 
+# --------------------------
+# Album 内容页
+# --------------------------
 @app.route("/album/<album_name>", methods=["GET", "POST"])
 def view_album(album_name):
     try:
         resources = cloudinary.api.resources(type="upload", prefix=album_name, max_results=500)
-        images = []
-        for img in resources["resources"]:
-            images.append({
-                "public_id": img["public_id"],
-                "secure_url": img["secure_url"]
-            })
+        images = [{"public_id": img["public_id"], "secure_url": img["secure_url"]} for img in resources["resources"]]
         logged_in = session.get("logged_in", False)
         return render_template("view_album.html", album_name=album_name, images=images, logged_in=logged_in)
     except Exception as e:
         return f"Error loading album: {str(e)}"
-        
+
+# --------------------------
+# 删除图片（仅登录）
+# --------------------------
 @app.route("/delete_images", methods=["POST"])
 @login_required
 def delete_images():
@@ -118,18 +132,25 @@ def delete_images():
         flash(f"Delete failed: {str(e)}", "error")
     return redirect(url_for("view_album", album_name=album_name))
 
-
+# --------------------------
+# Story 列表
+# --------------------------
 @app.route("/story_list")
 def story_list():
     stories = Story.query.order_by(Story.created_at.desc()).all()
     return render_template("story_list.html", stories=stories)
 
+# --------------------------
+# Story 详情
+# --------------------------
 @app.route("/story/<int:story_id>")
 def story_detail(story_id):
     story = Story.query.get_or_404(story_id)
     return render_template("story_detail.html", story=story)
 
-# 仅登录后可发布新 Story
+# --------------------------
+# 上传新 Story（仅登录）
+# --------------------------
 @app.route("/upload_story", methods=["GET", "POST"])
 @login_required
 def upload_story():
@@ -158,22 +179,22 @@ def upload_story():
 
     return render_template("upload_story.html")
 
-# 仅登录后可编辑
+# --------------------------
+# 编辑 Story（仅登录）
+# --------------------------
 @app.route("/story/<int:story_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit_story(story_id):
     story = Story.query.get_or_404(story_id)
 
     if request.method == "POST":
-        # 修改文字内容
         text = request.form.get("text")
         if not text or text.strip() == "":
-            flash("故事内容不能为空", "error")
+            flash("Story content cannot be empty", "error")
             return render_template("edit_story.html", story=story)
 
         story.text = text.strip()
 
-        # 删除选中的图片
         delete_image_ids = request.form.get("delete_images", "")
         if delete_image_ids:
             for img_id in delete_image_ids.split(","):
@@ -181,7 +202,6 @@ def edit_story(story_id):
                 if img:
                     db.session.delete(img)
 
-        # 上传新图片
         files = request.files.getlist("story_images")
         for file in files:
             if file and file.filename:
@@ -191,12 +211,14 @@ def edit_story(story_id):
                     db.session.add(Image(image_url=img_url, story=story))
 
         db.session.commit()
-        flash("故事已更新", "success")
+        flash("Story updated", "success")
         return redirect(url_for("story_detail", story_id=story.id))
 
     return render_template("edit_story.html", story=story)
 
-# 仅登录后可删除
+# --------------------------
+# 删除 Story（仅登录）
+# --------------------------
 @app.route("/delete_story/<int:story_id>", methods=["POST"])
 @login_required
 def delete_story(story_id):
@@ -206,17 +228,17 @@ def delete_story(story_id):
     flash("Story deleted.", "info")
     return redirect(url_for("story_list"))
 
-# Cloudinary folder 上传：仅登录后可见/可用
+# --------------------------
+# 上传图片到 Cloudinary album（仅登录）
+# --------------------------
 @app.route("/upload", methods=["GET", "POST"])
 @login_required
 def upload():
-    # 获取 Cloudinary 已有相册（文件夹）
     try:
         result = cloudinary.api.root_folders()
         album_names = [folder['name'] for folder in result.get('folders', []) if folder['name'] != 'private']
     except Exception as e:
         album_names = []
-        print("Error fetching folders:", e)
 
     if request.method == "POST":
         photos = request.files.getlist("photo")
@@ -226,12 +248,7 @@ def upload():
         if not photos or all(p.filename == '' for p in photos):
             return "No selected photo file", 400
 
-        # 如果选择了“新建相册”
-        if selected_album == "new" and new_album:
-            folder = new_album
-        else:
-            folder = selected_album
-
+        folder = new_album if (selected_album == "new" and new_album) else selected_album
         if not folder:
             return "Folder name is required", 400
 
@@ -246,7 +263,9 @@ def upload():
 
     return render_template("upload.html", album_names=album_names)
 
-# Login / Logout（路由存在，但不在导航栏展示）
+# --------------------------
+# 登录/登出
+# --------------------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -268,7 +287,9 @@ def logout():
     flash("Logged out.")
     return redirect(url_for("index"))
 
-# Test DB connectivity
+# --------------------------
+# DB 测试
+# --------------------------
 @app.route("/test-db")
 def test_db():
     try:
@@ -277,24 +298,21 @@ def test_db():
     except Exception as e:
         return f"DB failed: {str(e)}", 500
 
-# ---------- Private-space ----------
+# --------------------------
+# Private-space（仅登录）
+# --------------------------
 @app.route("/private_space")
 @login_required
 def private_space():
     try:
-        # 获取 private/ 下的所有资源
         resources = cloudinary.api.resources(type="upload", prefix="private", max_results=500)
-        # 提取不同子文件夹名作为相册
         albums_set = set()
         for res in resources['resources']:
-            # 公共 id 的前缀是 private/album_name/filename
-            public_id = res['public_id']
-            parts = public_id.split('/')
+            parts = res['public_id'].split('/')
             if len(parts) >= 2:
                 albums_set.add(parts[1])
         albums = []
         for album_name in albums_set:
-            # 取封面图
             album_resources = cloudinary.api.resources(type="upload", prefix=f"private/{album_name}", max_results=1)
             cover_url = album_resources['resources'][0]['secure_url'] if album_resources['resources'] else ""
             albums.append({'name': album_name, 'cover': cover_url})
@@ -331,7 +349,6 @@ def delete_private_images():
 @login_required
 def upload_private():
     try:
-        # 获取 private/ 下已有相册
         resources = cloudinary.api.resources(type="upload", prefix="private", max_results=500)
         album_names_set = set()
         for res in resources['resources']:
@@ -354,7 +371,7 @@ def upload_private():
         if not folder:
             return "Folder name is required", 400
 
-        folder = f"private/{folder}"  # 上传到 private/ 下
+        folder = f"private/{folder}"
         try:
             for photo in photos:
                 if photo and photo.filename != '':
@@ -366,5 +383,9 @@ def upload_private():
 
     return render_template("upload_private.html", album_names=album_names)
 
+# --------------------------
+# 启动
+# --------------------------
 if __name__ == "__main__":
     app.run(debug=True)
+
