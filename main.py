@@ -8,6 +8,7 @@ import cloudinary.api
 import os
 from datetime import datetime
 from functools import wraps
+from sqlalchemy import text
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
@@ -293,12 +294,11 @@ def logout():
 @app.route("/test-db")
 def test_db():
     try:
-        result = db.session.execute("SELECT COUNT(*) FROM story")
-        count = result.scalar()
-        return f"Story table has {count} rows."
+        db.session.execute(text("SELECT 1"))
+        return "DB OK"
     except Exception as e:
-        return f"DB Error: {str(e)}"
-
+        return f"DB failed: {str(e)}", 500
+        
 # --------------------------
 # Private-space（仅登录）
 # --------------------------
