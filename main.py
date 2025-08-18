@@ -50,8 +50,8 @@ def login_required(f):
 class Story(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text, nullable=False)
-    image_url = db.Column(db.String(500))  # 存图片的 Cloudinary URL
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    images = db.Column(db.Text)  # JSON 存多张图片 URL
 
 class Image(db.Model):
     id = db.Column(db.Integer, primary_key=True)
