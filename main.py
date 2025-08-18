@@ -8,6 +8,8 @@ import cloudinary.api
 import os
 from datetime import datetime
 from functools import wraps
+from PIL import Image
+import io
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
@@ -255,7 +257,20 @@ def upload():
         try:
             for photo in photos:
                 if photo and photo.filename != '':
-                    cloudinary.uploader.upload(photo, folder=folder)
+                    # 使用 Pillow 打开图片
+                    img = Image.open(photo)
+                    buffer = io.BytesIO()
+                    img.save(buffer, format="JPEG", quality=90, optimize=True)
+                    buffer.seek(0)
+
+                    # 上传到 Cloudinary，自动优化
+                    cloudinary.uploader.upload(
+                        buffer,
+                        folder=folder,
+                        quality="auto",
+                        fetch_format="auto"
+                    )
+
             flash("Uploaded successfully.")
             return redirect(url_for("upload"))
         except Exception as e:
@@ -372,10 +387,22 @@ def upload_private():
             return "Folder name is required", 400
 
         folder = f"private/{folder}"
+
         try:
             for photo in photos:
                 if photo and photo.filename != '':
-                    cloudinary.uploader.upload(photo, folder=folder)
+                    img = Image.open(photo)
+                    buffer = io.BytesIO()
+                    img.save(buffer, format="JPEG", quality=90, optimize=True)
+                    buffer.seek(0)
+
+                    cloudinary.uploader.upload(
+                        buffer,
+                        folder=folder,
+                        quality="auto",
+                        fetch_format="auto"
+                    )
+
             flash("Uploaded successfully.")
             return redirect(url_for("upload_private"))
         except Exception as e:
