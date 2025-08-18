@@ -338,7 +338,7 @@ body, html {
 /* 小设备自适应（保留原来的） */
 @media (max-width: 720px) {
     .story-container {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
     }
     .main-title { font-size:48px; }
     .story-card { width: 100%; }
