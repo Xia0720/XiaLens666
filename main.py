@@ -7,8 +7,7 @@ import cloudinary.uploader
 import cloudinary.api
 import os
 from datetime import datetime
-from functools import wraps
-from models import db, Story  
+from functools import wraps 
 import json
 
 app = Flask(__name__)
