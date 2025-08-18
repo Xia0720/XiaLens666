@@ -170,6 +170,7 @@ body, html {
     box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
 
+/* Album 页面网格 */
 .album-grid {
   display: flex;
   flex-wrap: wrap;
@@ -182,14 +183,33 @@ body, html {
 .album-item {
   text-align: center;
   margin: 0;
+  flex: 1 1 200px;   /* 最小宽度 200px，自适应换行 */
+  max-width: 300px;  /* 可选最大宽度 */
 }
 
 .album-item img {
-  display: block;        /* 消除底部空白 */
-  width: 200px;
-  height: 200px;         /* 固定高度，保持布局整齐 */
-  object-fit: cover;     /* 保持比例裁剪 */
+  display: block;       /* 消除底部空白 */
+  width: 100%;          /* 填满容器 */
+  height: 200px;        /* 固定高度保持布局整齐 */
+  object-fit: cover;    /* 保持比例裁剪 */
   border-radius: 8px;
+}
+
+/* ---------------- 响应式 ---------------- */
+/* 屏幕宽度 <= 1024px：尽量显示两列 */
+@media (max-width: 1024px) {
+  .album-item {
+    flex: 1 1 45%;
+    max-width: 45%;
+  }
+}
+
+/* 屏幕宽度 <= 720px：手机屏幕，每行显示两列 */
+@media (max-width: 720px) {
+  .album-item {
+    flex: 1 1 45%;
+    max-width: 45%;
+  }
 }
 
 /* ===== Story 页面样式（blog 风格） ===== */
