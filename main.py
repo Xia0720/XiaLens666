@@ -376,7 +376,7 @@ def logout():
 @app.route("/test-db")
 def test_db():
     try:
-        db.session.execute("SELECT 1")
+        db.session.execute(text("SELECT 1"))
         return "DB OK"
     except Exception as e:
         return f"DB failed: {str(e)}", 500
