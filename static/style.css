@@ -285,7 +285,8 @@ body, html {
 /* story-images（图片列表）内图片宽度调整跟文字盒一致 */
 .story-images {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;       /* 超出宽度自动换行 */
     gap: 12px;
     margin-top: 15px;
     max-width: 300px;  /* 限制图片区域最大宽度，和.story-card保持一致 */
