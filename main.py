@@ -293,12 +293,15 @@ def upload():
                     cloudinary.uploader.upload(buffer, folder=folder, quality="auto", fetch_format="auto")
 
             flash("Uploaded successfully.")
-            return redirect(url_for("upload"))
+            # ✅ 上传成功后跳转，并把最后使用的相册带过去
+            return redirect(url_for("upload", last_album=folder))
         except Exception as e:
             return f"Error uploading file: {str(e)}"
 
-    return render_template("upload.html", album_names=album_names)
-
+    # ✅ GET 请求时取出 last_album 传给模板
+    last_album = request.args.get("last_album")
+    return render_template("upload.html", album_names=album_names, last_album=last_album)
+    
 # --------------------------
 # 私密空间上传（仅登录）
 # --------------------------
