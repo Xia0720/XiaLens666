@@ -432,6 +432,7 @@ def delete_private_images():
     except Exception as e:
         flash(f"Delete failed: {str(e)}", "error")
     return redirect(url_for("view_private_album", album_name=album_name))
+    
 # --------------------------
 # 启动
 # --------------------------
