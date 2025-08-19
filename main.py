@@ -343,7 +343,7 @@ def upload_private():
                     cloudinary.uploader.upload(buffer, folder=folder, quality="auto", fetch_format="auto")
 
             flash("Uploaded successfully.")
-            return redirect(url_for("upload_private", last_album=folder))
+            return redirect(url_for("upload_private", last_album=folder.split('/', 1)[1]))
         except Exception as e:
             return f"Error uploading file: {str(e)}"
 
