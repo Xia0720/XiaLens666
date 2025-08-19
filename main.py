@@ -80,16 +80,24 @@ def login_required(f):
 # --------------------------
 # 数据模型
 # --------------------------
-class StoryImage(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    image_url = db.Column(db.String(500), nullable=False)
-    story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
-
 class Story(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     images = db.relationship("StoryImage", backref="story", cascade="all, delete-orphan")
+
+class StoryImage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    image_url = db.Column(db.String(500), nullable=False)
+    story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
+
+# 确保 instance 文件夹存在
+if not os.path.exists('instance'):
+    os.makedirs('instance')
+
+# 在应用启动时自动创建表
+with app.app_context():
+    db.create_all()
 
 # --------------------------
 # 路由示例（保持原功能）
