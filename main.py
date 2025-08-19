@@ -428,44 +428,6 @@ def delete_private_images():
         flash(f"Delete failed: {str(e)}", "error")
     return redirect(url_for("view_private_album", album_name=album_name))
 
-@app.route("/upload_private", methods=["GET", "POST"])
-@login_required
-def upload_private():
-    try:
-        resources = cloudinary.api.resources(type="upload", prefix="private", max_results=500)
-        album_names_set = set()
-        for res in resources['resources']:
-            parts = res['public_id'].split('/')
-            if len(parts) >= 2:
-                album_names_set.add(parts[1])
-        album_names = list(album_names_set)
-    except Exception as e:
-        album_names = []
-
-    if request.method == "POST":
-        photos = request.files.getlist("photo")
-        selected_album = request.form.get("album")
-        new_album = request.form.get("new_album", "").strip()
-
-        if not photos or all(p.filename == '' for p in photos):
-            return "No selected photo file", 400
-
-        folder = new_album if (selected_album == "new" and new_album) else selected_album
-        if not folder:
-            return "Folder name is required", 400
-
-        folder = f"private/{folder}"
-        try:
-            for photo in photos:
-                if photo and photo.filename != '':
-                    cloudinary.uploader.upload(photo, folder=folder)
-            flash("Uploaded successfully.")
-            return redirect(url_for("upload_private"))
-        except Exception as e:
-            return f"Error uploading file: {str(e)}"
-
-    return render_template("upload_private.html", album_names=album_names)
-
 # --------------------------
 # 启动
 # --------------------------
