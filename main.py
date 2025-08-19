@@ -173,7 +173,7 @@ def upload_story():
                 upload_result = cloudinary.uploader.upload(file)
                 img_url = upload_result.get("secure_url")
                 if img_url:
-                    db.session.add(Image(image_url=img_url, story=new_story))
+                    db.session.add(StoryImage(image_url=img_url, story=new_story))
 
         db.session.commit()
         flash("Story uploaded successfully!", "success")
@@ -200,7 +200,7 @@ def edit_story(story_id):
         delete_image_ids = request.form.get("delete_images", "")
         if delete_image_ids:
             for img_id in delete_image_ids.split(","):
-                img = Image.query.get(int(img_id))
+                img = StoryImage.query.get(int(img_id))
                 if img:
                     db.session.delete(img)
 
