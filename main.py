@@ -58,16 +58,16 @@ def login_required(f):
 # --------------------------
 # 数据模型
 # --------------------------
+class StoryImage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    image_url = db.Column(db.String(500), nullable=False)
+    story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
+
 class Story(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     text = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    images = db.relationship("Image", backref="story", cascade="all, delete-orphan")
-
-class Image(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    image_url = db.Column(db.String(500), nullable=False)
-    story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
+    images = db.relationship("StoryImage", backref="story", cascade="all, delete-orphan")
 
 # --------------------------
 # 路由示例（保持原功能）
