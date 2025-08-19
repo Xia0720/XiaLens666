@@ -9,15 +9,10 @@ import os
 from datetime import datetime
 from functools import wraps
 from PIL import Image, ExifTags
-from supabase import create_client, Client
 import io
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
-
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # --------------------------
 # Cloudinary 配置
@@ -31,11 +26,10 @@ cloudinary.config(
 # --------------------------
 # 数据库配置
 # --------------------------
-database_url = os.getenv("DATABASE_URL")  # Render 环境变量 / Supabase
+database_url = os.getenv("DATABASE_URL")  # Render / Supabase
 if database_url:
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    # 本地调试用 SQLite
     app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///stories.db"
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -43,7 +37,7 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 # --------------------------
-# 模板全局变量：所有模板可用 logged_in
+# 模板全局变量
 # --------------------------
 @app.context_processor
 def inject_logged_in():
@@ -100,12 +94,12 @@ class StoryImage(db.Model):
 if not os.path.exists('instance'):
     os.makedirs('instance')
 
-# 在应用启动时自动创建表
+# 自动创建表
 with app.app_context():
     db.create_all()
 
 # --------------------------
-# 路由示例（保持原功能）
+# 首页和静态页面
 # --------------------------
 @app.route("/")
 def index():
@@ -174,8 +168,7 @@ def delete_images():
 # --------------------------
 @app.route("/story_list")
 def story_list():
-    response = supabase.table("stories").select("*").order("created_at", desc=True).execute()
-    stories = response.data
+    stories = Story.query.order_by(Story.created_at.desc()).all()
     return render_template("story_list.html", stories=stories, logged_in=False)
 
 # --------------------------
@@ -246,7 +239,7 @@ def edit_story(story_id):
                 upload_result = cloudinary.uploader.upload(file)
                 img_url = upload_result.get("secure_url")
                 if img_url:
-                    db.session.add(Image(image_url=img_url, story=story))
+                    db.session.add(StoryImage(image_url=img_url, story=story))
 
         db.session.commit()
         flash("Story updated", "success")
@@ -275,7 +268,7 @@ def upload():
     try:
         result = cloudinary.api.root_folders()
         album_names = [folder['name'] for folder in result.get('folders', []) if folder['name'] != 'private']
-    except Exception as e:
+    except Exception:
         album_names = []
 
     if request.method == "POST":
@@ -293,20 +286,11 @@ def upload():
         try:
             for photo in photos:
                 if photo and photo.filename != '':
-                    # 修正方向
                     img = fix_image_orientation(photo)
-
-                    # 转成字节流再上传 Cloudinary，保留压缩优化
                     buffer = io.BytesIO()
                     img.save(buffer, format="JPEG", quality=90, optimize=True)
                     buffer.seek(0)
-
-                    cloudinary.uploader.upload(
-                        buffer,
-                        folder=folder,
-                        quality="auto",
-                        fetch_format="auto"
-                    )
+                    cloudinary.uploader.upload(buffer, folder=folder, quality="auto", fetch_format="auto")
 
             flash("Uploaded successfully.")
             return redirect(url_for("upload"))
@@ -314,7 +298,54 @@ def upload():
             return f"Error uploading file: {str(e)}"
 
     return render_template("upload.html", album_names=album_names)
-    
+
+# --------------------------
+# 私密空间上传（仅登录）
+# --------------------------
+@app.route("/upload_private", methods=["GET", "POST"])
+@login_required
+def upload_private():
+    try:
+        resources = cloudinary.api.resources(type="upload", prefix="private", max_results=500)
+        album_names_set = set()
+        for res in resources['resources']:
+            parts = res['public_id'].split('/')
+            if len(parts) >= 2:
+                album_names_set.add(parts[1])
+        album_names = list(album_names_set)
+    except Exception:
+        album_names = []
+
+    if request.method == "POST":
+        photos = request.files.getlist("photo")
+        selected_album = request.form.get("album")
+        new_album = request.form.get("new_album", "").strip()
+
+        if not photos or all(p.filename == '' for p in photos):
+            return "No selected photo file", 400
+
+        folder = new_album if (selected_album == "new" and new_album) else selected_album
+        if not folder:
+            return "Folder name is required", 400
+
+        folder = f"private/{folder}"
+
+        try:
+            for photo in photos:
+                if photo and photo.filename != '':
+                    img = fix_image_orientation(photo)
+                    buffer = io.BytesIO()
+                    img.save(buffer, format="JPEG", quality=90, optimize=True)
+                    buffer.seek(0)
+                    cloudinary.uploader.upload(buffer, folder=folder, quality="auto", fetch_format="auto")
+
+            flash("Uploaded successfully.")
+            return redirect(url_for("upload_private"))
+        except Exception as e:
+            return f"Error uploading file: {str(e)}"
+
+    return render_template("upload_private.html", album_names=album_names)
+
 # --------------------------
 # 登录/登出
 # --------------------------
@@ -340,116 +371,9 @@ def logout():
     return redirect(url_for("index"))
 
 # --------------------------
-# DB 测试
-# --------------------------
-@app.route("/test-db")
-def test_db():
-    try:
-        db.session.execute("SELECT 1")
-        return "DB OK"
-    except Exception as e:
-        return f"DB failed: {str(e)}", 500
-        
-# --------------------------
-# Private-space（仅登录）
-# --------------------------
-@app.route("/private_space")
-@login_required
-def private_space():
-    try:
-        resources = cloudinary.api.resources(type="upload", prefix="private", max_results=500)
-        albums_set = set()
-        for res in resources['resources']:
-            parts = res['public_id'].split('/')
-            if len(parts) >= 2:
-                albums_set.add(parts[1])
-        albums = []
-        for album_name in albums_set:
-            album_resources = cloudinary.api.resources(type="upload", prefix=f"private/{album_name}", max_results=1)
-            cover_url = album_resources['resources'][0]['secure_url'] if album_resources['resources'] else ""
-            albums.append({'name': album_name, 'cover': cover_url})
-        return render_template("private_album.html", albums=albums)
-    except Exception as e:
-        return f"Error fetching private albums: {str(e)}"
-
-@app.route("/private_space/<album_name>", methods=["GET", "POST"])
-@login_required
-def view_private_album(album_name):
-    try:
-        resources = cloudinary.api.resources(type="upload", prefix=f"private/{album_name}", max_results=500)
-        images = [{"public_id": img["public_id"], "secure_url": img["secure_url"]} for img in resources["resources"]]
-        return render_template("view_private_album.html", album_name=album_name, images=images)
-    except Exception as e:
-        return f"Error loading private album: {str(e)}"
-
-@app.route("/delete_private_images", methods=["POST"])
-@login_required
-def delete_private_images():
-    public_ids = request.form.getlist("public_ids")
-    album_name = request.form.get("album_name")
-    if not public_ids:
-        flash("No images selected for deletion.", "warning")
-        return redirect(url_for("view_private_album", album_name=album_name))
-    try:
-        cloudinary.api.delete_resources(public_ids)
-        flash(f"Deleted {len(public_ids)} images successfully.", "success")
-    except Exception as e:
-        flash(f"Delete failed: {str(e)}", "error")
-    return redirect(url_for("view_private_album", album_name=album_name))
-
-@app.route("/upload_private", methods=["GET", "POST"])
-@login_required
-def upload_private():
-    try:
-        resources = cloudinary.api.resources(type="upload", prefix="private", max_results=500)
-        album_names_set = set()
-        for res in resources['resources']:
-            parts = res['public_id'].split('/')
-            if len(parts) >= 2:
-                album_names_set.add(parts[1])
-        album_names = list(album_names_set)
-    except Exception as e:
-        album_names = []
-
-    if request.method == "POST":
-        photos = request.files.getlist("photo")
-        selected_album = request.form.get("album")
-        new_album = request.form.get("new_album", "").strip()
-
-        if not photos or all(p.filename == '' for p in photos):
-            return "No selected photo file", 400
-
-        folder = new_album if (selected_album == "new" and new_album) else selected_album
-        if not folder:
-            return "Folder name is required", 400
-
-        folder = f"private/{folder}"
-
-        try:
-            for photo in photos:
-                if photo and photo.filename != '':
-                    img = fix_image_orientation(photo)
-
-                    buffer = io.BytesIO()
-                    img.save(buffer, format="JPEG", quality=90, optimize=True)
-                    buffer.seek(0)
-
-                    cloudinary.uploader.upload(
-                        buffer,
-                        folder=folder,
-                        quality="auto",
-                        fetch_format="auto"
-                    )
-
-            flash("Uploaded successfully.")
-            return redirect(url_for("upload_private"))
-        except Exception as e:
-            return f"Error uploading file: {str(e)}"
-
-    return render_template("upload_private.html", album_names=album_names)
-# --------------------------
 # 启动
 # --------------------------
 if __name__ == "__main__":
     app.run(debug=True)
+
 
