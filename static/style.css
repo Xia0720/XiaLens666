@@ -320,9 +320,23 @@ body, html {
 }
 
 .story-detail {
-  max-width: 760px;
-  margin: 我0px auto;
+  max-width: 100%; /* 或者更大，比如 1200px */
+  margin: 0 auto;
   padding: 0 15px;
+}
+
+.story-detail .story-images {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    flex-wrap: wrap;  /* 根据需要换行 */
+    margin-top: 15px;
+}
+
+.story-detail .story-images a img {
+    height: 200px;   /* 可以根据需要调整 */
+    object-fit: cover;
+    border-radius: 8px;
 }
 
 /* 操作按钮对齐右侧 */
