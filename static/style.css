@@ -329,14 +329,17 @@ body, html {
     display: flex;
     flex-direction: row;
     gap: 12px;
-    flex-wrap: wrap;  /* 根据需要换行 */
+    flex-wrap: nowrap;      /* 不换行 */
     margin-top: 15px;
+    overflow-x: auto;       /* 超出宽度可滚动 */
+    padding-bottom: 10px;   /* 给滚动条留空间 */
 }
 
 .story-detail .story-images a img {
-    height: 200px;   /* 可以根据需要调整 */
+    height: 200px;          /* 固定高度 */
     object-fit: cover;
     border-radius: 8px;
+    flex: 0 0 auto;         /* 防止被压缩 */
 }
 
 /* 操作按钮对齐右侧 */
