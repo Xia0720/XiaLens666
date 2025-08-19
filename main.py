@@ -343,11 +343,13 @@ def upload_private():
                     cloudinary.uploader.upload(buffer, folder=folder, quality="auto", fetch_format="auto")
 
             flash("Uploaded successfully.")
-            return redirect(url_for("upload_private"))
+            return redirect(url_for("upload_private", last_album=folder))
         except Exception as e:
             return f"Error uploading file: {str(e)}"
 
-    return render_template("upload_private.html", album_names=album_names)
+    # ✅ GET 请求时取出 last_album 传给模板
+    last_album = request.args.get("last_album")
+    return render_template("upload_private.html", album_names=album_names, last_album=last_album)
 
 # --------------------------
 # 登录/登出
