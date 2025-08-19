@@ -8,7 +8,7 @@ import cloudinary.api
 import os
 from datetime import datetime
 from functools import wraps
-from PIL import Image
+from PIL import Image, ExifTags
 import io
 
 app = Flask(__name__)
@@ -43,6 +43,28 @@ migrate = Migrate(app, db)
 @app.context_processor
 def inject_logged_in():
     return dict(logged_in=session.get("logged_in", False))
+
+# ---------- 工具函数：自动修正图片方向 ----------
+def fix_image_orientation(file):
+    img = Image.open(file)
+    try:
+        for orientation in ExifTags.TAGS.keys():
+            if ExifTags.TAGS[orientation] == "Orientation":
+                break
+
+        exif = img._getexif()
+        if exif is not None:
+            orientation_value = exif.get(orientation)
+            if orientation_value == 3:
+                img = img.rotate(180, expand=True)
+            elif orientation_value == 6:
+                img = img.rotate(270, expand=True)
+            elif orientation_value == 8:
+                img = img.rotate(90, expand=True)
+    except Exception:
+        pass  # 没有EXIF就跳过
+
+    return img
 
 # --------------------------
 # 登录保护装饰器
@@ -257,13 +279,14 @@ def upload():
         try:
             for photo in photos:
                 if photo and photo.filename != '':
-                    # 使用 Pillow 打开图片
-                    img = Image.open(photo)
+                    # 修正方向
+                    img = fix_image_orientation(photo)
+
+                    # 转成字节流再上传 Cloudinary，保留压缩优化
                     buffer = io.BytesIO()
                     img.save(buffer, format="JPEG", quality=90, optimize=True)
                     buffer.seek(0)
 
-                    # 上传到 Cloudinary，自动优化
                     cloudinary.uploader.upload(
                         buffer,
                         folder=folder,
@@ -277,7 +300,7 @@ def upload():
             return f"Error uploading file: {str(e)}"
 
     return render_template("upload.html", album_names=album_names)
-
+    
 # --------------------------
 # 登录/登出
 # --------------------------
@@ -391,7 +414,8 @@ def upload_private():
         try:
             for photo in photos:
                 if photo and photo.filename != '':
-                    img = Image.open(photo)
+                    img = fix_image_orientation(photo)
+
                     buffer = io.BytesIO()
                     img.save(buffer, format="JPEG", quality=90, optimize=True)
                     buffer.seek(0)
@@ -409,7 +433,6 @@ def upload_private():
             return f"Error uploading file: {str(e)}"
 
     return render_template("upload_private.html", album_names=album_names)
-
 # --------------------------
 # 启动
 # --------------------------
