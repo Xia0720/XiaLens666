@@ -10,11 +10,11 @@
         <div class="story-container">
             {% for story in stories %}
                 <div class="story-card">
-                    {% if story.images %}
+                   {% if story.image_urls %}
                         <div class="story-images">
-                            {% for img in story.images %}
-                                <a href="{{ img.image_url }}" target="_blank">
-                                    <img src="{{ img.image_url }}">
+                            {% for img_url in story.image_urls %}
+                                 <a href="{{ img_url }}" target="_blank">
+                                    <img src="{{ img_url }}">
                                 </a>
                             {% endfor %}
                         </div>
