@@ -169,7 +169,7 @@ def delete_images():
 @app.route("/story_list")
 def story_list():
     stories = Story.query.order_by(Story.created_at.desc()).all()
-    return render_template("story_list.html", stories=stories, logged_in=False)
+    return render_template("story_list.html", stories=stories, logged_in=session.get("logged_in", False))
 
 # --------------------------
 # Story 详情
