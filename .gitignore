@@ -1,1 +1,18 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+.env/
+
+# Mac 系统文件
 .DS_Store
+
+# 数据库文件（如果你不想提交）
+instance/
+*.sqlite3
+*.db
+
