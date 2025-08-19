@@ -299,7 +299,7 @@ def upload():
             return f"Error uploading file: {str(e)}"
 
     # ✅ GET 请求时取出 last_album 传给模板
-    last_album = request.args.get("last_album")
+    last_album = request.args.get("last_album", "")
     return render_template("upload.html", album_names=album_names, last_album=last_album)
     
 # --------------------------
