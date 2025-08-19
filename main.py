@@ -15,9 +15,9 @@ import io
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
 
-url = os.getenv("SUPABASE_URL")   # 在 Render 上配置环境变量 SUPABASE_URL
-key = os.getenv("SUPABASE_KEY")   # 在 Render 上配置环境变量 SUPABASE_KEY
-supabase: Client = create_client(url, key)
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # --------------------------
 # Cloudinary 配置
