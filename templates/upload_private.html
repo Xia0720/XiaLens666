@@ -17,11 +17,10 @@
         </select>
     </div>
 
-    <div id="newAlbumDiv" style="display:none; margin-top:10px;">
+    <div id="newAlbumDiv" style="display:{% if last_album not in album_names %}block{% else %}none{% endif %}; margin-top:10px;">
         <label for="new_album">新相册名</label><br>
-        <input type="text" name="new_album" placeholder="输入新相册名">
+        <input type="text" name="new_album" placeholder="输入新相册名" value="{% if last_album not in album_names %}{{ last_album }}{% endif %}">
     </div>
-
     <div style="margin-top:15px;">
         <label for="photo">选择照片</label><br>
         <input type="file" name="photo" id="photo" multiple required>
