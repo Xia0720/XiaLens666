@@ -289,7 +289,7 @@ body, html {
     flex-wrap: wrap;       /* 超出宽度自动换行 */
     gap: 12px;
     margin-top: 15px;
-    max-width: 300px;  /* 限制图片区域最大宽度，和.story-card保持一致 */
+    max-width: 100px;  /* 限制图片区域最大宽度，和.story-card保持一致 */
 }
 
 .story-images a {
