@@ -169,8 +169,17 @@ def delete_images():
 # --------------------------
 @app.route("/story_list")
 def story_list():
-    stories = Story.query.order_by(Story.created_at.desc()).all()
-    return render_template("story_list.html", stories=stories)
+    # 从 Supabase 获取故事文字和图片 URL
+    response = supabase.table("stories").select("*").order("created_at", desc=True).execute()
+    stories = response.data
+
+    for story in stories:
+        if isinstance(story.get("image_urls"), str):
+            story["image_urls"] = story["image_urls"].split(",")
+        elif story.get("image_urls") is None:
+            story["image_urls"] = []
+
+    return render_template("story_list.html", stories=stories, logged_in=False)
 
 # --------------------------
 # Story 详情
