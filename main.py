@@ -371,9 +371,103 @@ def logout():
     return redirect(url_for("index"))
 
 # --------------------------
+# DB 测试
+# --------------------------
+@app.route("/test-db")
+def test_db():
+    try:
+        db.session.execute("SELECT 1")
+        return "DB OK"
+    except Exception as e:
+        return f"DB failed: {str(e)}", 500
+        
+# --------------------------
+# Private-space（仅登录）
+# --------------------------
+@app.route("/private_space")
+@login_required
+def private_space():
+    try:
+        resources = cloudinary.api.resources(type="upload", prefix="private", max_results=500)
+        albums_set = set()
+        for res in resources['resources']:
+            parts = res['public_id'].split('/')
+            if len(parts) >= 2:
+                albums_set.add(parts[1])
+        albums = []
+        for album_name in albums_set:
+            album_resources = cloudinary.api.resources(type="upload", prefix=f"private/{album_name}", max_results=1)
+            cover_url = album_resources['resources'][0]['secure_url'] if album_resources['resources'] else ""
+            albums.append({'name': album_name, 'cover': cover_url})
+        return render_template("private_album.html", albums=albums)
+    except Exception as e:
+        return f"Error fetching private albums: {str(e)}"
+
+@app.route("/private_space/<album_name>", methods=["GET", "POST"])
+@login_required
+def view_private_album(album_name):
+    try:
+        resources = cloudinary.api.resources(type="upload", prefix=f"private/{album_name}", max_results=500)
+        images = [{"public_id": img["public_id"], "secure_url": img["secure_url"]} for img in resources["resources"]]
+        return render_template("view_private_album.html", album_name=album_name, images=images)
+    except Exception as e:
+        return f"Error loading private album: {str(e)}"
+
+@app.route("/delete_private_images", methods=["POST"])
+@login_required
+def delete_private_images():
+    public_ids = request.form.getlist("public_ids")
+    album_name = request.form.get("album_name")
+    if not public_ids:
+        flash("No images selected for deletion.", "warning")
+        return redirect(url_for("view_private_album", album_name=album_name))
+    try:
+        cloudinary.api.delete_resources(public_ids)
+        flash(f"Deleted {len(public_ids)} images successfully.", "success")
+    except Exception as e:
+        flash(f"Delete failed: {str(e)}", "error")
+    return redirect(url_for("view_private_album", album_name=album_name))
+
+@app.route("/upload_private", methods=["GET", "POST"])
+@login_required
+def upload_private():
+    try:
+        resources = cloudinary.api.resources(type="upload", prefix="private", max_results=500)
+        album_names_set = set()
+        for res in resources['resources']:
+            parts = res['public_id'].split('/')
+            if len(parts) >= 2:
+                album_names_set.add(parts[1])
+        album_names = list(album_names_set)
+    except Exception as e:
+        album_names = []
+
+    if request.method == "POST":
+        photos = request.files.getlist("photo")
+        selected_album = request.form.get("album")
+        new_album = request.form.get("new_album", "").strip()
+
+        if not photos or all(p.filename == '' for p in photos):
+            return "No selected photo file", 400
+
+        folder = new_album if (selected_album == "new" and new_album) else selected_album
+        if not folder:
+            return "Folder name is required", 400
+
+        folder = f"private/{folder}"
+        try:
+            for photo in photos:
+                if photo and photo.filename != '':
+                    cloudinary.uploader.upload(photo, folder=folder)
+            flash("Uploaded successfully.")
+            return redirect(url_for("upload_private"))
+        except Exception as e:
+            return f"Error uploading file: {str(e)}"
+
+    return render_template("upload_private.html", album_names=album_names)
+
+# --------------------------
 # 启动
 # --------------------------
 if __name__ == "__main__":
     app.run(debug=True)
-
-
