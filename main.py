@@ -9,10 +9,15 @@ import os
 from datetime import datetime
 from functools import wraps
 from PIL import Image, ExifTags
+from supabase import create_client, Client
 import io
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
+
+url = os.getenv("SUPABASE_URL")   # 在 Render 上配置环境变量 SUPABASE_URL
+key = os.getenv("SUPABASE_KEY")   # 在 Render 上配置环境变量 SUPABASE_KEY
+supabase: Client = create_client(url, key)
 
 # --------------------------
 # Cloudinary 配置
@@ -169,16 +174,8 @@ def delete_images():
 # --------------------------
 @app.route("/story_list")
 def story_list():
-    # 从 Supabase 获取故事文字和图片 URL
     response = supabase.table("stories").select("*").order("created_at", desc=True).execute()
     stories = response.data
-
-    for story in stories:
-        if isinstance(story.get("image_urls"), str):
-            story["image_urls"] = story["image_urls"].split(",")
-        elif story.get("image_urls") is None:
-            story["image_urls"] = []
-
     return render_template("story_list.html", stories=stories, logged_in=False)
 
 # --------------------------
