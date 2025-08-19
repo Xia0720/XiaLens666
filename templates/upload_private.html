@@ -7,9 +7,13 @@
         <label for="albumSelect">选择相册</label><br>
         <select name="album" id="albumSelect" onchange="toggleNewAlbumInput()">
             {% for album in album_names %}
-                <option value="{{ album }}" {% if last_album == album %}selected{% endif %}>{{ album }}</option>
+                {% if last_album %}
+                    <option value="{{ album }}" {% if last_album == album %}selected{% endif %}>{{ album }}</option>
+                {% else %}
+                    <option value="{{ album }}">{{ album }}</option>
+                {% endif %}
             {% endfor %}
-            <option value="new" {% if last_album == 'new' %}selected{% endif %}>+ 创建新相册</option>
+            <option value="new" {% if last_album not in album_names %}selected{% endif %}>+ 创建新相册</option>
         </select>
     </div>
 
