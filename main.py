@@ -12,7 +12,6 @@ from PIL import Image, ExifTags
 import io
 import time
 from cloudinary.utils import api_sign_request
-from models import Photo
 
 
 app = Flask(__name__)
