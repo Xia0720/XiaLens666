@@ -102,7 +102,7 @@ async function uploadToCloudinary(file, album) {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", UPLOAD_PRESET);
-  formData.append("folder", album);
+  formData.append("folder", "albums/" + album);
 
   const res = await fetch(url, { method: "POST", body: formData });
   if (!res.ok) throw new Error("Cloudinary 上传失败");
