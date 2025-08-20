@@ -325,21 +325,19 @@ body, html {
   padding: 0 15px;
 }
 
-.story-detail .story-images {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;       /* 不换行 */
+.story-detail-images {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); /* 每列最小180px */
     gap: 12px;
     margin-top: 15px;
-    overflow-x: auto;        /* 超出宽度可横向滚动 */
-    padding-bottom: 10px;    /* 给滚动条留空间 */
+    justify-content: center; /* 居中对齐 */
 }
 
-.story-detail .story-images a img {
-    height: 400px;           /* 图片更大，可根据需要调整 */
+.story-detail-images img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px; /* 圆角可选 */
     object-fit: cover;
-    border-radius: 8px;
-    flex: 0 0 auto;          /* 防止被压缩 */
 }
 
 /* 操作按钮对齐右侧 */
