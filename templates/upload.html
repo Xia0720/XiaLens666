@@ -12,14 +12,17 @@
                 {% else %}
                     <option value="{{ album }}">{{ album }}</option>
                 {% endif %}
-             {% endfor %}
-             <option value="new" {% if last_album not in album_names %}selected{% endif %}>+ 创建新相册</option>
-          </select>
+            {% endfor %}
+            <option value="new" {% if last_album not in album_names %}selected{% endif %}>+ 创建新相册</option>
+        </select>
     </div>
 
-    <div id="newAlbumDiv" style="display:none; margin-top:10px;">
-        <label for="new_album">新相册名</label><br>
-        <input type="text" name="new_album" id="newAlbumInput" placeholder="输入新相册名">
+    <!-- 默认显示状态由模板逻辑控制 -->
+    <div id="newAlbumDiv" style="display:{% if last_album not in album_names %}block{% else %}none{% endif %}; margin-top:10px;">
+        <label for="newAlbumInput">新相册名</label><br>
+        <input type="text" name="new_album" id="newAlbumInput"
+               placeholder="输入新相册名"
+               value="{% if last_album not in album_names %}{{ last_album }}{% endif %}">
     </div>
 
     <div style="margin-top:15px;">
@@ -38,6 +41,11 @@ function toggleNewAlbumInput() {
     var select = document.getElementById('albumSelect');
     var newAlbumDiv = document.getElementById('newAlbumDiv');
     newAlbumDiv.style.display = (select.value === 'new') ? 'block' : 'none';
+}
+
+// 页面加载时执行一次，避免初始状态错误
+window.onload = function() {
+    toggleNewAlbumInput();
 }
 
 // === 批量并发上传到 Cloudinary（前端直传） ===
@@ -67,7 +75,6 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
 
     for (let i = 0; i < files.length; i += chunkSize) {
         const chunk = Array.from(files).slice(i, i + chunkSize);
-
         await Promise.all(chunk.map(file => uploadToCloudinary(file, album)));
 
         uploaded += chunk.length;
