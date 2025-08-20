@@ -360,6 +360,25 @@ body, html {
     object-fit: cover;
 }
 
+.back-button {
+    margin: 10px 0 20px 0;
+}
+
+.btn-back {
+    display: inline-block;
+    padding: 6px 14px;
+    font-size: 14px;
+    color: #fff;
+    background: #555;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background 0.2s ease;
+}
+
+.btn-back:hover {
+    background: #333;
+}
+
 /* 响应式：屏幕变窄时自动降列数 */
 @media (max-width: 1024px) {
   .story-detail .story-images { grid-template-columns: repeat(3, 1fr); }
