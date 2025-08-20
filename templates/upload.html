@@ -37,20 +37,6 @@
 <div id="uploadStatus" style="margin-top:15px; font-size:14px; color:#444;"></div>
 
 <script>
-const CLOUD_NAME    = "dpr0pl2tf";    
-const UPLOAD_PRESET = "unsigned_preset";   
-
-function toggleNewAlbumInput() {
-  const select = document.getElementById('albumSelect');
-  const newAlbumDiv = document.getElementById('newAlbumDiv');
-  newAlbumDiv.style.display = (select.value === 'new') ? 'block' : 'none';
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-  toggleNewAlbumInput();
-});
-
-// 表单提交
 document.getElementById('uploadForm').addEventListener('submit', async function (e) {
   e.preventDefault();
 
@@ -67,55 +53,31 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
 
   submitBtn.disabled = true;
   submitBtn.textContent = "正在上传...";
-  statusDiv.textContent = `开始上传到相册：${album} ...`;
+  statusDiv.innerHTML = "";
 
-  const chunkSize = 5;
-  let uploaded = 0;
+  for (const file of files) {
+    const statusItem = document.createElement("div");
+    statusItem.textContent = `${file.name} 正在上传...`;
+    statusDiv.appendChild(statusItem);
 
-  try {
-    for (let i = 0; i < files.length; i += chunkSize) {
-      const chunk = Array.from(files).slice(i, i + chunkSize);
-      // 上传每一批，并同时保存到数据库
-      await Promise.all(chunk.map(async file => {
-        const url = await uploadToCloudinary(file, album);
-        await savePhotoToDB(album, url); // AJAX 保存数据库
-      }));
-      uploaded += chunk.length;
-      statusDiv.textContent = `已完成 ${uploaded}/${files.length} 张上传`;
+    try {
+      // 上传到 Cloudinary
+      const url = await uploadToCloudinary(file, album);
+
+      // 保存到数据库
+      await savePhotoToDB(album, url);
+
+      statusItem.textContent = `${file.name} ✅ 上传成功`;
+      statusItem.style.color = "green";
+    } catch (err) {
+      console.error(err);
+      statusItem.textContent = `${file.name} ❌ 上传失败: ${err.message}`;
+      statusItem.style.color = "red";
     }
-    statusDiv.textContent = `✅ 全部上传完成！相册：${album}`;
-  } catch (err) {
-    console.error(err);
-    statusDiv.textContent = "❌ 上传过程中出现错误，请稍后重试。";
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = "上传";
   }
+
+  submitBtn.disabled = false;
+  submitBtn.textContent = "上传";
 });
-
-// 直传 Cloudinary
-async function uploadToCloudinary(file, album) {
-  const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", UPLOAD_PRESET);
-  formData.append("folder", album);
-
-  const res = await fetch(url, { method: "POST", body: formData });
-  if (!res.ok) throw new Error("Cloudinary 上传失败");
-  const data = await res.json();
-  return data.secure_url;
-}
-
-// AJAX 保存到数据库
-async function savePhotoToDB(album, url) {
-  const res = await fetch("/save_photo", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({album: album, url: url})
-  });
-  if (!res.ok) throw new Error("保存数据库失败");
-  return await res.json();
-}
 </script>
 {% endblock %}
