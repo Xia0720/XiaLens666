@@ -14,12 +14,10 @@
           <option value="{{ album }}">{{ album }}</option>
         {% endif %}
       {% endfor %}
-      <!-- 选择“新建相册”时显示输入框 -->
       <option value="new" {% if last_album and last_album not in album_names %}selected{% endif %}>+ 创建新相册</option>
     </select>
   </div>
 
-  <!-- 服务端就决定首屏是否显示，避免 JS 失败时看不到 -->
   <div id="newAlbumDiv"
        style="display:{% if last_album and last_album not in album_names %}block{% else %}none{% endif %}; margin-top:10px;">
     <label for="new_album">新相册名</label><br>
@@ -39,7 +37,6 @@
 <div id="uploadStatus" style="margin-top:15px; font-size:14px; color:#444;"></div>
 
 <script>
-// ====== 可配置：Cloudinary 信息（务必替换为你自己的）======
 const CLOUD_NAME    = "dpr0pl2tf";    
 const UPLOAD_PRESET = "unsigned_preset";   
 
@@ -49,7 +46,6 @@ function toggleNewAlbumInput() {
   newAlbumDiv.style.display = (select.value === 'new') ? 'block' : 'none';
 }
 
-// ✅ 页面加载时执行一次，保证默认显示正确
 document.addEventListener('DOMContentLoaded', function () {
   toggleNewAlbumInput();
 });
@@ -64,11 +60,7 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
   const statusDiv = document.getElementById('uploadStatus');
   const submitBtn = document.getElementById('submitBtn');
 
-  // ✅ 如果选择“新建”，直接用输入框的名字，不需要再选
-  let album = albumSelect.value;
-  if (album === 'new') {
-    album = (newAlbumInput.value || "").trim();
-  }
+  let album = albumSelect.value === 'new' ? (newAlbumInput.value || "").trim() : albumSelect.value;
 
   if (!album) { alert("请填写相册名！"); return; }
   if (files.length === 0) { alert("请选择照片！"); return; }
@@ -83,7 +75,11 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
   try {
     for (let i = 0; i < files.length; i += chunkSize) {
       const chunk = Array.from(files).slice(i, i + chunkSize);
-      await Promise.all(chunk.map(file => uploadToCloudinary(file, album)));
+      // 上传每一批，并同时保存到数据库
+      await Promise.all(chunk.map(async file => {
+        const url = await uploadToCloudinary(file, album);
+        await savePhotoToDB(album, url); // AJAX 保存数据库
+      }));
       uploaded += chunk.length;
       statusDiv.textContent = `已完成 ${uploaded}/${files.length} 张上传`;
     }
@@ -97,17 +93,29 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
   }
 });
 
+// 直传 Cloudinary
 async function uploadToCloudinary(file, album) {
   const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", UPLOAD_PRESET);
-  formData.append("folder", "albums/" + album);
+  formData.append("folder", album);
 
   const res = await fetch(url, { method: "POST", body: formData });
   if (!res.ok) throw new Error("Cloudinary 上传失败");
   const data = await res.json();
   return data.secure_url;
+}
+
+// AJAX 保存到数据库
+async function savePhotoToDB(album, url) {
+  const res = await fetch("/save_photo", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({album: album, url: url})
+  });
+  if (!res.ok) throw new Error("保存数据库失败");
+  return await res.json();
 }
 </script>
 {% endblock %}
