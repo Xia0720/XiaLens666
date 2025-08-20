@@ -146,13 +146,22 @@ def albums():
 # --------------------------
 # Album 内容页
 # --------------------------
-@app.route("/album/<album_name>", methods=["GET", "POST"])
+@app.route("/album/<path:album_name>", methods=["GET", "POST"])
 def view_album(album_name):
     try:
+        # album_name 格式可能是 albums/5, albums/holiday 等
         resources = cloudinary.api.resources(type="upload", prefix=album_name, max_results=500)
         images = [{"public_id": img["public_id"], "secure_url": img["secure_url"]} for img in resources["resources"]]
+
+        # 显示名字只取最后一级
+        display_name = album_name.split("/")[-1]
+
         logged_in = session.get("logged_in", False)
-        return render_template("view_album.html", album_name=album_name, images=images, logged_in=logged_in)
+        return render_template("view_album.html",
+                               album_name=display_name,   # 显示用户自定义的相册名
+                               cloud_folder=album_name,   # 传给模板用于删除操作的 public_id 前缀
+                               images=images,
+                               logged_in=logged_in)
     except Exception as e:
         return f"Error loading album: {str(e)}"
 
