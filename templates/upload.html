@@ -1,98 +1,113 @@
 {% extends "base.html" %}
-{% block title %}Upload - XiaCapture{% endblock %}
+{% block title %}Upload Photos{% endblock %}
 {% block content %}
-<h1>Upload</h1>
+<h2>Upload Photos</h2>
 
-<!-- 新建相册表单 -->
-<form method="POST" action="{{ url_for('upload') }}">
-    <label for="album_name">新相册名称：</label>
-    <input type="text" id="album_name" name="album_name" required>
-    <button type="submit" name="action" value="create_album">创建新相册</button>
-</form>
-
-<hr>
-
-<!-- 上传照片表单 -->
-<form method="POST" enctype="multipart/form-data" action="{{ url_for('upload') }}">
-    <label for="album">选择相册：</label>
-    <select id="album" name="album" required>
-        {% for album in albums %}
-        <option value="{{ album.id }}">{{ album.name }}</option>
-        {% endfor %}
+<form id="uploadForm" method="POST" enctype="multipart/form-data">
+  <div>
+    <label for="albumSelect">选择相册</label><br>
+    <select name="album" id="albumSelect" onchange="toggleNewAlbumInput()">
+      {% for album in album_names %}
+        {% if last_album %}
+          <option value="{{ album }}" {% if last_album == album %}selected{% endif %}>{{ album }}</option>
+        {% else %}
+          <option value="{{ album }}">{{ album }}</option>
+        {% endif %}
+      {% endfor %}
+      <!-- 选择“新建相册”时显示输入框 -->
+      <option value="new" {% if last_album and last_album not in album_names %}selected{% endif %}>+ 创建新相册</option>
     </select>
-    <br><br>
-    <input type="file" name="photos" multiple required>
-    <br><br>
-    <button type="submit" name="action" value="upload_photos">上传照片</button>
+  </div>
+
+  <!-- 服务端就决定首屏是否显示，避免 JS 失败时看不到 -->
+  <div id="newAlbumDiv"
+       style="display:{% if last_album and last_album not in album_names %}block{% else %}none{% endif %}; margin-top:10px;">
+    <label for="new_album">新相册名</label><br>
+    <input type="text" name="new_album" id="newAlbumInput"
+           placeholder="输入新相册名"
+           value="{% if last_album and last_album not in album_names %}{{ last_album }}{% endif %}">
+  </div>
+
+  <div style="margin-top:15px;">
+    <label for="photo">选择照片</label><br>
+    <input type="file" name="photo" id="photo" multiple required>
+  </div>
+
+  <button id="submitBtn" type="submit" style="margin-top:15px;">上传</button>
 </form>
 
 <div id="uploadStatus" style="margin-top:15px; font-size:14px; color:#444;"></div>
 
 <script>
-// === 控制是否显示“新相册输入框” ===
+// ====== 可配置：Cloudinary 信息（务必替换为你自己的）======
+const CLOUD_NAME    = "dpr0pl2tf";    
+const UPLOAD_PRESET = "ml_default";   
+
 function toggleNewAlbumInput() {
-    var select = document.getElementById('albumSelect');
-    var newAlbumDiv = document.getElementById('newAlbumDiv');
-    newAlbumDiv.style.display = (select.value === 'new') ? 'block' : 'none';
+  const select = document.getElementById('albumSelect');
+  const newAlbumDiv = document.getElementById('newAlbumDiv');
+  newAlbumDiv.style.display = (select.value === 'new') ? 'block' : 'none';
 }
 
-// 页面加载时执行一次，避免初始状态错误
-window.onload = function() {
-    toggleNewAlbumInput();
-}
-
-// === 批量并发上传到 Cloudinary（前端直传） ===
-document.getElementById('uploadForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-
-    const albumSelect = document.getElementById('albumSelect');
-    const newAlbumInput = document.getElementById('newAlbumInput');
-    const album = (albumSelect.value === 'new') ? newAlbumInput.value.trim() : albumSelect.value;
-    const files = document.getElementById('photo').files;
-    const statusDiv = document.getElementById('uploadStatus');
-
-    if (!album) {
-        alert("请填写相册名！");
-        return;
-    }
-    if (files.length === 0) {
-        alert("请选择照片！");
-        return;
-    }
-
-    statusDiv.innerHTML = `开始上传到相册：<b>${album}</b> ...`;
-
-    // === 批量上传 ===
-    const chunkSize = 5;  // 每次上传 5 张，避免超时
-    let uploaded = 0;
-
-    for (let i = 0; i < files.length; i += chunkSize) {
-        const chunk = Array.from(files).slice(i, i + chunkSize);
-        await Promise.all(chunk.map(file => uploadToCloudinary(file, album)));
-
-        uploaded += chunk.length;
-        statusDiv.innerHTML = `已完成 ${uploaded}/${files.length} 张上传`;
-    }
-
-    statusDiv.innerHTML = `✅ 全部上传完成！相册：${album}`;
+// ✅ 页面加载时执行一次，保证默认显示正确
+document.addEventListener('DOMContentLoaded', function () {
+  toggleNewAlbumInput();
 });
 
-// === Cloudinary 上传函数 ===
-// ⚠️ 你需要把 cloud_name 和 upload_preset 换成你自己的
-async function uploadToCloudinary(file, album) {
-    const url = "https://api.cloudinary.com/v1_1/<dpr0pl2tf>/upload";
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", "<ml_default>");
-    formData.append("folder", album); // 存到对应相册目录
+// 表单提交
+document.getElementById('uploadForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
 
-    try {
-        const res = await fetch(url, { method: "POST", body: formData });
-        const data = await res.json();
-        return data.secure_url;
-    } catch (err) {
-        console.error("上传失败：", err);
+  const albumSelect = document.getElementById('albumSelect');
+  const newAlbumInput = document.getElementById('newAlbumInput');
+  const files = document.getElementById('photo').files;
+  const statusDiv = document.getElementById('uploadStatus');
+  const submitBtn = document.getElementById('submitBtn');
+
+  // ✅ 如果选择“新建”，直接用输入框的名字，不需要再选
+  let album = albumSelect.value;
+  if (album === 'new') {
+    album = (newAlbumInput.value || "").trim();
+  }
+
+  if (!album) { alert("请填写相册名！"); return; }
+  if (files.length === 0) { alert("请选择照片！"); return; }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = "正在上传...";
+  statusDiv.textContent = `开始上传到相册：${album} ...`;
+
+  const chunkSize = 5;
+  let uploaded = 0;
+
+  try {
+    for (let i = 0; i < files.length; i += chunkSize) {
+      const chunk = Array.from(files).slice(i, i + chunkSize);
+      await Promise.all(chunk.map(file => uploadToCloudinary(file, album)));
+      uploaded += chunk.length;
+      statusDiv.textContent = `已完成 ${uploaded}/${files.length} 张上传`;
     }
+    statusDiv.textContent = `✅ 全部上传完成！相册：${album}`;
+  } catch (err) {
+    console.error(err);
+    statusDiv.textContent = "❌ 上传过程中出现错误，请稍后重试。";
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "上传";
+  }
+});
+
+async function uploadToCloudinary(file, album) {
+  const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", UPLOAD_PRESET);
+  formData.append("folder", album);
+
+  const res = await fetch(url, { method: "POST", body: formData });
+  if (!res.ok) throw new Error("Cloudinary 上传失败");
+  const data = await res.json();
+  return data.secure_url;
 }
 </script>
 {% endblock %}
