@@ -6,6 +6,8 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 import os
+import time
+from cloudinary.utils import api_sign_request
 from datetime import datetime
 from functools import wraps
 from PIL import Image, ExifTags
@@ -432,6 +434,29 @@ def delete_private_images():
     except Exception as e:
         flash(f"Delete failed: {str(e)}", "error")
     return redirect(url_for("view_private_album", album_name=album_name))
+
+@app.route("/cloudinary-sign", methods=["POST"])
+@login_required
+def cloudinary_sign():
+    """
+    前端直传 Cloudinary 需要签名，这里按 folder 生成一次签名（整批文件可复用）。
+    """
+    data = request.get_json(force=True) or {}
+    folder = data.get("folder", "").strip()
+    timestamp = int(time.time())
+
+    params_to_sign = {"timestamp": timestamp}
+    if folder:
+        params_to_sign["folder"] = folder
+
+    signature = api_sign_request(params_to_sign, cloudinary.config().api_secret)
+
+    return {
+        "timestamp": timestamp,
+        "signature": signature,
+        "api_key": cloudinary.config().api_key,
+        "cloud_name": cloudinary.config().cloud_name,
+    }
     
 # --------------------------
 # 启动
