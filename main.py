@@ -150,12 +150,7 @@ def albums():
 def view_album(album_name):
     try:
         resources = cloudinary.api.resources(type="upload", prefix=album_name, max_results=500)
-        images = []
-        for img in resources["resources"]:
-            images.append({
-                "public_id": img["public_id"],
-                "secure_url": img["secure_url"]
-            })
+        images = [{"public_id": img["public_id"], "secure_url": img["secure_url"]} for img in resources["resources"]]
         logged_in = session.get("logged_in", False)
         return render_template("view_album.html", album_name=album_name, images=images, logged_in=logged_in)
     except Exception as e:
