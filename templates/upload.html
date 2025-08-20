@@ -95,12 +95,14 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
 
 // 直传 Cloudinary
 async function uploadToCloudinary(file, album) {
-  const MAIN_FOLDER = "albums"; // 主文件夹
   const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", UPLOAD_PRESET);
-  formData.append("folder", `${MAIN_FOLDER}/${album}`); // 自动加上主文件夹前缀
+
+  // 所有相册都放在 albums 主文件夹下
+  const folderPath = `albums/${album}`;
+  formData.append("folder", folderPath);
 
   const res = await fetch(url, { method: "POST", body: formData });
   if (!res.ok) throw new Error("Cloudinary 上传失败");
