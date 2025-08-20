@@ -469,31 +469,16 @@ def cloudinary_sign():      # 前端直传 Cloudinary 需要签名，这里按 f
 @app.route("/save_photo", methods=["POST"])
 @login_required
 def save_photo():
-    files = request.files.getlist("photos")
-    album = request.form.get("album")
-    result = []
+    data = request.get_json()
+    album = data.get("album")
+    url = data.get("url")
+    if not album or not url:
+        return jsonify({"success": False, "message": "缺少参数"}), 400
 
-    for file in files:
-        try:
-            # 上传到 Cloudinary，自动归到 albums/album_name 文件夹
-            upload_res = cloudinary.uploader.upload(
-                file,
-                folder=f"albums/{album}"
-            )
-            url = upload_res["secure_url"]
-            public_id = upload_res["public_id"]
-
-            # 防止重复存数据库
-            if not Photo.query.filter_by(url=url).first():
-                photo = Photo(album=album, url=url)
-                db.session.add(photo)
-                db.session.commit()
-            
-            result.append({"file": file.filename, "status": "success"})
-        except Exception as e:
-            result.append({"file": file.filename, "status": "error", "msg": str(e)})
-
-    return jsonify(result)
+    photo = Photo(album=album, url=url)
+    db.session.add(photo)
+    db.session.commit()
+    return jsonify({"success": True, "id": photo.id})
 # --------------------------
 # 启动
 # --------------------------
