@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -6,12 +6,14 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 import os
-import time
-from cloudinary.utils import api_sign_request
 from datetime import datetime
 from functools import wraps
 from PIL import Image, ExifTags
 import io
+import time
+from cloudinary.utils import api_sign_request
+from models import Photo
+
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
@@ -454,7 +456,20 @@ def cloudinary_sign():      # 前端直传 Cloudinary 需要签名，这里按 f
         "api_key": cloudinary.config().api_key,
         "cloud_name": cloudinary.config().cloud_name,
     }
-    
+
+@app.route("/save_photo", methods=["POST"])
+def save_photo():
+    data = request.get_json()
+    album = data.get('album')
+    url = data.get('url')
+    if not album or not url:
+        return jsonify({"success": False, "error": "缺少参数"}), 400
+
+    # 保存到数据库
+    new_photo = Photo(album=album, url=url)
+    db.session.add(new_photo)
+    db.session.commit()
+    return jsonify({"success": True})
 # --------------------------
 # 启动
 # --------------------------
