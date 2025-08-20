@@ -37,6 +37,23 @@
 <div id="uploadStatus" style="margin-top:15px; font-size:14px; color:#444;"></div>
 
 <script>
+// ====== 关键：显示/隐藏“新相册输入框”的函数 ======
+function toggleNewAlbumInput() {
+  const select = document.getElementById('albumSelect');
+  const newAlbumDiv = document.getElementById('newAlbumDiv');
+  // 如果选中新建，就显示输入框；否则隐藏
+  newAlbumDiv.style.display = (select && select.value === 'new') ? 'block' : 'none';
+}
+
+// 页面加载时初始化一次（保证首屏显示正确）
+document.addEventListener('DOMContentLoaded', function () {
+  toggleNewAlbumInput();
+});
+
+// ===== 以下保持你原有的上传逻辑（最小改动：逐张或分批） ======
+// 你之前的 submit 处理函数可以继续放在这里（或替换为逐张逻辑）
+// 我在这里只放一个兼容的提交处理示例（逐张上传示例）：
+
 document.getElementById('uploadForm').addEventListener('submit', async function (e) {
   e.preventDefault();
 
@@ -49,29 +66,29 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
   let album = albumSelect.value === 'new' ? (newAlbumInput.value || "").trim() : albumSelect.value;
 
   if (!album) { alert("请填写相册名！"); return; }
-  if (files.length === 0) { alert("请选择照片！"); return; }
+  if (!files || files.length === 0) { alert("请选择照片！"); return; }
 
   submitBtn.disabled = true;
   submitBtn.textContent = "正在上传...";
   statusDiv.innerHTML = "";
 
+  // 逐张上传（更稳定），如果你想继续分批请改这里
   for (const file of files) {
     const statusItem = document.createElement("div");
     statusItem.textContent = `${file.name} 正在上传...`;
     statusDiv.appendChild(statusItem);
 
     try {
-      // 上传到 Cloudinary
+      // 请确保你页面中已有 uploadToCloudinary(file, album) 的实现
+      // 并确保 savePhotoToDB(album, url) 的后端路由存在
       const url = await uploadToCloudinary(file, album);
-
-      // 保存到数据库
       await savePhotoToDB(album, url);
 
       statusItem.textContent = `${file.name} ✅ 上传成功`;
       statusItem.style.color = "green";
     } catch (err) {
       console.error(err);
-      statusItem.textContent = `${file.name} ❌ 上传失败: ${err.message}`;
+      statusItem.textContent = `${file.name} ❌ 上传失败: ${err && err.message ? err.message : err}`;
       statusItem.style.color = "red";
     }
   }
