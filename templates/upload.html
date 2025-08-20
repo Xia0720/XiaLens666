@@ -80,10 +80,10 @@ document.getElementById('uploadForm').addEventListener('submit', async function(
 // === Cloudinary 上传函数 ===
 // ⚠️ 你需要把 cloud_name 和 upload_preset 换成你自己的
 async function uploadToCloudinary(file, album) {
-    const url = "https://api.cloudinary.com/v1_1/<你的cloud_name>/upload";
+    const url = "https://api.cloudinary.com/v1_1/<dpr0pl2tf>/upload";
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("upload_preset", "<你的upload_preset>");
+    formData.append("upload_preset", "<ml_default>");
     formData.append("folder", album); // 存到对应相册目录
 
     try {
