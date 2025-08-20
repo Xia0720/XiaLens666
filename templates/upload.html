@@ -2,7 +2,7 @@
 {% block content %}
 <h2>Upload Photos</h2>
 
-<form method="POST" enctype="multipart/form-data">
+<form id="uploadForm" method="POST" enctype="multipart/form-data">
     <div>
         <label for="albumSelect">选择相册</label><br>
         <select name="album" id="albumSelect" onchange="toggleNewAlbumInput()">
@@ -19,7 +19,7 @@
 
     <div id="newAlbumDiv" style="display:none; margin-top:10px;">
         <label for="new_album">新相册名</label><br>
-        <input type="text" name="new_album" placeholder="输入新相册名">
+        <input type="text" name="new_album" id="newAlbumInput" placeholder="输入新相册名">
     </div>
 
     <div style="margin-top:15px;">
@@ -30,15 +30,71 @@
     <button type="submit" style="margin-top:15px;">上传</button>
 </form>
 
+<div id="uploadStatus" style="margin-top:15px; font-size:14px; color:#444;"></div>
+
 <script>
+// === 控制是否显示“新相册输入框” ===
 function toggleNewAlbumInput() {
     var select = document.getElementById('albumSelect');
     var newAlbumDiv = document.getElementById('newAlbumDiv');
-    if (select.value === 'new') {
-        newAlbumDiv.style.display = 'block';
-    } else {
-        newAlbumDiv.style.display = 'none';
+    newAlbumDiv.style.display = (select.value === 'new') ? 'block' : 'none';
+}
+
+// === 批量并发上传到 Cloudinary（前端直传） ===
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const albumSelect = document.getElementById('albumSelect');
+    const newAlbumInput = document.getElementById('newAlbumInput');
+    const album = (albumSelect.value === 'new') ? newAlbumInput.value.trim() : albumSelect.value;
+    const files = document.getElementById('photo').files;
+    const statusDiv = document.getElementById('uploadStatus');
+
+    if (!album) {
+        alert("请填写相册名！");
+        return;
+    }
+    if (files.length === 0) {
+        alert("请选择照片！");
+        return;
+    }
+
+    statusDiv.innerHTML = `开始上传到相册：<b>${album}</b> ...`;
+
+    // === 批量上传 ===
+    const chunkSize = 5;  // 每次上传 5 张，避免超时
+    let uploaded = 0;
+
+    for (let i = 0; i < files.length; i += chunkSize) {
+        const chunk = Array.from(files).slice(i, i + chunkSize);
+
+        await Promise.all(chunk.map(file => uploadToCloudinary(file, album)));
+
+        uploaded += chunk.length;
+        statusDiv.innerHTML = `已完成 ${uploaded}/${files.length} 张上传`;
+    }
+
+    statusDiv.innerHTML = `✅ 全部上传完成！相册：${album}`;
+});
+
+// === Cloudinary 上传函数 ===
+// ⚠️ 你需要把 cloud_name 和 upload_preset 换成你自己的
+async function uploadToCloudinary(file, album) {
+    const url = "https://api.cloudinary.com/v1_1/<你的cloud_name>/upload";
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "<你的upload_preset>");
+    formData.append("folder", album); // 存到对应相册目录
+
+    try {
+        const res = await fetch(url, { method: "POST", body: formData });
+        const data = await res.json();
+        return data.secure_url;
+    } catch (err) {
+        console.error("上传失败：", err);
     }
 }
 </script>
+{% endblock %}
+
 {% endblock %}
