@@ -3,6 +3,11 @@
 {% block content %}
 <div class="story-detail">
     <h1>Story Detail</h1>
+    <!-- 返回按钮（所有人可见） -->
+    <div class="back-button">
+        <a href="{{ url_for('story_list') }}" class="btn-back">← Back story</a>
+    </div>
+    
     <p class="story-text">{{ story.text|safe }}</p>
 
     {% if story.images %}
