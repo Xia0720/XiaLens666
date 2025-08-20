@@ -437,10 +437,7 @@ def delete_private_images():
 
 @app.route("/cloudinary-sign", methods=["POST"])
 @login_required
-def cloudinary_sign():
-    """
-    前端直传 Cloudinary 需要签名，这里按 folder 生成一次签名（整批文件可复用）。
-    """
+def cloudinary_sign():      # 前端直传 Cloudinary 需要签名，这里按 folder 生成一次签名（整批文件可复用）。
     data = request.get_json(force=True) or {}
     folder = data.get("folder", "").strip()
     timestamp = int(time.time())
