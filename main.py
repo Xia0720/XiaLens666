@@ -80,6 +80,14 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
+
+# 新增 Photo 数据模型
+# --------------------------
+class Photo(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    album = db.Column(db.String(128), nullable=False)
+    url = db.Column(db.String(512), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 # --------------------------
 # 数据模型
 # --------------------------
@@ -457,19 +465,23 @@ def cloudinary_sign():      # 前端直传 Cloudinary 需要签名，这里按 f
         "cloud_name": cloudinary.config().cloud_name,
     }
 
+# --------------------------
+# 保存上传到数据库
+# --------------------------
 @app.route("/save_photo", methods=["POST"])
+@login_required
 def save_photo():
     data = request.get_json()
-    album = data.get('album')
-    url = data.get('url')
+    album = data.get("album")
+    url = data.get("url")
     if not album or not url:
-        return jsonify({"success": False, "error": "缺少参数"}), 400
+        return jsonify({"success": False, "message": "缺少参数"}), 400
 
-    # 保存到数据库
-    new_photo = Photo(album=album, url=url)
-    db.session.add(new_photo)
+    photo = Photo(album=album, url=url)
+    db.session.add(photo)
     db.session.commit()
-    return jsonify({"success": True})
+    return jsonify({"success": True, "id": photo.id})
+
 # --------------------------
 # 启动
 # --------------------------
