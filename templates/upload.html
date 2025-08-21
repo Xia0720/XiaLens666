@@ -41,6 +41,9 @@
 const CLOUD_NAME    = "dpr0pl2tf";       // ← 你的 Cloudinary cloud name
 const UPLOAD_PRESET = "unsigned_preset"; // ← 你创建的 unsigned preset 名
 
+// 👇 注入后端变量（可能是 "albums" 或 ""）
+const MAIN_FOLDER = {{ MAIN_ALBUM_FOLDER | tojson }};
+
 function toggleNewAlbumInput() {
   const select = document.getElementById('albumSelect');
   const newAlbumDiv = document.getElementById('newAlbumDiv');
@@ -48,7 +51,6 @@ function toggleNewAlbumInput() {
 }
 document.addEventListener('DOMContentLoaded', toggleNewAlbumInput);
 
-/* 逐张上传 + 每张最多重试 maxAttempts 次（减少重复上传概率） */
 document.getElementById('uploadForm').addEventListener('submit', async function (e) {
   e.preventDefault();
 
@@ -62,8 +64,8 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
   if (!album) { alert("请填写相册名！"); return; }
   if (!files || files.length === 0) { alert("请选择照片！"); return; }
 
-  // 把相册放到主文件夹 albums 下（如果你的 upload preset 本身已经设置了 Asset folder 'albums'，把下面的 folderPrefix 设为空 ""）
-  const folderPrefix = "albums"; // <- 如果你不想再有顶级 albums 文件夹，把这里设为 "" 并在 preset 里调整
+  // ✅ 改成由后端控制，不再写死 "albums"
+  const folderPrefix = MAIN_FOLDER || "";
   const folderPath = folderPrefix ? `${folderPrefix}/${album}` : album;
 
   submitBtn.disabled = true;
@@ -79,15 +81,13 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
 
     try {
       const url = await uploadWithRetries(file, folderPath, maxAttempts, item);
-      // 保存到后端数据库
-      await savePhotoToDB(album, url);
+      await savePhotoToDB(album, url); // 保存到后端数据库
       item.textContent = `${file.name} ✅ 上传并保存成功`;
       item.style.color = "green";
     } catch (err) {
       console.error(err);
       item.textContent = `${file.name} ❌ 上传失败：${err && err.message ? err.message : err}`;
       item.style.color = "red";
-      // 失败的话继续下一个文件（不会把整个上传中断）
     }
   }
 
@@ -95,7 +95,6 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
   submitBtn.textContent = "上传";
 });
 
-/* uploadWithRetries */
 async function uploadWithRetries(file, folder, maxAttempts, statusItem) {
   let attempt = 0;
   while (attempt < maxAttempts) {
@@ -107,13 +106,11 @@ async function uploadWithRetries(file, folder, maxAttempts, statusItem) {
     } catch (err) {
       console.warn(`上传第 ${attempt} 次失败`, err);
       if (attempt >= maxAttempts) throw err;
-      // 指数退避
       await new Promise(r => setTimeout(r, 500 * attempt));
     }
   }
 }
 
-/* 直传 Cloudinary（返回 secure_url） */
 async function uploadToCloudinary(file, folder) {
   const apiUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
   const fd = new FormData();
@@ -124,14 +121,12 @@ async function uploadToCloudinary(file, folder) {
   const res = await fetch(apiUrl, { method: "POST", body: fd });
   const data = await res.json();
   if (!res.ok) {
-    // Cloudinary 会返回 JSON 错误信息，包含 error.message
     const msg = (data && data.error && data.error.message) ? data.error.message : JSON.stringify(data);
     throw new Error(msg);
   }
   return data.secure_url;
 }
 
-/* 保存到后端 DB（/save_photo） */
 async function savePhotoToDB(album, url) {
   const res = await fetch("/save_photo", {
     method: "POST",
