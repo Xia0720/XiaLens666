@@ -310,44 +310,29 @@ def delete_story(story_id):
 # 上传图片到 Cloudinary album（仅登录）
 # --------------------------
 @app.route("/upload", methods=["GET", "POST"])
-@login_required
 def upload():
-    try:
-        result = cloudinary.api.root_folders()
-        album_names = [folder['name'] for folder in result.get('folders', []) if folder['name'] != 'private']
-    except Exception:
-        album_names = []
-
     if request.method == "POST":
-        photos = request.files.getlist("photo")
-        selected_album = request.form.get("album")
-        new_album = request.form.get("new_album", "").strip()
+        album_name = request.form["album"]
+        if "file" not in request.files:
+            return "No file part"
 
-        if not photos or all(p.filename == '' for p in photos):
-            return "No selected photo file", 400
+        file = request.files["file"]
+        if file.filename == "":
+            return "No selected file"
 
-        folder = new_album if (selected_album == "new" and new_album) else selected_album
-        if not folder:
-            return "Folder name is required", 400
+        if file:
+            album_path = os.path.join(MAIN_ALBUM_FOLDER, album_name)
+            os.makedirs(album_path, exist_ok=True)
+            file.save(os.path.join(album_path, file.filename))
+            return redirect(url_for("album"))
 
-        try:
-            for photo in photos:
-                if photo and photo.filename != '':
-                    img = fix_image_orientation(photo)
-                    buffer = io.BytesIO()
-                    img.save(buffer, format="JPEG", quality=90, optimize=True)
-                    buffer.seek(0)
-                    cloudinary.uploader.upload(buffer, folder=folder, quality="auto", fetch_format="auto")
+    # 👇 这里改了：获取 albums 文件夹下的所有相册子文件夹
+    album_names = [
+        d for d in os.listdir(MAIN_ALBUM_FOLDER)
+        if os.path.isdir(os.path.join(MAIN_ALBUM_FOLDER, d))
+    ]
 
-            flash("Uploaded successfully.")
-            # ✅ 上传成功后跳转，并把最后使用的相册带过去
-            return redirect(url_for("upload", last_album=folder))
-        except Exception as e:
-            return f"Error uploading file: {str(e)}"
-
-    # ✅ GET 请求时取出 last_album 传给模板
-    last_album = request.args.get("last_album", "")
-    return render_template("upload.html", album_names=album_names, last_album=last_album, MAIN_ALBUM_FOLDER=MAIN_ALBUM_FOLDER)
+    return render_template("upload.html", album_names=album_names)
     
 # --------------------------
 # 私密空间上传（仅登录）
