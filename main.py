@@ -146,48 +146,42 @@ def albums():
         albums = []
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
 
-        def list_all_subfolders_under(path=None):
-            collected = []
-            cursor = None
-            while True:
-                resp = (cloudinary.api.subfolders(path, next_cursor=cursor)
-                        if path else cloudinary.api.root_folders(next_cursor=cursor)) if cursor \
-                       else (cloudinary.api.subfolders(path) if path else cloudinary.api.root_folders())
-                collected.extend(resp.get("folders", []))
-                cursor = resp.get("next_cursor")
-                if not cursor:
-                    break
-            return collected
-
         if main:
-            subfolders = list_all_subfolders_under(main)
-            # 排序并排除 private
-            subfolders = sorted(
-                [f for f in subfolders if f.get("name", "").lower() != "private"],
-                key=lambda f: f.get("name", "").lower()
-            )
-            for folder in subfolders:
-                album_name = folder.get("name")
-                r = cloudinary.api.resources(type="upload", prefix=f"{main}/{album_name}/", max_results=1)
-                cover_url = r.get('resources')[0].get('secure_url') if r.get('resources') else ""
-                albums.append({'name': album_name, 'cover': cover_url})
+            # 直接拉取主文件夹下的所有资源
+            resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
+
+            album_names_set = set()
+            album_covers = {}
+
+            for res in resources.get('resources', []):
+                parts = res.get('public_id', '').split('/')
+                # public_id 形如 "albums/<album_name>/xxx.jpg"
+                if len(parts) >= 2:
+                    album_name = parts[1]
+                    album_names_set.add(album_name)
+
+                    # 如果这个相册还没有封面，就用当前图片作为封面
+                    if album_name not in album_covers:
+                        album_covers[album_name] = res.get('secure_url', '')
+
+            # 构造相册列表
+            for album_name in sorted(album_names_set):
+                albums.append({'name': album_name, 'cover': album_covers.get(album_name, '')})
+
         else:
-            root_folders = list_all_subfolders_under(None)
-            root_folders = sorted(
-                [f for f in root_folders if f.get("name", "").lower() != "private"],
-                key=lambda f: f.get("name", "").lower()
-            )
-            for folder in root_folders:
-                album_name = folder.get("name")
-                r = cloudinary.api.resources(type="upload", prefix=f"{album_name}/", max_results=1)
-                cover_url = r.get('resources')[0].get('secure_url') if r.get('resources') else ""
-                albums.append({'name': album_name, 'cover': cover_url})
+            # 兼容老逻辑：列出根目录下的文件夹（不包含 private）
+            folders = cloudinary.api.root_folders()
+            for folder in folders.get('folders', []):
+                folder_name = folder.get('name')
+                if folder_name == "private":
+                    continue
+                resources = cloudinary.api.resources(type="upload", prefix=folder_name, max_results=1)
+                cover_url = resources.get('resources')[0].get('secure_url') if resources.get('resources') else ""
+                albums.append({'name': folder_name, 'cover': cover_url})
 
         return render_template("album.html", albums=albums)
     except Exception as e:
         return f"Error fetching albums: {str(e)}"
-
-
 # --------------------------
 # Album 内容页
 # --------------------------
@@ -195,39 +189,30 @@ def albums():
 def view_album(album_name):
     try:
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
-        # 当前相册的完整 folder 路径
-        target_folder = f"{main}/{album_name}" if main else album_name
 
+        # 拼接主目录路径
+        prefix = f"{main}/" if main else ""
+
+        # 获取主目录下所有资源（500 张以内，可按需分页）
+        resources = cloudinary.api.resources(type="upload", prefix=prefix, max_results=500)
+
+        # 从 public_id 中提取属于当前 album_name 的图片
         images = []
-        cursor = None
-        while True:
-            resp = cloudinary.api.resources(
-                type="upload",
-                prefix=target_folder,   # 不加 /，避免错过
-                max_results=500,
-                next_cursor=cursor
-            )
-            # 精确过滤 folder 字段，确保只显示这一层的照片
-            images.extend([
-                {"public_id": img["public_id"], "secure_url": img["secure_url"]}
-                for img in resp.get("resources", [])
-                if img.get("folder") == target_folder
-            ])
-            cursor = resp.get("next_cursor")
-            if not cursor:
-                break
-
-        if not images:
-            # 如果相册为空或不存在 → 回到相册列表
-            return redirect(url_for('albums'))
+        for img in resources.get("resources", []):
+            parts = img.get("public_id", "").split('/')
+            if len(parts) >= 2:
+                img_album_name = parts[1]  # public_id 格式: albums/<album_name>/xxx
+                if img_album_name == album_name:
+                    images.append({
+                        "public_id": img["public_id"],
+                        "secure_url": img["secure_url"]
+                    })
 
         logged_in = session.get("logged_in", False)
-        return render_template(
-            "view_album.html",
-            album_name=album_name,
-            images=images,
-            logged_in=logged_in
-        )
+        return render_template("view_album.html",
+                               album_name=album_name,
+                               images=images,
+                               logged_in=logged_in)
     except Exception as e:
         return f"Error loading album: {str(e)}"
 # --------------------------
