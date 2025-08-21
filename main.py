@@ -12,7 +12,7 @@ from PIL import Image, ExifTags
 import io
 import time
 from cloudinary.utils import api_sign_request
-
+from PIL import Image
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
@@ -25,9 +25,6 @@ cloudinary.config(
     api_key=os.getenv('CLOUDINARY_API_KEY', '548549517251566'),
     api_secret=os.getenv('CLOUDINARY_API_SECRET', '9o-PlPBRQzQPfuVCQfaGrUV3_IE')
 )
-
-# app.py 或者 main 的开头位置
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB
 
 # main.py（靠近 cloudinary.config(...) 的地方）
 MAIN_ALBUM_FOLDER = os.getenv("MAIN_ALBUM_FOLDER", "albums")  # 若不想主文件夹，设置为空字符串 ""
@@ -320,8 +317,33 @@ def upload():
 
         for file in files:
             if file and file.filename:
+                file.seek(0)
+                file_bytes = file.read()
+                file.seek(0)
+
+                # 如果超过 10MB，就压缩
+                if len(file_bytes) > 10 * 1024 * 1024:
+                    img = Image.open(file)
+                    buffer = io.BytesIO()
+
+                    # 初始质量设定
+                    quality = 85
+                    while True:
+                        buffer.seek(0)
+                        img.save(buffer, format="JPEG", optimize=True, quality=quality)
+                        size = buffer.tell()
+                        if size <= 10 * 1024 * 1024 or quality <= 40:
+                            break
+                        quality -= 5  # 每次降低 5 直到符合要求
+
+                    buffer.seek(0)
+                    upload_file = buffer
+                else:
+                    upload_file = file
+
+                # 上传到 cloudinary
                 cloudinary.uploader.upload(
-                    file,
+                    upload_file,
                     folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
                 )
 
@@ -342,7 +364,7 @@ def upload():
     return render_template(
         "upload.html",
         album_names=album_names,
-        MAIN_ALBUM_FOLDER=MAIN_ALBUM_FOLDER   # 👈 一定要传这个
+        MAIN_ALBUM_FOLDER=MAIN_ALBUM_FOLDER
     )
 # --------------------------
 # 私密空间上传（仅登录）
