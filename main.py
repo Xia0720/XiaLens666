@@ -12,7 +12,6 @@ from PIL import Image, ExifTags
 import io
 import time
 from cloudinary.utils import api_sign_request
-from PIL import Image
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
@@ -317,33 +316,8 @@ def upload():
 
         for file in files:
             if file and file.filename:
-                file.seek(0)
-                file_bytes = file.read()
-                file.seek(0)
-
-                # 如果超过 10MB，就压缩
-                if len(file_bytes) > 10 * 1024 * 1024:
-                    img = Image.open(file)
-                    buffer = io.BytesIO()
-
-                    # 初始质量设定
-                    quality = 85
-                    while True:
-                        buffer.seek(0)
-                        img.save(buffer, format="JPEG", optimize=True, quality=quality)
-                        size = buffer.tell()
-                        if size <= 10 * 1024 * 1024 or quality <= 40:
-                            break
-                        quality -= 5  # 每次降低 5 直到符合要求
-
-                    buffer.seek(0)
-                    upload_file = buffer
-                else:
-                    upload_file = file
-
-                # 上传到 cloudinary
                 cloudinary.uploader.upload(
-                    upload_file,
+                    file,
                     folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
                 )
 
@@ -364,7 +338,7 @@ def upload():
     return render_template(
         "upload.html",
         album_names=album_names,
-        MAIN_ALBUM_FOLDER=MAIN_ALBUM_FOLDER
+        MAIN_ALBUM_FOLDER=MAIN_ALBUM_FOLDER   # 👈 一定要传这个
     )
 # --------------------------
 # 私密空间上传（仅登录）
