@@ -12,10 +12,14 @@ from PIL import Image, ExifTags
 import io
 import time
 from cloudinary.utils import api_sign_request
-
+import urllib.parse
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
+
+# 简单内存缓存（TTL）
+CACHE = {}
+CACHE_TTL = 30  # 秒，可按需调大到 60/120
 
 # --------------------------
 # Cloudinary 配置
@@ -82,6 +86,132 @@ def fix_image_orientation(file):
 
     return img
 
+def cache_get(key):
+    item = CACHE.get(key)
+    if not item:
+        return None
+    ts, val = item
+    if time.time() - ts > CACHE_TTL:
+        del CACHE[key]
+        return None
+    return val
+
+def cache_set(key, val):
+    CACHE[key] = (time.time(), val)
+
+def normalize_name(s):
+    """规范化名字用于容错比较：小写、去多余空白、替换连字符下划线"""
+    if not s:
+        return ""
+    s = s.lower().strip()
+    s = s.replace("_", " ").replace("-", " ")
+    s = " ".join(s.split())  # 合并多空格
+    return s
+
+# --------------------------
+# helper: 分页列出 subfolders
+# --------------------------
+def list_subfolders(main):
+    folders = []
+    cursor = None
+    while True:
+        if cursor:
+            resp = cloudinary.api.subfolders(main, next_cursor=cursor)
+        else:
+            resp = cloudinary.api.subfolders(main)
+        folders.extend(resp.get("folders", []))
+        cursor = resp.get("next_cursor")
+        if not cursor:
+            break
+    return folders
+
+# --------------------------
+# helper: 分页列出 resources（根据 prefix）
+# --------------------------
+def list_resources(prefix):
+    resources = []
+    cursor = None
+    while True:
+        params = dict(type="upload", prefix=prefix, max_results=500)
+        if cursor:
+            params["next_cursor"] = cursor
+        resp = cloudinary.api.resources(**params)
+        resources.extend(resp.get("resources", []))
+        cursor = resp.get("next_cursor")
+        if not cursor:
+            break
+    return resources
+
+# --------------------------
+# 构建相册列表：先用 subfolders，失败回退到解析 public_id
+# 返回: [{'name': real_folder_name, 'display': pretty_name, 'cover': cover_url}, ...]
+# --------------------------
+def build_albums(main):
+    cache_key = f"albums::{main}"
+    cached = cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    albums = []
+
+    if main:
+        # 首先尝试用 subfolders（最稳）
+        try:
+            subfolders = list_subfolders(main)
+            if subfolders:
+                for f in sorted(subfolders, key=lambda x: x.get("name","").lower()):
+                    album_name = f.get("name")
+                    album_path = f.get("path")  # e.g. "albums/2024 Helloween"
+                    # 取封面，注意 prefix 要以 '/' 结尾
+                    res = list_resources(f"{album_path}/")
+                    cover_url = res[0].get("secure_url") if res else ""
+                    pretty = album_name.replace("_", " ").replace("-", " ").strip()
+                    albums.append({"name": album_name, "display": pretty, "cover": cover_url})
+                cache_set(cache_key, albums)
+                return albums
+        except Exception as e:
+            # 如果 subfolders 报错或返回空，后面会回退解析 public_id
+            print("subfolders error or empty:", e)
+
+        # 回退：一次性拿 main 下的所有资源，按 public_id 的第二级目录分组
+        try:
+            resources = list_resources(f"{main}/")
+            album_dict = {}
+            for r in resources:
+                public_id = r.get("public_id","")
+                parts = public_id.split("/")
+                if len(parts) >= 2:
+                    real_name = parts[1]
+                    if real_name not in album_dict:
+                        album_dict[real_name] = r.get("secure_url","")
+            for real_name, cover in sorted(album_dict.items(), key=lambda x:x[0].lower()):
+                pretty = real_name.replace("_", " ").replace("-", " ").strip()
+                albums.append({"name": real_name, "display": pretty, "cover": cover})
+            cache_set(cache_key, albums)
+            return albums
+        except Exception as e:
+            print("fallback resources parse error:", e)
+
+    else:
+        # main 为空时（根目录）使用 root_folders
+        try:
+            folders_resp = cloudinary.api.root_folders()
+            for f in folders_resp.get("folders", []):
+                folder_name = f.get("name")
+                if folder_name.lower() == "private":
+                    continue
+                res = list_resources(f"{folder_name}/")
+                cover_url = res[0].get("secure_url") if res else ""
+                pretty = folder_name.replace("_", " ").replace("-", " ").strip()
+                albums.append({"name": folder_name, "display": pretty, "cover": cover_url})
+            cache_set(cache_key, albums)
+            return albums
+        except Exception as e:
+            print("root folders error:", e)
+
+    cache_set(cache_key, albums)
+    return albums
+
 # --------------------------
 # 登录保护装饰器
 # --------------------------
@@ -144,83 +274,56 @@ def about():
 @app.route("/album")
 def albums():
     try:
-        albums = []
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
-
-        if main:
-            # ✅ 用 Cloudinary 的子目录接口列出主目录下的相册（更可靠）
-            subfolders = []
-            cursor = None
-            while True:
-                if cursor:
-                    resp = cloudinary.api.subfolders(main, next_cursor=cursor)
-                else:
-                    resp = cloudinary.api.subfolders(main)
-                subfolders.extend(resp.get("folders", []))
-                cursor = resp.get("next_cursor")
-                if not cursor:
-                    break
-
-            # 为每个相册取一张封面（直接在该子目录下取 1 张）
-            for f in sorted(subfolders, key=lambda x: x.get("name", "").lower()):
-                # f 形如 {"name": "2024 Helloween", "path": "albums/2024 Helloween"}
-                album_name = f.get("name")
-                album_path = f.get("path")  # 等于 f"{main}/{album_name}"
-
-                # ✅ 注意加结尾斜杠，避免匹配到相近名字（例如 2024 Hellow 与 2024 Helloween）
-                r = cloudinary.api.resources(type="upload", prefix=f"{album_path}/", max_results=1)
-                cover_url = r.get('resources', [{}])[0].get('secure_url', '') if r.get('resources') else ''
-                albums.append({'name': album_name, 'cover': cover_url})
-
-        else:
-            # 兼容老逻辑：列出根目录下的文件夹（不包含 private）
-            folders = cloudinary.api.root_folders()
-            for folder in folders.get('folders', []):
-                folder_name = folder.get('name')
-                if folder_name == "private":
-                    continue
-                # 根目录下的封面，仍按你原来的 1 张策略
-                r = cloudinary.api.resources(type="upload", prefix=f"{folder_name}/", max_results=1)
-                cover_url = r.get('resources', [{}])[0].get('secure_url', '') if r.get('resources') else ''
-                albums.append({'name': folder_name, 'cover': cover_url})
-
-        return render_template("album.html", albums=albums)
+        albums_list = build_albums(main)
+        # 传给模板：albums 每项有 name（用于 url） display（用于展示） cover
+        return render_template("album.html", albums=albums_list)
     except Exception as e:
         return f"Error fetching albums: {str(e)}"
 
 # --------------------------
-# Album 内容页
+# /album/<album_name> 路由（替换你原来的 view_album）
 # --------------------------
 @app.route("/album/<album_name>", methods=["GET", "POST"])
 def view_album(album_name):
     try:
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
-        # 组合该相册在 Cloudinary 的完整目录
         album_path = f"{main}/{album_name}" if main else album_name
 
-        images = []
-        cursor = None
-        while True:
-            # ✅ 重要：prefix 一定以 / 结尾，防止“前缀相近”误匹配，也能更快
-            params = dict(type="upload", prefix=f"{album_path}/", max_results=500)
-            if cursor:
-                params["next_cursor"] = cursor
+        # 先查严格前缀（带 / 结尾）
+        images = list_resources(f"{album_path}/")
 
-            resp = cloudinary.api.resources(**params)
-            for img in resp.get("resources", []):
-                images.append({
-                    "public_id": img.get("public_id"),
-                    "secure_url": img.get("secure_url")
-                })
+        # 如果严格前缀没取到图片，尝试回退策略：
+        if not images:
+            # 拉取 main 下所有资源（若很多可改成分页或分页查询）
+            all_resources = list_resources(f"{main}/") if main else list_resources("")
+            normalized_target = normalize_name(album_name)
 
-            cursor = resp.get("next_cursor")
-            if not cursor:
-                break
+            fallback = []
+            for img in all_resources:
+                pub = img.get("public_id", "")
+                parts = pub.split("/")
+                # 1) public_id 的第二级目录匹配
+                candidate = False
+                if len(parts) >= 2 and normalize_name(parts[1]) == normalized_target:
+                    candidate = True
+                # 2) folder 字段匹配最后一级
+                folder_field = img.get("folder", "")
+                if folder_field:
+                    folder_last = folder_field.split("/")[-1]
+                    if normalize_name(folder_last) == normalized_target:
+                        candidate = True
+                if candidate:
+                    fallback.append(img)
+            images = fallback
+
+        # 转换为模板需要的结构
+        image_objs = [{"public_id": i.get("public_id"), "secure_url": i.get("secure_url")} for i in images]
 
         logged_in = session.get("logged_in", False)
         return render_template("view_album.html",
                                album_name=album_name,
-                               images=images,
+                               images=image_objs,
                                logged_in=logged_in)
     except Exception as e:
         return f"Error loading album: {str(e)}"
