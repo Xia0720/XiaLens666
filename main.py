@@ -26,6 +26,9 @@ cloudinary.config(
     api_secret=os.getenv('CLOUDINARY_API_SECRET', '9o-PlPBRQzQPfuVCQfaGrUV3_IE')
 )
 
+# main.py（靠近 cloudinary.config(...) 的地方）
+MAIN_ALBUM_FOLDER = os.getenv("MAIN_ALBUM_FOLDER", "albums")  # 若不想主文件夹，设置为空字符串 ""
+
 # --------------------------
 # 数据库配置
 # --------------------------
@@ -141,15 +144,35 @@ def about():
 @app.route("/album")
 def albums():
     try:
-        folders = cloudinary.api.root_folders()
         albums = []
-        for folder in folders.get('folders', []):
-            folder_name = folder['name']
-            if folder_name == "private":
-                continue
-            resources = cloudinary.api.resources(type="upload", prefix=folder_name, max_results=1)
-            cover_url = resources['resources'][0]['secure_url'] if resources['resources'] else ""
-            albums.append({'name': folder_name, 'cover': cover_url})
+        main = (MAIN_ALBUM_FOLDER or "").strip('/')
+
+        if main:
+            # 列出主文件夹下的资源，然后从 public_id 中提取第二级目录名作为子相册名
+            resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
+            album_names_set = set()
+            for res in resources.get('resources', []):
+                parts = res.get('public_id', '').split('/')
+                # public_id 形如 "albums/<album_name>/xxx.jpg"
+                if len(parts) >= 2:
+                    album_names_set.add(parts[1])
+
+            # 为每个子相册取一张封面（取第一个资源）
+            for album_name in sorted(album_names_set):
+                r = cloudinary.api.resources(type="upload", prefix=f"{main}/{album_name}", max_results=1)
+                cover_url = r.get('resources')[0].get('secure_url') if r.get('resources') else ""
+                albums.append({'name': album_name, 'cover': cover_url})
+        else:
+            # 兼容老逻辑：列出根目录下的文件夹（不包含 private）
+            folders = cloudinary.api.root_folders()
+            for folder in folders.get('folders', []):
+                folder_name = folder.get('name')
+                if folder_name == "private":
+                    continue
+                resources = cloudinary.api.resources(type="upload", prefix=folder_name, max_results=1)
+                cover_url = resources.get('resources')[0].get('secure_url') if resources.get('resources') else ""
+                albums.append({'name': folder_name, 'cover': cover_url})
+
         return render_template("album.html", albums=albums)
     except Exception as e:
         return f"Error fetching albums: {str(e)}"
@@ -160,12 +183,15 @@ def albums():
 @app.route("/album/<album_name>", methods=["GET", "POST"])
 def view_album(album_name):
     try:
-        resources = cloudinary.api.resources(type="upload", prefix=album_name, max_results=500)
-        images = [{"public_id": img["public_id"], "secure_url": img["secure_url"]} for img in resources["resources"]]
+        main = (MAIN_ALBUM_FOLDER or "").strip('/')
+        prefix = f"{main}/{album_name}" if main else album_name
+        resources = cloudinary.api.resources(type="upload", prefix=prefix, max_results=500)
+        images = [{"public_id": img["public_id"], "secure_url": img["secure_url"]} for img in resources.get("resources", [])]
         logged_in = session.get("logged_in", False)
         return render_template("view_album.html", album_name=album_name, images=images, logged_in=logged_in)
     except Exception as e:
         return f"Error loading album: {str(e)}"
+
 # --------------------------
 # 删除图片（仅登录）
 # --------------------------
