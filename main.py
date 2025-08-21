@@ -313,27 +313,32 @@ def delete_story(story_id):
 def upload():
     if request.method == "POST":
         album_name = request.form["album"]
-        if "file" not in request.files:
-            return "No file part"
+        files = request.files.getlist("file")
 
-        file = request.files["file"]
-        if file.filename == "":
-            return "No selected file"
+        for file in files:
+            if file and file.filename:
+                cloudinary.uploader.upload(
+                    file,
+                    folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
+                )
 
-        if file:
-            album_path = os.path.join(MAIN_ALBUM_FOLDER, album_name)
-            os.makedirs(album_path, exist_ok=True)
-            file.save(os.path.join(album_path, file.filename))
-            return redirect(url_for("album"))
+        return redirect(url_for("albums"))
 
-    # 👇 这里改了：获取 albums 文件夹下的所有相册子文件夹
-    album_names = [
-        d for d in os.listdir(MAIN_ALBUM_FOLDER)
-        if os.path.isdir(os.path.join(MAIN_ALBUM_FOLDER, d))
-    ]
+    # 👇 这里改：用 cloudinary.api.resources 获取已有的相册名
+    album_names = []
+    main = (MAIN_ALBUM_FOLDER or "").strip('/')
+
+    if main:
+        resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
+        album_names_set = set()
+        for res in resources.get('resources', []):
+            parts = res.get('public_id', '').split('/')
+            if len(parts) >= 2:
+                album_names_set.add(parts[1])
+        album_names = sorted(album_names_set)
 
     return render_template("upload.html", album_names=album_names)
-    
+
 # --------------------------
 # 私密空间上传（仅登录）
 # --------------------------
