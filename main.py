@@ -148,20 +148,30 @@ def albums():
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
 
         if main:
-            # 列出主文件夹下的资源，然后从 public_id 中提取第二级目录名作为子相册名
-            resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
-            album_names_set = set()
-            for res in resources.get('resources', []):
-                parts = res.get('public_id', '').split('/')
-                # public_id 形如 "albums/<album_name>/xxx.jpg"
-                if len(parts) >= 2:
-                    album_names_set.add(parts[1])
+            # ✅ 用 Cloudinary 的子目录接口列出主目录下的相册（更可靠）
+            subfolders = []
+            cursor = None
+            while True:
+                if cursor:
+                    resp = cloudinary.api.subfolders(main, next_cursor=cursor)
+                else:
+                    resp = cloudinary.api.subfolders(main)
+                subfolders.extend(resp.get("folders", []))
+                cursor = resp.get("next_cursor")
+                if not cursor:
+                    break
 
-            # 为每个子相册取一张封面（取第一个资源）
-            for album_name in sorted(album_names_set):
-                r = cloudinary.api.resources(type="upload", prefix=f"{main}/{album_name}", max_results=1)
-                cover_url = r.get('resources')[0].get('secure_url') if r.get('resources') else ""
+            # 为每个相册取一张封面（直接在该子目录下取 1 张）
+            for f in sorted(subfolders, key=lambda x: x.get("name", "").lower()):
+                # f 形如 {"name": "2024 Helloween", "path": "albums/2024 Helloween"}
+                album_name = f.get("name")
+                album_path = f.get("path")  # 等于 f"{main}/{album_name}"
+
+                # ✅ 注意加结尾斜杠，避免匹配到相近名字（例如 2024 Hellow 与 2024 Helloween）
+                r = cloudinary.api.resources(type="upload", prefix=f"{album_path}/", max_results=1)
+                cover_url = r.get('resources', [{}])[0].get('secure_url', '') if r.get('resources') else ''
                 albums.append({'name': album_name, 'cover': cover_url})
+
         else:
             # 兼容老逻辑：列出根目录下的文件夹（不包含 private）
             folders = cloudinary.api.root_folders()
@@ -169,8 +179,9 @@ def albums():
                 folder_name = folder.get('name')
                 if folder_name == "private":
                     continue
-                resources = cloudinary.api.resources(type="upload", prefix=folder_name, max_results=1)
-                cover_url = resources.get('resources')[0].get('secure_url') if resources.get('resources') else ""
+                # 根目录下的封面，仍按你原来的 1 张策略
+                r = cloudinary.api.resources(type="upload", prefix=f"{folder_name}/", max_results=1)
+                cover_url = r.get('resources', [{}])[0].get('secure_url', '') if r.get('resources') else ''
                 albums.append({'name': folder_name, 'cover': cover_url})
 
         return render_template("album.html", albums=albums)
@@ -184,11 +195,33 @@ def albums():
 def view_album(album_name):
     try:
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
-        prefix = f"{main}/{album_name}" if main else album_name
-        resources = cloudinary.api.resources(type="upload", prefix=prefix, max_results=500)
-        images = [{"public_id": img["public_id"], "secure_url": img["secure_url"]} for img in resources.get("resources", [])]
+        # 组合该相册在 Cloudinary 的完整目录
+        album_path = f"{main}/{album_name}" if main else album_name
+
+        images = []
+        cursor = None
+        while True:
+            # ✅ 重要：prefix 一定以 / 结尾，防止“前缀相近”误匹配，也能更快
+            params = dict(type="upload", prefix=f"{album_path}/", max_results=500)
+            if cursor:
+                params["next_cursor"] = cursor
+
+            resp = cloudinary.api.resources(**params)
+            for img in resp.get("resources", []):
+                images.append({
+                    "public_id": img.get("public_id"),
+                    "secure_url": img.get("secure_url")
+                })
+
+            cursor = resp.get("next_cursor")
+            if not cursor:
+                break
+
         logged_in = session.get("logged_in", False)
-        return render_template("view_album.html", album_name=album_name, images=images, logged_in=logged_in)
+        return render_template("view_album.html",
+                               album_name=album_name,
+                               images=images,
+                               logged_in=logged_in)
     except Exception as e:
         return f"Error loading album: {str(e)}"
 
