@@ -324,10 +324,9 @@ def upload():
 
         return redirect(url_for("albums"))
 
-    # 👇 这里改：用 cloudinary.api.resources 获取已有的相册名
+    # 获取已有相册名
     album_names = []
     main = (MAIN_ALBUM_FOLDER or "").strip('/')
-
     if main:
         resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
         album_names_set = set()
@@ -337,8 +336,11 @@ def upload():
                 album_names_set.add(parts[1])
         album_names = sorted(album_names_set)
 
-    return render_template("upload.html", album_names=album_names)
-
+    return render_template(
+        "upload.html",
+        album_names=album_names,
+        MAIN_ALBUM_FOLDER=MAIN_ALBUM_FOLDER   # 👈 一定要传这个
+    )
 # --------------------------
 # 私密空间上传（仅登录）
 # --------------------------
