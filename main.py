@@ -195,37 +195,41 @@ def albums():
 def view_album(album_name):
     try:
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
-        prefix = f"{main}/{album_name}/" if main else f"{album_name}/"
+        # 当前相册的完整 folder 路径
+        target_folder = f"{main}/{album_name}" if main else album_name
 
         images = []
         cursor = None
         while True:
             resp = cloudinary.api.resources(
                 type="upload",
-                prefix=prefix,
+                prefix=target_folder,   # 不加 /，避免错过
                 max_results=500,
                 next_cursor=cursor
             )
+            # 精确过滤 folder 字段，确保只显示这一层的照片
             images.extend([
                 {"public_id": img["public_id"], "secure_url": img["secure_url"]}
                 for img in resp.get("resources", [])
+                if img.get("folder") == target_folder
             ])
             cursor = resp.get("next_cursor")
             if not cursor:
                 break
 
         if not images:
-            # 相册不存在或为空 → 回到相册列表（避免 500 报错）
+            # 如果相册为空或不存在 → 回到相册列表
             return redirect(url_for('albums'))
 
         logged_in = session.get("logged_in", False)
-        return render_template("view_album.html",
-                               album_name=album_name,
-                               images=images,
-                               logged_in=logged_in)
+        return render_template(
+            "view_album.html",
+            album_name=album_name,
+            images=images,
+            logged_in=logged_in
+        )
     except Exception as e:
         return f"Error loading album: {str(e)}"
-
 # --------------------------
 # 删除图片（仅登录）
 # --------------------------
