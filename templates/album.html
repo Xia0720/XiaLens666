@@ -7,6 +7,7 @@
 <div class="album-grid">
   {% for album in albums %}
     <div class="album-item">
+      <!-- 使用显示名生成 URL -->
       <a href="{{ url_for('view_album', album_name=album.name) }}">
         {% if album.cover %}
           <img src="{{ album.cover }}" alt="{{ album.name }}">
@@ -21,6 +22,7 @@
   {% endfor %}
 </div>
 {% endblock %}
+
 
 
 
