@@ -28,6 +28,8 @@ cloudinary.config(
 # main.py（靠近 cloudinary.config(...) 的地方）
 MAIN_ALBUM_FOLDER = os.getenv("MAIN_ALBUM_FOLDER", "albums")  # 若不想主文件夹，设置为空字符串 ""
 
+ALBUM_DISPLAY_TO_REAL = {}  # 初始为空，默认显示名等于真实目录名
+
 # --------------------------
 # 数据库配置
 # --------------------------
@@ -146,31 +148,20 @@ def albums():
         albums = []
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
 
-        if main:
-            # 拉取主目录下所有资源
-            resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
-            album_dict = {}
+        # 拉取所有资源
+        resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
+        album_dict = {}
 
-            for res in resources.get('resources', []):
-                parts = res.get('public_id', '').split('/')
-                if len(parts) >= 2:
-                    album_name = parts[1]  # 第二级目录作为相册名
-                    if album_name not in album_dict:
-                        album_dict[album_name] = res.get('secure_url', '')
+        for res in resources.get('resources', []):
+            parts = res.get('public_id', '').split('/')
+            if len(parts) >= 2:
+                real_name = parts[1]
+                display_name = next((k for k, v in ALBUM_DISPLAY_TO_REAL.items() if v == real_name), real_name)
+                if display_name not in album_dict:
+                    album_dict[display_name] = res.get('secure_url', '')
 
-            for album_name, cover_url in sorted(album_dict.items()):
-                albums.append({'name': album_name, 'cover': cover_url})
-
-        else:
-            # 兼容老逻辑
-            folders = cloudinary.api.root_folders()
-            for folder in folders.get('folders', []):
-                folder_name = folder.get('name')
-                if folder_name == "private":
-                    continue
-                resources = cloudinary.api.resources(type="upload", prefix=folder_name, max_results=1)
-                cover_url = resources.get('resources')[0].get('secure_url') if resources.get('resources') else ""
-                albums.append({'name': folder_name, 'cover': cover_url})
+        for display_name, cover_url in sorted(album_dict.items()):
+            albums.append({'name': display_name, 'cover': cover_url})
 
         return render_template("album.html", albums=albums)
     except Exception as e:
@@ -178,20 +169,20 @@ def albums():
 # --------------------------
 # Album 内容页
 # --------------------------
-@app.route("/album/<album_name>", methods=["GET", "POST"])
+@app.route("/album/<album_name>")
 def view_album(album_name):
     try:
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
-        prefix = f"{main}/" if main else ""
+
+        # 找到真实 Cloudinary 目录名
+        real_name = ALBUM_DISPLAY_TO_REAL.get(album_name, album_name)
 
         # 拉取所有资源
-        resources = cloudinary.api.resources(type="upload", prefix=prefix, max_results=500)
-
-        # 筛选属于当前 album_name 的图片
+        resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
         images = []
         for img in resources.get("resources", []):
             parts = img.get("public_id", "").split('/')
-            if len(parts) >= 2 and parts[1] == album_name:
+            if len(parts) >= 2 and parts[1] == real_name:
                 images.append({
                     "public_id": img["public_id"],
                     "secure_url": img["secure_url"]
