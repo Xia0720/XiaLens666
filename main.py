@@ -154,15 +154,15 @@ def albums():
             for res in resources.get('resources', []):
                 parts = res.get('public_id', '').split('/')
                 if len(parts) >= 2:
-                    real_name = parts[1]
-                    display_name = ALBUM_NAME_MAP.get(real_name, real_name)
-                    if display_name not in album_dict:
-                        album_dict[display_name] = res.get('secure_url', '')
+                    album_name = parts[1]  # 第二级目录作为相册名
+                    if album_name not in album_dict:
+                        album_dict[album_name] = res.get('secure_url', '')
 
-            for display_name, cover_url in sorted(album_dict.items()):
-                albums.append({'name': display_name, 'cover': cover_url})
+            for album_name, cover_url in sorted(album_dict.items()):
+                albums.append({'name': album_name, 'cover': cover_url})
 
         else:
+            # 兼容老逻辑
             folders = cloudinary.api.root_folders()
             for folder in folders.get('folders', []):
                 folder_name = folder.get('name')
@@ -182,17 +182,16 @@ def albums():
 def view_album(album_name):
     try:
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
-
-        # 找到真实 Cloudinary 文件夹名
-        real_album_name = ALBUM_DISPLAY_TO_REAL.get(album_name, album_name)
-
         prefix = f"{main}/" if main else ""
+
+        # 拉取所有资源
         resources = cloudinary.api.resources(type="upload", prefix=prefix, max_results=500)
 
+        # 筛选属于当前 album_name 的图片
         images = []
         for img in resources.get("resources", []):
             parts = img.get("public_id", "").split('/')
-            if len(parts) >= 2 and parts[1] == real_album_name:
+            if len(parts) >= 2 and parts[1] == album_name:
                 images.append({
                     "public_id": img["public_id"],
                     "secure_url": img["secure_url"]
@@ -200,7 +199,7 @@ def view_album(album_name):
 
         logged_in = session.get("logged_in", False)
         return render_template("view_album.html",
-                               album_name=album_name,  # 这里传显示名
+                               album_name=album_name,
                                images=images,
                                logged_in=logged_in)
     except Exception as e:
