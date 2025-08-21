@@ -35,9 +35,20 @@ if database_url:
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///stories.db"
 
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "pool_size": 5,
+    "max_overflow": 0,
+    "pool_timeout": 30,
+    "pool_recycle": 1800,
+    "pool_pre_ping": True
+}
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+
+# 保证请求结束后释放 session
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    db.session.remove()
 
 # --------------------------
 # 模板全局变量
@@ -469,16 +480,23 @@ def cloudinary_sign():      # 前端直传 Cloudinary 需要签名，这里按 f
 @app.route("/save_photo", methods=["POST"])
 @login_required
 def save_photo():
-    data = request.get_json()
+    data = request.get_json() or {}
     album = data.get("album")
     url = data.get("url")
     if not album or not url:
-        return jsonify({"success": False, "message": "缺少参数"}), 400
-
-    photo = Photo(album=album, url=url)
-    db.session.add(photo)
-    db.session.commit()
-    return jsonify({"success": True, "id": photo.id})
+        return jsonify({"success": False, "error": "缺少 album 或 url"}), 400
+    try:
+        # 防止重复保存
+        exists = Photo.query.filter_by(url=url).first()
+        if exists:
+            return jsonify({"success": True, "message": "already_exists"})
+        new_photo = Photo(album=album, url=url, created_at=datetime.utcnow())
+        db.session.add(new_photo)
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
 # --------------------------
 # 启动
 # --------------------------
