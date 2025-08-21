@@ -26,6 +26,9 @@ cloudinary.config(
     api_secret=os.getenv('CLOUDINARY_API_SECRET', '9o-PlPBRQzQPfuVCQfaGrUV3_IE')
 )
 
+# app.py 或者 main 的开头位置
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB
+
 # main.py（靠近 cloudinary.config(...) 的地方）
 MAIN_ALBUM_FOLDER = os.getenv("MAIN_ALBUM_FOLDER", "albums")  # 若不想主文件夹，设置为空字符串 ""
 
