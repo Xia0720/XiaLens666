@@ -37,23 +37,18 @@
 <div id="uploadStatus" style="margin-top:15px; font-size:14px; color:#444;"></div>
 
 <script>
-// ====== 关键：显示/隐藏“新相册输入框”的函数 ======
+/* ========== 配置（务必替换为你的 preset / cloud） ========== */
+const CLOUD_NAME    = "dpr0pl2tf";       // ← 你的 Cloudinary cloud name
+const UPLOAD_PRESET = "unsigned_preset"; // ← 你创建的 unsigned preset 名
+
 function toggleNewAlbumInput() {
   const select = document.getElementById('albumSelect');
   const newAlbumDiv = document.getElementById('newAlbumDiv');
-  // 如果选中新建，就显示输入框；否则隐藏
   newAlbumDiv.style.display = (select && select.value === 'new') ? 'block' : 'none';
 }
+document.addEventListener('DOMContentLoaded', toggleNewAlbumInput);
 
-// 页面加载时初始化一次（保证首屏显示正确）
-document.addEventListener('DOMContentLoaded', function () {
-  toggleNewAlbumInput();
-});
-
-// ===== 以下保持你原有的上传逻辑（最小改动：逐张或分批） ======
-// 你之前的 submit 处理函数可以继续放在这里（或替换为逐张逻辑）
-// 我在这里只放一个兼容的提交处理示例（逐张上传示例）：
-
+/* 逐张上传 + 每张最多重试 maxAttempts 次（减少重复上传概率） */
 document.getElementById('uploadForm').addEventListener('submit', async function (e) {
   e.preventDefault();
 
@@ -63,33 +58,36 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
   const statusDiv = document.getElementById('uploadStatus');
   const submitBtn = document.getElementById('submitBtn');
 
-  let album = albumSelect.value === 'new' ? (newAlbumInput.value || "").trim() : albumSelect.value;
-
+  let album = (albumSelect.value === 'new') ? (newAlbumInput.value || "").trim() : albumSelect.value;
   if (!album) { alert("请填写相册名！"); return; }
   if (!files || files.length === 0) { alert("请选择照片！"); return; }
+
+  // 把相册放到主文件夹 albums 下（如果你的 upload preset 本身已经设置了 Asset folder 'albums'，把下面的 folderPrefix 设为空 ""）
+  const folderPrefix = "albums"; // <- 如果你不想再有顶级 albums 文件夹，把这里设为 "" 并在 preset 里调整
+  const folderPath = folderPrefix ? `${folderPrefix}/${album}` : album;
 
   submitBtn.disabled = true;
   submitBtn.textContent = "正在上传...";
   statusDiv.innerHTML = "";
 
-  // 逐张上传（更稳定），如果你想继续分批请改这里
-  for (const file of files) {
-    const statusItem = document.createElement("div");
-    statusItem.textContent = `${file.name} 正在上传...`;
-    statusDiv.appendChild(statusItem);
+  const maxAttempts = 3;
+
+  for (const file of Array.from(files)) {
+    const item = document.createElement('div');
+    item.textContent = `${file.name} - 准备上传...`;
+    statusDiv.appendChild(item);
 
     try {
-      // 请确保你页面中已有 uploadToCloudinary(file, album) 的实现
-      // 并确保 savePhotoToDB(album, url) 的后端路由存在
-      const url = await uploadToCloudinary(file, album);
+      const url = await uploadWithRetries(file, folderPath, maxAttempts, item);
+      // 保存到后端数据库
       await savePhotoToDB(album, url);
-
-      statusItem.textContent = `${file.name} ✅ 上传成功`;
-      statusItem.style.color = "green";
+      item.textContent = `${file.name} ✅ 上传并保存成功`;
+      item.style.color = "green";
     } catch (err) {
       console.error(err);
-      statusItem.textContent = `${file.name} ❌ 上传失败: ${err && err.message ? err.message : err}`;
-      statusItem.style.color = "red";
+      item.textContent = `${file.name} ❌ 上传失败：${err && err.message ? err.message : err}`;
+      item.style.color = "red";
+      // 失败的话继续下一个文件（不会把整个上传中断）
     }
   }
 
@@ -97,5 +95,54 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
   submitBtn.textContent = "上传";
 });
 
+/* uploadWithRetries */
+async function uploadWithRetries(file, folder, maxAttempts, statusItem) {
+  let attempt = 0;
+  while (attempt < maxAttempts) {
+    attempt++;
+    try {
+      statusItem.textContent = `${file.name} - 上传中（第 ${attempt} 次）...`;
+      const url = await uploadToCloudinary(file, folder);
+      return url;
+    } catch (err) {
+      console.warn(`上传第 ${attempt} 次失败`, err);
+      if (attempt >= maxAttempts) throw err;
+      // 指数退避
+      await new Promise(r => setTimeout(r, 500 * attempt));
+    }
+  }
+}
+
+/* 直传 Cloudinary（返回 secure_url） */
+async function uploadToCloudinary(file, folder) {
+  const apiUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("upload_preset", UPLOAD_PRESET);
+  if (folder) fd.append("folder", folder);
+
+  const res = await fetch(apiUrl, { method: "POST", body: fd });
+  const data = await res.json();
+  if (!res.ok) {
+    // Cloudinary 会返回 JSON 错误信息，包含 error.message
+    const msg = (data && data.error && data.error.message) ? data.error.message : JSON.stringify(data);
+    throw new Error(msg);
+  }
+  return data.secure_url;
+}
+
+/* 保存到后端 DB（/save_photo） */
+async function savePhotoToDB(album, url) {
+  const res = await fetch("/save_photo", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ album: album, url: url })
+  });
+  const data = await res.json();
+  if (!res.ok || data.success === false) {
+    throw new Error(data.error || "保存到数据库失败");
+  }
+  return data;
+}
 </script>
 {% endblock %}
