@@ -147,29 +147,22 @@ def albums():
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
 
         if main:
-            # 直接拉取主文件夹下的所有资源
+            # 拉取主目录下所有资源
             resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
-
-            album_names_set = set()
-            album_covers = {}
+            album_dict = {}
 
             for res in resources.get('resources', []):
                 parts = res.get('public_id', '').split('/')
-                # public_id 形如 "albums/<album_name>/xxx.jpg"
                 if len(parts) >= 2:
-                    album_name = parts[1]
-                    album_names_set.add(album_name)
+                    real_name = parts[1]
+                    display_name = ALBUM_NAME_MAP.get(real_name, real_name)
+                    if display_name not in album_dict:
+                        album_dict[display_name] = res.get('secure_url', '')
 
-                    # 如果这个相册还没有封面，就用当前图片作为封面
-                    if album_name not in album_covers:
-                        album_covers[album_name] = res.get('secure_url', '')
-
-            # 构造相册列表
-            for album_name in sorted(album_names_set):
-                albums.append({'name': album_name, 'cover': album_covers.get(album_name, '')})
+            for display_name, cover_url in sorted(album_dict.items()):
+                albums.append({'name': display_name, 'cover': cover_url})
 
         else:
-            # 兼容老逻辑：列出根目录下的文件夹（不包含 private）
             folders = cloudinary.api.root_folders()
             for folder in folders.get('folders', []):
                 folder_name = folder.get('name')
@@ -190,27 +183,24 @@ def view_album(album_name):
     try:
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
 
-        # 拼接主目录路径
-        prefix = f"{main}/" if main else ""
+        # 找到真实 Cloudinary 文件夹名
+        real_album_name = ALBUM_DISPLAY_TO_REAL.get(album_name, album_name)
 
-        # 获取主目录下所有资源（500 张以内，可按需分页）
+        prefix = f"{main}/" if main else ""
         resources = cloudinary.api.resources(type="upload", prefix=prefix, max_results=500)
 
-        # 从 public_id 中提取属于当前 album_name 的图片
         images = []
         for img in resources.get("resources", []):
             parts = img.get("public_id", "").split('/')
-            if len(parts) >= 2:
-                img_album_name = parts[1]  # public_id 格式: albums/<album_name>/xxx
-                if img_album_name == album_name:
-                    images.append({
-                        "public_id": img["public_id"],
-                        "secure_url": img["secure_url"]
-                    })
+            if len(parts) >= 2 and parts[1] == real_album_name:
+                images.append({
+                    "public_id": img["public_id"],
+                    "secure_url": img["secure_url"]
+                })
 
         logged_in = session.get("logged_in", False)
         return render_template("view_album.html",
-                               album_name=album_name,
+                               album_name=album_name,  # 这里传显示名
                                images=images,
                                logged_in=logged_in)
     except Exception as e:
