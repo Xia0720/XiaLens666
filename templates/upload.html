@@ -42,7 +42,7 @@ const CLOUD_NAME    = "dpr0pl2tf";       // ← 你的 Cloudinary cloud name
 const UPLOAD_PRESET = "unsigned_preset"; // ← 你创建的 unsigned preset 名
 
 // 👇 注入后端变量（可能是 "albums" 或 ""）
-const MAIN_FOLDER = {{ MAIN_ALBUM_FOLDER | tojson }};
+const MAIN_FOLDER = {{ (MAIN_ALBUM_FOLDER or "") | tojson }};
 
 function toggleNewAlbumInput() {
   const select = document.getElementById('albumSelect');
