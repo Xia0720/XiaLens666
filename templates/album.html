@@ -1,24 +1,76 @@
 {% extends "base.html" %}
-{% block title %}Album - XiaCapture{% endblock %}
+{% block title %}Albums - XiaCapture{% endblock %}
+
 {% block content %}
-<h1 class="album-title">Albums</h1>
+<h1 style="text-align:center; margin-top:20px;">Albums</h1>
 
 <div class="masonry">
   {% for album in albums %}
-  <div class="masonry-item">
-    <a href="{{ url_for('view_album', album_name=album.name) }}">
-      <div class="album-card">
-        <img src="{{ album.cover_url }}" alt="{{ album.name }}">
+    <div class="masonry-item">
+      <a href="{{ url_for('view_album', album_name=album.name) }}">
+        {% if album.cover %}
+          <img src="{{ album.cover }}" alt="{{ album.name }}">
+        {% else %}
+          <div style="width:100%; height:200px; background:#ccc; display:flex; align-items:center; justify-content:center;">
+            No cover
+          </div>
+        {% endif %}
         <div class="overlay">
           <span>{{ album.name }}</span>
         </div>
-      </div>
-    </a>
-  </div>
+      </a>
+    </div>
   {% endfor %}
 </div>
-{% endblock %}
 
+<style>
+.masonry {
+  column-count: 3;
+  column-gap: 20px;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.masonry-item {
+  display: inline-block;
+  width: 100%;
+  margin-bottom: 20px;
+  break-inside: avoid;
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.masonry-item img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px;
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.masonry-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.15);
+}
+
+.overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 10px;
+  background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+  color: white;
+  font-size: 1.1em;
+  font-weight: bold;
+  text-align: center;
+}
+</style>
+{% endblock %}
 
 
 
