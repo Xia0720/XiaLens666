@@ -48,35 +48,54 @@
 }
 </style>
 
-<div class="album-grid">
+<div class="inner-album-grid">
   {% for img in images %}
-    <div class="album-item">
-      {% if logged_in %}
-      <input type="checkbox" name="public_ids" value="{{ img.public_id }}">
-      {% endif %}
-      <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album">
-        <img src="{{ img.secure_url }}" alt="Photo">
-      </a>
-    </div>
+  <div class="inner-album-item">
+    {% if logged_in %}
+    <input type="checkbox" name="public_ids" value="{{ img.public_id }}">
+    {% endif %}
+    <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album">
+      <img src="{{ img.secure_url }}" alt="Photo">
+    </a>
+  </div>
   {% endfor %}
 </div>
 
-{% if logged_in %}
-  <input type="hidden" name="album_name" value="{{ album_name }}">
-  <div style="text-align: right; margin-top: 20px;">
-    <button type="submit" style="padding: 5px 12px;">Delete Selected Images</button>
-  </div>
-</form>
-{% endif %}
+<style>
+.inner-album-grid {
+  column-count: 5;
+  column-gap: 10px;
+  padding: 15px;
+}
 
-<script>
-const lightbox = GLightbox({
-  selector: '.glightbox',
-  loop: true,
-  touchNavigation: true,
-  keyboardNavigation: true,
-  closeOnOutsideClick: true
-});
-</script>
+.inner-album-item {
+  display: inline-block;
+  width: 100%;
+  margin-bottom: 10px;
+  break-inside: avoid;
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
 
+.inner-album-item img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 10px;
+  transition: transform 0.25s ease;
+}
+
+.inner-album-item:hover {
+  transform: scale(1.02);
+  box-shadow: 0 5px 12px rgba(0,0,0,0.15);
+}
+
+/* 响应式 */
+@media (max-width:1200px){.inner-album-grid{column-count:4;}}
+@media (max-width:992px){.inner-album-grid{column-count:3;}}
+@media (max-width:768px){.inner-album-grid{column-count:2;}}
+@media (max-width:480px){.inner-album-grid{column-count:1;}}
+</style>
 {% endblock %}
