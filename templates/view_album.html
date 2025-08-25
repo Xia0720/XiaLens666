@@ -14,7 +14,7 @@
 {% endif %}
 
 <div class="inner-album-grid">
-  <!-- Masonry 基准元素 -->
+  <!-- Masonry 基准 -->
   <div class="grid-sizer"></div>
   <div class="gutter-sizer"></div>
 
@@ -31,62 +31,74 @@
 </div>
 
 <style>
-.inner-album-grid {
-  max-width: 1400px;
-  margin: 20px auto;
+.inner-album-grid{
+  margin: 20px auto;    /* 由 Masonry + fitWidth 计算宽度，自动居中 */
 }
 
-.grid-sizer { width: 20%; }       /* 内页 5 列 */
-.gutter-sizer { width: 15px; }    /* 列间距 */
+/* 期望大屏约 5 列：5x220 + 4x14 = 1,254px */
+.grid-sizer   { width: 220px; }
+.gutter-sizer { width: 14px; }
 
-.inner-album-item {
-  width: 20%;                     /* 和 grid-sizer 保持一致 */
-  margin-bottom: 15px;
-  position: relative;
-  border-radius: 10px;
+.inner-album-item{
+  width: 220px;                /* 与 grid-sizer 一致 */
+  margin-bottom: 14px;
+  position: relative;          /* 让复选框能绝对定位 */
   overflow: hidden;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  border-radius: 10px;
+  transition: transform .2s ease, box-shadow .2s ease;
   box-sizing: border-box;
 }
 
-.inner-album-item img {
-  width: 100%;
-  height: auto; /* 保持不规则高度 */
+.inner-album-item img{
   display: block;
+  width: 100%;
+  height: auto;                /* 高度自适应，形成错落 */
   border-radius: 10px;
+  object-fit: cover;
 }
 
-.inner-album-item:hover {
-  transform: scale(1.02);
-  box-shadow: 0 5px 12px rgba(0,0,0,0.15);
+.inner-album-item:hover{
+  transform: scale(1.015);
+  box-shadow: 0 6px 12px rgba(0,0,0,.12);
 }
 
 .inner-album-item input[type="checkbox"]{
-  position:absolute; top:6px; left:6px; z-index:10; width:20px; height:20px;
+  position: absolute; top: 8px; left: 8px;
+  width: 20px; height: 20px; z-index: 5;
 }
 
-/* 响应式 */
-@media (max-width:1200px){.grid-sizer, .inner-album-item {width:25%;}}  /* 4 列 */
-@media (max-width:992px){.grid-sizer, .inner-album-item {width:33.33%;}}/* 3 列 */
-@media (max-width:768px){.grid-sizer, .inner-album-item {width:50%;}}   /* 2 列 */
-@media (max-width:480px){.grid-sizer, .inner-album-item {width:100%;}}  /* 1 列 */
+/* 响应式：缩列宽即降列数 */
+@media (max-width: 1300px){
+  .grid-sizer, .inner-album-item { width: 200px; } /* 5 → 4/5 列 */
+}
+@media (max-width: 1100px){
+  .grid-sizer, .inner-album-item { width: 180px; } /* 4 列为主 */
+}
+@media (max-width: 900px){
+  .grid-sizer, .inner-album-item { width: 48%; }   /* 2 列（更紧凑） */
+}
+@media (max-width: 520px){
+  .grid-sizer, .inner-album-item { width: 100%; }  /* 1 列 */
+}
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function(){
   var grid = document.querySelector('.inner-album-grid');
 
+  // 先等图片加载完再 Masonry
   imagesLoaded(grid, function(){
     new Masonry(grid, {
       itemSelector: '.inner-album-item',
       columnWidth: '.grid-sizer',
       gutter: '.gutter-sizer',
-      percentPosition: true,
+      fitWidth: true,         // ✅ 关键：容器根据列宽自适应并水平居中
+      percentPosition: false, // 像素列宽更稳
       transitionDuration: '0.2s'
     });
   });
 
-  // 初始化 GLightbox
+  // Lightbox
   GLightbox({
     selector: '.glightbox',
     loop: true,
