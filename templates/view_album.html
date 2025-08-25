@@ -2,7 +2,6 @@
 {% block title %}{{ album_name }} - Album{% endblock %}
 
 {% block content %}
-<!-- ✅ 直接在 content 里引入 CSS/JS，避免 base.html 未定义 head/scripts 的问题 -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
 <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
 
@@ -13,18 +12,40 @@
 {% endif %}
 
 <style>
-  .album-grid {
-    display:flex; flex-wrap: wrap; gap:10px; justify-content: center;
-  }
-  .album-item {
-    position: relative; width: 200px; height: 200px; overflow: hidden; border-radius: 8px;
-  }
-  .album-item img {
-    width:100%; height:100%; object-fit: cover; display:block;
-  }
-  .album-item input[type="checkbox"]{
-    position:absolute; top:6px; left:6px; z-index:10; width:20px; height:20px;
-  }
+/* Masonry 内页布局 */
+.album-grid {
+  column-count: 3;       /* 默认三列 */
+  column-gap: 15px;
+  padding: 20px;
+}
+
+.album-item {
+  display: inline-block;
+  width: 100%;
+  margin-bottom: 15px;
+  break-inside: avoid;    /* Masonry 必须 */
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.album-item img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 12px;
+  transition: transform 0.3s ease;
+}
+
+.album-item:hover {
+  transform: scale(1.03);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.2);
+}
+
+.album-item input[type="checkbox"]{
+  position:absolute; top:6px; left:6px; z-index:10; width:20px; height:20px;
+}
 </style>
 
 <div class="album-grid">
@@ -33,7 +54,6 @@
       {% if logged_in %}
       <input type="checkbox" name="public_ids" value="{{ img.public_id }}">
       {% endif %}
-      <!-- 用 GLightbox：class="glightbox" + data-gallery 同名分组 -->
       <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album">
         <img src="{{ img.secure_url }}" alt="Photo">
       </a>
@@ -50,14 +70,13 @@
 {% endif %}
 
 <script>
-  // 初始化 GLightbox（支持左右切换、手势、键盘、循环）
-  const lightbox = GLightbox({
-    selector: '.glightbox',
-    loop: true,
-    touchNavigation: true,
-    keyboardNavigation: true,
-    closeOnOutsideClick: true
-  });
+const lightbox = GLightbox({
+  selector: '.glightbox',
+  loop: true,
+  touchNavigation: true,
+  keyboardNavigation: true,
+  closeOnOutsideClick: true
+});
 </script>
-{% endblock %}
 
+{% endblock %}
