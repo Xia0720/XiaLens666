@@ -170,63 +170,74 @@ body, html {
     box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
 
-/* Album 页面 Masonry + Hover 风格 */
+/* ========== Album 页面 Masonry 卡片布局 + Hover 动效 ========== */
+
+/* Masonry 容器 */
 .album-grid {
-  column-count: 3;          /* Masonry 列数，可改为 2 或 4 适配屏幕 */
+  column-count: 3;          /* 默认 3 列 */
   column-gap: 20px;         /* 列间距 */
   padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
+/* Masonry 子项 */
 .album-item {
-  display: inline-block;    /* 让元素在 Masonry 中正确分布 */
-  margin: 0 0 20px;         /* 行间距 */
-  width: 100%;              /* 占满列宽 */
-  break-inside: avoid;      /* 避免元素被拆开 */
+  display: inline-block;     /* Masonry 关键 */
+  width: 100%;
+  margin-bottom: 20px;
+  break-inside: avoid;       /* 防止图片被切割 */
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  cursor: pointer;
 }
 
+/* 图片样式 */
 .album-item img {
   width: 100%;
-  border-radius: 12px;
+  height: auto;
   display: block;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  transition: transform 0.3s ease, filter 0.3s ease;
+  border-radius: 12px;
+  transition: transform 0.4s ease;
 }
 
-/* Hover 效果：放大+阴影 */
+/* Hover 动效 */
 .album-item:hover {
-  transform: translateY(-8px);
+  transform: translateY(-5px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
 }
 
 .album-item:hover img {
   transform: scale(1.05);
-  filter: brightness(0.9);
 }
 
-/* 相册名称样式 */
-.album-item p {
-  margin-top: 10px;
-  text-align: center;
-  font-size: 1.1rem;
+/* 相册标题覆盖在底部 */
+.album-item h3 {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 10px 15px;
+  font-size: 18px;
   font-weight: bold;
-  color: #333;
+  color: white;
+  background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+  text-align: center;
+  border-radius: 0 0 12px 12px;
 }
 
-/* ---------------- 响应式 ---------------- */
-/* 屏幕宽度 <= 1024px：尽量显示两列 */
-@media (max-width: 1024px) {
-  .album-item {
-    flex: 1 1 45%;
-    max-width: 45%;
+/* 响应式 */
+@media (max-width: 992px) {
+  .album-grid {
+    column-count: 2;
   }
 }
-
-/* 屏幕宽度 <= 720px：手机屏幕，每行显示两列 */
-@media (max-width: 720px) {
-  .album-item {
-    flex: 1 1 45%;
-    max-width: 45%;
+@media (max-width: 600px) {
+  .album-grid {
+    column-count: 1;
   }
 }
 
