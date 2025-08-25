@@ -36,6 +36,7 @@
 
 <div id="uploadStatus" style="margin-top:15px; font-size:14px; color:#444;"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/exifreader@4/dist/exif-reader.min.js"></script>
 <script>
 /* ========== 配置（务必替换为你的 preset / cloud） ========== */
 const CLOUD_NAME    = "dpr0pl2tf";       // ← 你的 Cloudinary cloud name
@@ -95,6 +96,29 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
   submitBtn.textContent = "上传";
 });
 
+async function getTakenAtISO(file) {
+  try {
+    const buf = await file.arrayBuffer();
+    const tags = ExifReader.load(buf, {expanded: true});
+    // 常见字段：exif.DateTimeOriginal 或 exif.CreateDate
+    const dt = (tags.exif && (tags.exif.DateTimeOriginal || tags.exif.CreateDate))
+               ? (tags.exif.DateTimeOriginal.description || tags.exif.CreateDate.description)
+               : null;
+    if (dt) {
+      // 形如 "2024:11:03 14:22:10" → 转 ISO
+      const iso = dt.replace(/^(\d{4}):(\d{2}):(\d{2})\s+/, '$1-$2-$3T') + 'Z';
+      return iso;
+    }
+  } catch(e) { /* 忽略，走兜底 */ }
+  // 兜底：用文件的 lastModified
+  try {
+    const d = new Date(file.lastModified);
+    return d.toISOString();
+  } catch(e) {
+    return new Date().toISOString();
+  }
+}
+  
 async function uploadWithRetries(file, folder, maxAttempts, statusItem) {
   let attempt = 0;
   while (attempt < maxAttempts) {
