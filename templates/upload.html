@@ -136,11 +136,14 @@ async function uploadWithRetries(file, folder, maxAttempts, statusItem) {
 }
 
 async function uploadToCloudinary(file, folder) {
+  const takenAt = await getTakenAtISO(file);  // ← 新增
   const apiUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
   const fd = new FormData();
   fd.append("file", file);
   fd.append("upload_preset", UPLOAD_PRESET);
   if (folder) fd.append("folder", folder);
+  // ✅ 把拍摄时间写入 context（可自定义更多键）
+  fd.append("context", `taken_at=${takenAt}`);
 
   const res = await fetch(apiUrl, { method: "POST", body: fd });
   const data = await res.json();
