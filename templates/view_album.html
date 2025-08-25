@@ -4,6 +4,7 @@
 {% block content %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
 <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
+<script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
 
 <h1 style="text-align:center; margin-top:20px;">{{ album_name }} Album</h1>
 
@@ -26,23 +27,19 @@
 
 <style>
 .inner-album-grid {
-  display: flex;
-  flex-wrap: wrap;
-  margin: -10px;
+  margin: 20px auto;
 }
 
 .inner-album-item {
-  width: calc(20% - 20px); /* 5列 */
-  margin: 10px;
+  width: 200px;             /* 内页小图 */
+  margin-bottom: 15px;
   border-radius: 10px;
   overflow: hidden;
-  position: relative;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .inner-album-item img {
   width: 100%;
-  height: auto;
   display: block;
   border-radius: 10px;
   transition: transform 0.25s ease;
@@ -58,17 +55,16 @@
 }
 
 /* 响应式 */
-@media (max-width:1200px){.inner-album-item{width: calc(25% - 20px);}}
-@media (max-width:992px){.inner-album-item{width: calc(33.333% - 20px);}}
-@media (max-width:768px){.inner-album-item{width: calc(50% - 20px);}}
-@media (max-width:480px){.inner-album-item{width: calc(100% - 20px);}}
+@media (max-width:1200px){.inner-album-item{width:180px;}}
+@media (max-width:992px){.inner-album-item{width:150px;}}
+@media (max-width:768px){.inner-album-item{width:45%;}}
+@media (max-width:480px){.inner-album-item{width:100%;}}
 </style>
 
 <script>
-document.addEventListener("DOMContentLoaded", function(){
   // 初始化 Masonry
   var grid = document.querySelector('.inner-album-grid');
-  new Masonry(grid, {
+  var msnry = new Masonry(grid, {
     itemSelector: '.inner-album-item',
     columnWidth: '.inner-album-item',
     percentPosition: true,
@@ -83,7 +79,6 @@ document.addEventListener("DOMContentLoaded", function(){
     keyboardNavigation: true,
     closeOnOutsideClick: true
   });
-});
 </script>
 
 {% if logged_in %}
