@@ -5,6 +5,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
 <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
 <script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
+<script src="https://unpkg.com/imagesloaded@4/imagesloaded.pkgd.min.js"></script>
 
 <h1 style="text-align:center; margin-top:20px;">{{ album_name }} Album</h1>
 
@@ -40,9 +41,9 @@
 
 .inner-album-item img {
   width: 100%;
+  height: auto;         /* 改为 auto，高度自适应 */
   display: block;
   border-radius: 10px;
-  transition: transform 0.25s ease;
 }
 
 .inner-album-item:hover {
@@ -62,13 +63,14 @@
 </style>
 
 <script>
-  // 初始化 Masonry
-  var grid = document.querySelector('.inner-album-grid');
-  var msnry = new Masonry(grid, {
-    itemSelector: '.inner-album-item',
-    columnWidth: '.inner-album-item',
-    percentPosition: true,
-    gutter: 10
+  // 确保所有图片加载完再初始化 Masonry
+var grid = document.querySelector('.inner-album-grid');
+imagesLoaded(grid, function() {
+    var msnry = new Masonry(grid, {
+        itemSelector: '.inner-album-item',
+        columnWidth: '.inner-album-item',
+        percentPosition: true,
+        gutter: 10
   });
 
   // 初始化 GLightbox
