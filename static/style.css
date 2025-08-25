@@ -170,29 +170,47 @@ body, html {
     box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
 
-/* Album 页面网格 */
+/* Album 页面 Masonry + Hover 风格 */
 .album-grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  column-gap: 20px; /* 横向间距 */
-  row-gap: 10px;    /* 纵向间距 */
-  padding: 0;
+  column-count: 3;          /* Masonry 列数，可改为 2 或 4 适配屏幕 */
+  column-gap: 20px;         /* 列间距 */
+  padding: 20px;
 }
 
 .album-item {
-  text-align: center;
-  margin: 0;
-  flex: 1 1 200px;   /* 最小宽度 200px，自适应换行 */
-  max-width: 300px;  /* 可选最大宽度 */
+  display: inline-block;    /* 让元素在 Masonry 中正确分布 */
+  margin: 0 0 20px;         /* 行间距 */
+  width: 100%;              /* 占满列宽 */
+  break-inside: avoid;      /* 避免元素被拆开 */
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
 }
 
 .album-item img {
-  display: block;       /* 消除底部空白 */
-  width: 100%;          /* 填满容器 */
-  height: 200px;        /* 固定高度保持布局整齐 */
-  object-fit: cover;    /* 保持比例裁剪 */
-  border-radius: 8px;
+  width: 100%;
+  border-radius: 12px;
+  display: block;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+/* Hover 效果：放大+阴影 */
+.album-item:hover {
+  transform: translateY(-8px);
+}
+
+.album-item:hover img {
+  transform: scale(1.05);
+  filter: brightness(0.9);
+}
+
+/* 相册名称样式 */
+.album-item p {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #333;
 }
 
 /* ---------------- 响应式 ---------------- */
