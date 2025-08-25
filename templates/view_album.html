@@ -14,7 +14,7 @@
 <style>
 /* Masonry 内页布局 */
 .album-grid {
-  column-count: 5;       /* 默认三列 */
+  column-count: 5;       
   column-gap: 15px;
   padding: 20px;
 }
@@ -62,17 +62,18 @@
 </div>
 
 <style>
+/* Masonry 内页布局 */
 .inner-album-grid {
-  column-count: 5;
-  column-gap: 10px;
+  column-count: 5;        /* 5列 */
+  column-gap: 15px;
   padding: 15px;
 }
 
 .inner-album-item {
   display: inline-block;
   width: 100%;
-  margin-bottom: 10px;
-  break-inside: avoid;
+  margin-bottom: 15px;    /* 增大间距，让错落更明显 */
+  break-inside: avoid;     /* Masonry 必须 */
   position: relative;
   border-radius: 10px;
   overflow: hidden;
@@ -81,7 +82,7 @@
 
 .inner-album-item img {
   width: 100%;
-  height: auto;
+  height: auto;            /* 高度自适应，Masonry 自动错落 */
   display: block;
   border-radius: 10px;
   transition: transform 0.25s ease;
@@ -90,6 +91,10 @@
 .inner-album-item:hover {
   transform: scale(1.02);
   box-shadow: 0 5px 12px rgba(0,0,0,0.15);
+}
+
+.inner-album-item input[type="checkbox"]{
+  position:absolute; top:6px; left:6px; z-index:10; width:20px; height:20px;
 }
 
 /* 响应式 */
