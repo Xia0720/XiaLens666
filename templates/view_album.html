@@ -14,7 +14,7 @@
 <style>
 /* Masonry 内页布局 */
 .album-grid {
-  column-count: 3;       /* 默认三列 */
+  column-count: 5;       /* 默认三列 */
   column-gap: 15px;
   padding: 20px;
 }
@@ -22,20 +22,20 @@
 .album-item {
   display: inline-block;
   width: 100%;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
   break-inside: avoid;    /* Masonry 必须 */
   position: relative;
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .album-item img {
   width: 100%;
   height: auto;
   display: block;
-  border-radius: 12px;
-  transition: transform 0.3s ease;
+  border-radius: 10px;
+  transition: transform 0.25s ease;
 }
 
 .album-item:hover {
