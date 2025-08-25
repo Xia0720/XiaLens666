@@ -18,7 +18,7 @@
 <style>
 .home-album-grid {
   column-count: 4;
-  column-gap: 15px;
+  column-gap: 20px;
   padding: 20px;
 }
 
@@ -35,7 +35,7 @@
 
 .home-album-item img {
   width: 100%;
-  height: auto;
+  height: 280px;          /* 改为更高，让封面突出 */
   display: block;
   border-radius: 12px;
   transition: transform 0.3s ease;
@@ -51,11 +51,12 @@
   bottom: 0;
   left: 0;
   width: 100%;
-  padding: 10px;
+  padding: 12px 10px;     /* 略微增大 padding */
   background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
   color: white;
   font-weight: bold;
   text-align: center;
+  font-size: 16px;        /* 可选：让文字更突出 */
 }
 
 /* 响应式 */
