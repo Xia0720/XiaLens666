@@ -15,25 +15,26 @@
   {% endfor %}
 </div>
 
+<!-- 引入 Masonry -->
+<script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
+
 <style>
 .home-album-grid {
-  display: flex;
-  flex-wrap: wrap;
-  margin: -10px; /* 负间距处理 gutter */
+  margin: 20px auto;
 }
 
 .home-album-item {
-  width: calc(25% - 20px); /* 4列 */
-  margin: 10px;
+  width: 240px;          /* 固定宽度，Masonry 排列 */
+  margin-bottom: 20px;
   border-radius: 12px;
   overflow: hidden;
-  position: relative;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .home-album-item img {
   width: 100%;
-  height: auto;
+  height: 280px;         /* 高度突出封面 */
+  object-fit: cover;
   display: block;
   border-radius: 12px;
   transition: transform 0.3s ease;
@@ -58,25 +59,24 @@
 }
 
 /* 响应式 */
-@media (max-width:992px){.home-album-item{width: calc(33.333% - 20px);}}
-@media (max-width:768px){.home-album-item{width: calc(50% - 20px);}}
-@media (max-width:480px){.home-album-item{width: calc(100% - 20px);}}
+@media (max-width:992px){.home-album-item{width:200px;}}
+@media (max-width:768px){.home-album-item{width:45%;}}
+@media (max-width:480px){.home-album-item{width:100%;}}
 </style>
 
-<!-- 引入 Masonry.js -->
-<script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", function(){
+  // 初始化 Masonry
   var grid = document.querySelector('.home-album-grid');
-  new Masonry(grid, {
+  var msnry = new Masonry(grid, {
     itemSelector: '.home-album-item',
     columnWidth: '.home-album-item',
     percentPosition: true,
-    gutter: 20
+    gutter: 15
   });
-});
 </script>
+
 {% endblock %}
+
 
 
 
