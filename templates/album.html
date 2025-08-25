@@ -72,7 +72,7 @@
   .grid-sizer, .home-album-item { width: 240px; }   /* 3~4 列之间自适应 */
 }
 @media (max-width: 900px){
-  .grid-sizer, .home-album-item { width: 220px; }   /* 3 列为主 */
+  .grid-sizer, .home-album-item { width: 30px; }   /* 3 列为主 */
 }
 @media (max-width: 700px){
   .grid-sizer, .home-album-item { width: 48%; }     /* 2 列（用百分比更紧凑） */
@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', function(){
       columnWidth: '.grid-sizer',
       gutter: '.gutter-sizer',
       fitWidth: true,         // ✅ 关键：计算宽度并水平居中
-      percentPosition: false, // 我们使用像素列宽，更稳
+      percentPosition: true, // 我们使用像素列宽，更稳
       transitionDuration: '0.2s'
     });
   });
