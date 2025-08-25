@@ -6,7 +6,7 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 from PIL import Image, ExifTags
 import io
@@ -185,10 +185,44 @@ def view_album(album_name):
     try:
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
         prefix = f"{main}/{album_name}" if main else album_name
-        resources = cloudinary.api.resources(type="upload", prefix=prefix, max_results=500)
-        images = [{"public_id": img["public_id"], "secure_url": img["secure_url"]} for img in resources.get("resources", [])]
+
+        # ✅ 要求返回 context；direction 仅作为兜底
+        resources = cloudinary.api.resources(
+            type="upload",
+            prefix=prefix,
+            max_results=500,
+            context=True,
+            direction="asc"
+        )
+        res_list = resources.get("resources", [])
+
+        def parse_iso(s):
+            if not s: return None
+            try:
+                # Cloudinary 多为 "YYYY-MM-DDTHH:MM:SSZ"
+                return datetime.fromisoformat(s.replace('Z', '+00:00'))
+            except Exception:
+                return None
+
+        def sort_key(r):
+            # 1) 优先用我们写入的 context.taken_at
+            ctx = (r.get('context') or {}).get('custom') or {}
+            t = parse_iso(ctx.get('taken_at'))
+            if t: return t
+            # 2) 兜底用资源的 created_at（上传时间）
+            return parse_iso(r.get('created_at')) or datetime.now(timezone.utc)
+
+        # ✅ 按拍摄时间升序
+        res_list.sort(key=sort_key)
+
+        images = [{"public_id": r["public_id"], "secure_url": r["secure_url"]}
+                  for r in res_list]
+
         logged_in = session.get("logged_in", False)
-        return render_template("view_album.html", album_name=album_name, images=images, logged_in=logged_in)
+        return render_template("view_album.html",
+                               album_name=album_name,
+                               images=images,
+                               logged_in=logged_in)
     except Exception as e:
         return f"Error loading album: {str(e)}"
 
