@@ -11,43 +11,6 @@
 <form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
 {% endif %}
 
-<style>
-/* Masonry 内页布局 */
-.album-grid {
-  column-count: 5;       
-  column-gap: 15px;
-  padding: 20px;
-}
-
-.album-item {
-  display: inline-block;
-  width: 100%;
-  margin-bottom: 10px;
-  break-inside: avoid;    /* Masonry 必须 */
-  position: relative;
-  border-radius: 10px;
-  overflow: hidden;
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-
-.album-item img {
-  width: 100%;
-  height: auto;
-  display: block;
-  border-radius: 10px;
-  transition: transform 0.25s ease;
-}
-
-.album-item:hover {
-  transform: scale(1.03);
-  box-shadow: 0 6px 14px rgba(0,0,0,0.2);
-}
-
-.album-item input[type="checkbox"]{
-  position:absolute; top:6px; left:6px; z-index:10; width:20px; height:20px;
-}
-</style>
-
 <div class="inner-album-grid">
   {% for img in images %}
   <div class="inner-album-item">
@@ -62,27 +25,24 @@
 </div>
 
 <style>
-/* Masonry 内页布局 */
 .inner-album-grid {
-  column-count: 5;        /* 5列 */
-  column-gap: 15px;
-  padding: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  margin: -10px;
 }
 
 .inner-album-item {
-  display: inline-block;
-  width: 100%;
-  margin-bottom: 15px;    /* 增大间距，让错落更明显 */
-  break-inside: avoid;     /* Masonry 必须 */
-  position: relative;
+  width: calc(20% - 20px); /* 5列 */
+  margin: 10px;
   border-radius: 10px;
   overflow: hidden;
+  position: relative;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
 .inner-album-item img {
   width: 100%;
-  height: auto;            /* 高度自适应，Masonry 自动错落 */
+  height: auto;
   display: block;
   border-radius: 10px;
   transition: transform 0.25s ease;
@@ -98,9 +58,40 @@
 }
 
 /* 响应式 */
-@media (max-width:1200px){.inner-album-grid{column-count:4;}}
-@media (max-width:992px){.inner-album-grid{column-count:3;}}
-@media (max-width:768px){.inner-album-grid{column-count:2;}}
-@media (max-width:480px){.inner-album-grid{column-count:1;}}
+@media (max-width:1200px){.inner-album-item{width: calc(25% - 20px);}}
+@media (max-width:992px){.inner-album-item{width: calc(33.333% - 20px);}}
+@media (max-width:768px){.inner-album-item{width: calc(50% - 20px);}}
+@media (max-width:480px){.inner-album-item{width: calc(100% - 20px);}}
 </style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+  // 初始化 Masonry
+  var grid = document.querySelector('.inner-album-grid');
+  new Masonry(grid, {
+    itemSelector: '.inner-album-item',
+    columnWidth: '.inner-album-item',
+    percentPosition: true,
+    gutter: 10
+  });
+
+  // 初始化 GLightbox
+  const lightbox = GLightbox({
+    selector: '.glightbox',
+    loop: true,
+    touchNavigation: true,
+    keyboardNavigation: true,
+    closeOnOutsideClick: true
+  });
+});
+</script>
+
+{% if logged_in %}
+  <input type="hidden" name="album_name" value="{{ album_name }}">
+  <div style="text-align: right; margin-top: 20px;">
+    <button type="submit" style="padding: 5px 12px;">Delete Selected Images</button>
+  </div>
+</form>
+{% endif %}
+
 {% endblock %}
