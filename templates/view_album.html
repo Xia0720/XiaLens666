@@ -14,13 +14,17 @@
 {% endif %}
 
 <div class="inner-album-grid">
+  <!-- Masonry 基准元素 -->
+  <div class="grid-sizer"></div>
+  <div class="gutter-sizer"></div>
+
   {% for img in images %}
   <div class="inner-album-item">
     {% if logged_in %}
     <input type="checkbox" name="public_ids" value="{{ img.public_id }}">
     {% endif %}
     <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album">
-      <img src="{{ img.secure_url }}" alt="Photo">
+      <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
     </a>
   </div>
   {% endfor %}
@@ -28,20 +32,26 @@
 
 <style>
 .inner-album-grid {
+  max-width: 1400px;
   margin: 20px auto;
 }
 
+.grid-sizer { width: 20%; }       /* 内页 5 列 */
+.gutter-sizer { width: 15px; }    /* 列间距 */
+
 .inner-album-item {
-  width: 200px;             /* 内页小图 */
+  width: 20%;                     /* 和 grid-sizer 保持一致 */
   margin-bottom: 15px;
+  position: relative;
   border-radius: 10px;
   overflow: hidden;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
+  box-sizing: border-box;
 }
 
 .inner-album-item img {
   width: 100%;
-  height: auto;         /* 改为 auto，高度自适应 */
+  height: auto; /* 保持不规则高度 */
   display: block;
   border-radius: 10px;
 }
@@ -56,31 +66,35 @@
 }
 
 /* 响应式 */
-@media (max-width:1200px){.inner-album-item{width:180px;}}
-@media (max-width:992px){.inner-album-item{width:150px;}}
-@media (max-width:768px){.inner-album-item{width:45%;}}
-@media (max-width:480px){.inner-album-item{width:100%;}}
+@media (max-width:1200px){.grid-sizer, .inner-album-item {width:25%;}}  /* 4 列 */
+@media (max-width:992px){.grid-sizer, .inner-album-item {width:33.33%;}}/* 3 列 */
+@media (max-width:768px){.grid-sizer, .inner-album-item {width:50%;}}   /* 2 列 */
+@media (max-width:480px){.grid-sizer, .inner-album-item {width:100%;}}  /* 1 列 */
 </style>
 
 <script>
-  // 确保所有图片加载完再初始化 Masonry
-var grid = document.querySelector('.inner-album-grid');
-imagesLoaded(grid, function() {
-    var msnry = new Masonry(grid, {
-        itemSelector: '.inner-album-item',
-        columnWidth: '.inner-album-item',
-        percentPosition: true,
-        gutter: 10
+document.addEventListener('DOMContentLoaded', function(){
+  var grid = document.querySelector('.inner-album-grid');
+
+  imagesLoaded(grid, function(){
+    new Masonry(grid, {
+      itemSelector: '.inner-album-item',
+      columnWidth: '.grid-sizer',
+      gutter: '.gutter-sizer',
+      percentPosition: true,
+      transitionDuration: '0.2s'
+    });
   });
 
   // 初始化 GLightbox
-  const lightbox = GLightbox({
+  GLightbox({
     selector: '.glightbox',
     loop: true,
     touchNavigation: true,
     keyboardNavigation: true,
     closeOnOutsideClick: true
   });
+});
 </script>
 
 {% if logged_in %}
