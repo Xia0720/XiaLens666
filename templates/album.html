@@ -5,6 +5,10 @@
 <h1 style="text-align:center; margin-top:20px;">Albums</h1>
 
 <div class="home-album-grid">
+  <!-- Masonry 基准元素 -->
+  <div class="grid-sizer"></div>
+  <div class="gutter-sizer"></div>
+
   {% for album in albums %}
   <div class="home-album-item">
     <a href="{{ url_for('view_album', album_name=album.name) }}">
@@ -20,20 +24,26 @@
 
 <style>
 .home-album-grid {
-  margin: 20px auto;
+  max-width: 1400px;   /* 限制最大宽度，保证居中 */
+  margin: 20px auto;   /* 自动水平居中 */
 }
 
+.grid-sizer { width: 25%; }       /* 默认 4 列 */
+.gutter-sizer { width: 20px; }    /* 列间距 */
+
 .home-album-item {
-  width: 240px;          /* 固定宽度，Masonry 排列 */
+  width: 25%;                     /* 和 grid-sizer 保持一致 */
   margin-bottom: 20px;
+  position: relative;              /* 让 overlay 定位正确 */
   border-radius: 12px;
   overflow: hidden;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-sizing: border-box;
 }
 
 .home-album-item img {
   width: 100%;
-  height: auto;         /* 改为 auto */
+  height: auto;
   display: block;
   border-radius: 12px;
   transition: transform 0.3s ease;
@@ -58,30 +68,18 @@
 }
 
 /* 响应式 */
-@media (max-width:992px){.home-album-item{width:200px;}}
-@media (max-width:768px){.home-album-item{width:45%;}}
-@media (max-width:480px){.home-album-item{width:100%;}}
+@media (max-width:1200px){.grid-sizer, .home-album-item {width:33.33%;}} /* 3 列 */
+@media (max-width:900px){.grid-sizer, .home-album-item {width:50%;}}    /* 2 列 */
+@media (max-width:600px){.grid-sizer, .home-album-item {width:100%;}}   /* 1 列 */
 </style>
 
 <script>
-  // 初始化 Masonry
   var grid = document.querySelector('.home-album-grid');
   var msnry = new Masonry(grid, {
     itemSelector: '.home-album-item',
-    columnWidth: '.home-album-item',
-    percentPosition: true,
-    gutter: 15
+    columnWidth: '.grid-sizer',
+    gutter: '.gutter-sizer',
+    percentPosition: true
   });
 </script>
 {% endblock %}
-
-
-
-
-
-
-
-
-
-
-
