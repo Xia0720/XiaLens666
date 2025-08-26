@@ -29,14 +29,14 @@
   margin: 20px auto;
 }
 
-/* 用像素列宽更稳定：默认 4 列（4x280 + 3x18 ≈ 1,154px） */
-.grid-sizer   { width: 280px; }   /* 列宽 */
-.gutter-sizer { width: 18px; }    /* 列间距 */
+/* 默认大屏约 4 列 */
+.grid-sizer   { width: 280px; }
+.gutter-sizer { width: 18px; }
 
 .home-album-item{
-  width: 280px;                   /* 与 grid-sizer 一致 */
+  width: 280px; /* 与 grid-sizer 一致 */
   margin-bottom: 18px;
-  position: relative;             /* 让 overlay 正确定位 */
+  position: relative;
   overflow: hidden;
   border-radius: 12px;
   transition: transform .3s ease, box-shadow .3s ease;
@@ -64,21 +64,21 @@
   color: #fff; text-align:center; font-weight:700; font-size:16px;
 }
 
-/* 响应式：改列宽 = 改列数（Masonry 自动重排） */
+/* ========= 响应式 ========= */
 @media (max-width: 1300px){
-  .grid-sizer, .home-album-item { width: 260px; }   /* 可能还是 4 列或自动 3 列 */
+  .grid-sizer, .home-album-item { width: 260px; } /* 3~4 列 */
 }
 @media (max-width: 1100px){
-  .grid-sizer, .home-album-item { width: 240px; }   /* 3~4 列之间自适应 */
+  .grid-sizer, .home-album-item { width: 240px; } /* 3 列 */
 }
 @media (max-width: 900px){
-  .grid-sizer, .home-album-item { width: 48px; }   /* 3 列为主 */
+  .grid-sizer, .home-album-item { width: 48%; }   /* 2 列 */
 }
 @media (max-width: 700px){
-  .grid-sizer, .home-album-item { width: 48%; }     /* 2 列（用百分比更紧凑） */
+  .grid-sizer, .home-album-item { width: 48%; }   /* 2 列 */
 }
 @media (max-width: 480px){
-  .grid-sizer, .home-album-item { width: 100%; }    /* 1 列 */
+  .grid-sizer, .home-album-item { width: 100%; }  /* 1 列 */
 }
 </style>
 
@@ -90,11 +90,12 @@ document.addEventListener('DOMContentLoaded', function(){
       itemSelector: '.home-album-item',
       columnWidth: '.grid-sizer',
       gutter: '.gutter-sizer',
-      fitWidth: true,         // ✅ 关键：计算宽度并水平居中
-      percentPosition: false, // 我们使用像素列宽，更稳
+      fitWidth: true,         // 容器自适应居中
+      percentPosition: false, // 使用像素列宽
       transitionDuration: '0.2s'
     });
   });
 });
 </script>
+
 {% endblock %}
