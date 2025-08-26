@@ -8,26 +8,27 @@
   {% for album in albums %}
   <div class="masonry-item">
     <a href="{{ url_for('view_album', album_name=album.name) }}">
-      <img src="{{ album.cover }}" alt="{{ album.name }}" loading="lazy">
-      <div class="album-name">{{ album.name }}</div>
+      <div class="album-card">
+        <img src="{{ album.cover }}" alt="{{ album.name }}">
+        <div class="album-name">{{ album.name }}</div>
+      </div>
     </a>
   </div>
   {% endfor %}
 </div>
 
+<!-- 引入 Masonry.js -->
 <script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
 <script src="https://unpkg.com/imagesloaded@4/imagesloaded.pkgd.min.js"></script>
+
 <script>
-document.addEventListener('DOMContentLoaded', function(){
-  var grid = document.querySelector('.album-grid');
-  imagesLoaded(grid, function() {
-    new Masonry(grid, {
-      itemSelector: '.album-item',
-      columnWidth: '.grid-sizer',
-      gutter: '.gutter-sizer',
-      percentPosition: true,
-      fitWidth: true
-    });
+var grid = document.querySelector('.masonry');
+imagesLoaded(grid, function() {
+  new Masonry(grid, {
+    itemSelector: '.masonry-item',
+    columnWidth: '.masonry-item',
+    gutter: 16,
+    percentPosition: true
   });
 });
 </script>
