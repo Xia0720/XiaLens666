@@ -14,8 +14,8 @@
 {% endif %}
 
 <div class="inner-album-grid">
-  <div class="grid-sizer"></div>
-  <div class="gutter-sizer"></div>
+  <div class="inner-grid-sizer"></div>
+  <div class="inner-gutter-sizer"></div>
 
   {% for img in images %}
   <div class="inner-album-item">
@@ -30,19 +30,47 @@
 </div>
 
 <style>
-.inner-album-grid { margin: 20px auto; }
+.inner-album-grid {
+  margin: 20px auto;
+}
 
-.grid-sizer { width: 20%; }   /* 默认 5 列 */
-.gutter-sizer { width: 2%; }
+/* 列宽用百分比 */
+.inner-grid-sizer { width: 19%; }   /* 默认 5列 */
+.inner-gutter-sizer { width: 2%; }
 
-.inner-album-item { width: 20%; margin-bottom: 2%; position: relative; overflow: hidden; border-radius: 10px; box-sizing: border-box; }
-.inner-album-item img { width: 100%; height: auto; border-radius: 10px; object-fit: cover; }
-.inner-album-item:hover { transform: scale(1.015); box-shadow: 0 6px 12px rgba(0,0,0,.12); }
+.inner-album-item {
+  width: 19%;
+  margin-bottom: 2%;
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  transition: transform .2s ease, box-shadow .2s ease;
+  box-sizing: border-box;
+}
 
-/* 响应式列数 */
-@media (max-width: 1300px){ .grid-sizer, .inner-album-item { width: 25%; margin-bottom: 2%; } }  /* 4 列 */
-@media (max-width: 900px){ .grid-sizer, .inner-album-item { width: 48%; margin-bottom: 4%; } }   /* 2 列 */
-@media (max-width: 480px){ .grid-sizer, .inner-album-item { width: 100%; margin-bottom: 4%; } }  /* 1 列 */
+.inner-album-item img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.inner-album-item:hover {
+  transform: scale(1.015);
+  box-shadow: 0 6px 12px rgba(0,0,0,.12);
+}
+
+.inner-album-item input[type="checkbox"] {
+  position: absolute; top: 8px; left: 8px;
+  width: 20px; height: 20px; z-index: 5;
+}
+
+/* 响应式 */
+@media (max-width: 1100px){ .inner-grid-sizer, .inner-album-item { width: 23%; } } /* 4列 */
+@media (max-width: 900px){ .inner-grid-sizer, .inner-album-item { width: 31%; } }  /* 3列 */
+@media (max-width: 700px){ .inner-grid-sizer, .inner-album-item { width: 48%; } }  /* 2列 */
+@media (max-width: 480px){ .inner-grid-sizer, .inner-album-item { width: 100%; } } /* 1列 */
 </style>
 
 <script>
@@ -51,15 +79,22 @@ document.addEventListener('DOMContentLoaded', function(){
   imagesLoaded(grid, function(){
     new Masonry(grid, {
       itemSelector: '.inner-album-item',
-      columnWidth: '.grid-sizer',
-      gutter: '.gutter-sizer',
-      percentPosition: true,  // ✅ 关键
+      columnWidth: '.inner-grid-sizer',
+      gutter: '.inner-gutter-sizer',
+      percentPosition: true,
       fitWidth: true,
       transitionDuration: '0.2s'
     });
   });
 
-  GLightbox({ selector: '.glightbox', loop: true, touchNavigation: true });
+  // Lightbox
+  GLightbox({
+    selector: '.glightbox',
+    loop: true,
+    touchNavigation: true,
+    keyboardNavigation: true,
+    closeOnOutsideClick: true
+  });
 });
 </script>
 
