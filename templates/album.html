@@ -4,16 +4,82 @@
 {% block content %}
 <h1 style="text-align:center; margin-top:20px;">{{ album_name }} Album</h1>
 
-<div class="photo-grid" style="display:flex; flex-wrap:wrap; gap:12px; justify-content:center; padding:12px;">
+{% if logged_in %}
+<form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
+{% endif %}
+
+<div class="photo-grid">
+  <!-- Masonry 列宽参考 -->
+  <div class="grid-sizer"></div>
   {% for img in images %}
-  <div class="photo-item" style="position:relative; border-radius:8px; overflow:hidden;">
+  <div class="photo-item">
     {% if logged_in %}
     <input type="checkbox" name="public_ids" value="{{ img.public_id }}" style="position:absolute; z-index:5; margin:8px;">
     {% endif %}
     <a href="{{ img.secure_url }}" data-lightbox="album-{{ album_name }}" data-title="{{ album_name }}">
-      <img src="{{ img.secure_url }}" alt="Photo" loading="lazy" style="width:200px; height:auto; border-radius:6px; object-fit:cover;">
+      <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
     </a>
   </div>
   {% endfor %}
 </div>
+
+{% if logged_in %}
+  <input type="hidden" name="album_name" value="{{ album_name }}">
+  <div style="text-align: right; margin-top: 12px;">
+    <button type="submit" style="padding: 6px 12px;">Delete Selected Images</button>
+  </div>
+</form>
+{% endif %}
+
+<style>
+.photo-grid {
+  max-width: 1200px;
+  margin: 12px auto;
+  padding: 0;
+}
+
+/* Masonry 列宽 */
+.grid-sizer { width: 25%; } /* 默认 4 列 */
+.photo-item {
+  margin-bottom: 12px;
+  position: relative;
+}
+.photo-item img {
+  width: 100%;
+  display: block;
+  border-radius: 6px;
+  object-fit: cover;
+  transition: transform .18s ease;
+}
+.photo-item img:hover { transform: scale(1.02); }
+
+/* 响应式 */
+@media (max-width: 900px) { .grid-sizer, .photo-item { width: 48%; } }  /* 两列 */
+@media (max-width: 480px) { .grid-sizer, .photo-item { width: 100%; } } /* 单列 */
+</style>
+{% endblock %}
+
+{% block scripts %}
+<!-- Lightbox -->
+<script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.3/dist/js/lightbox.min.js"></script>
+<!-- Masonry + imagesLoaded -->
+<script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
+<script src="https://unpkg.com/imagesloaded@4/imagesloaded.pkgd.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var grid = document.querySelector('.photo-grid');
+  if (!grid) return;
+  imagesLoaded(grid, function(){
+    new Masonry(grid, {
+      itemSelector: '.photo-item',
+      columnWidth: '.grid-sizer',
+      gutter: 12,
+      percentPosition: true,
+      fitWidth: true,
+      transitionDuration: '0.2s'
+    });
+  });
+});
+</script>
 {% endblock %}
