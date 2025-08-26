@@ -177,7 +177,7 @@ body, html {
 }
 
 .masonry-item {
-  width: 23%; /* 桌面端四列 */
+  width: 20%; /* 桌面端五列 */
   margin-bottom: 16px;
 }
 
