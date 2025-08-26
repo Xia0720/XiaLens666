@@ -172,15 +172,17 @@ body, html {
 
 /* Masonry Grid 容器 */
 .masonry {
-  max-width: 1200px;
+  max-width: 100%;       /* 不限制死 1200px */
   margin: 12px auto;
+  padding: 0 12px;       /* 给左右一点呼吸空间 */
 }
 
 /* Masonry 项目 */
 .masonry-item {
-  width: 200px;          /* 固定宽度，Masonry 会自动排布，桌面端大约五列 */
+  width: calc(20% - 16px); /* 100% / 5 列 - gap */
   margin-bottom: 16px;
 }
+
 
 /* 卡片效果 */
 .album-card {
