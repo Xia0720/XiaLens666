@@ -172,33 +172,34 @@ body, html {
 
 /* Masonry Grid */
 .masonry {
-  column-count: 3;
-  column-gap: 15px;
-  padding: 10px;
+  column-count: 4;          /* 桌面端大约 4 列 */
+  column-gap: 12px;
+  max-width: 1200px;
+  margin: 12px auto;
+  padding: 0;
 }
 
 .masonry-item {
   break-inside: avoid;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
+  position: relative;
 }
 
 .masonry-item img {
-  width: 100%;
-  height: auto;
-  border-radius: 8px;
+  width: 100%;       /* 保持原图比例 */
   display: block;
-  transition: transform 0.3s ease;
-  cursor: pointer;
+  border-radius: 8px;
+  transition: transform 0.2s ease;
 }
 
 .masonry-item img:hover {
-  transform: scale(1.03);
+  transform: scale(1.02);
 }
 
 .album-name {
   text-align: center;
   margin-top: 6px;
-  font-size: 1rem;
+  font-weight: 600;
 }
 
 /* Responsive */
