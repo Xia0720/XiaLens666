@@ -257,26 +257,6 @@ body, html {
   }
 }
 
-.photo-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  max-width: 1300px;
-  margin: 12px auto;
-  padding: 12px;
-}
-
-.photo-item img {
-  width: 100%;
-  height: auto;
-  display: block;
-  border-radius: 6px;
-  object-fit: cover;
-  transition: transform .18s ease;
-}
-.photo-item img:hover { transform: scale(1.02); }
-
-
 /* ===== Story 页面样式（blog 风格） ===== */
 .story-page { padding-bottom:40px; }
 .story-header { max-width:1100px; margin:22px auto; padding:0 12px; display:flex; justify-content:center; align-items:center; gap:16px; }
