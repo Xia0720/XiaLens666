@@ -1,14 +1,25 @@
 {% extends "base.html" %}
-{% block title %}{{ album_name }} - Album{% endblock %}
-
+{% block title %}Album - XiaCapture{% endblock %}
 {% block content %}
-<h1>{{ album_name }} Album</h1>
 
-<div>
-  {% for img in images %}
-  <a href="{{ img.secure_url }}" data-lightbox="album-{{ album_name }}">
-    <img src="{{ img.secure_url }}" alt="Photo" style="max-width:200px; margin:10px;">
+<h1 style="text-align:center; margin:20px 0;">My Album</h1>
+
+<!-- Lightbox CSS -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.4/css/lightbox.min.css" rel="stylesheet">
+
+<div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">
+  <!-- 示例图片，记得换成你的 Cloudinary 链接 -->
+  <a href="https://res.cloudinary.com/demo/image/upload/w_1200,h_800,c_fill/kitten.jpg" data-lightbox="album" data-title="Cute Kitten">
+    <img src="https://res.cloudinary.com/demo/image/upload/w_300,h_200,c_fill/kitten.jpg" alt="Kitten" style="border-radius:8px;">
   </a>
-  {% endfor %}
+
+  <a href="https://res.cloudinary.com/demo/image/upload/w_1200,h_800,c_fill/dog.jpg" data-lightbox="album" data-title="Lovely Dog">
+    <img src="https://res.cloudinary.com/demo/image/upload/w_300,h_200,c_fill/dog.jpg" alt="Dog" style="border-radius:8px;">
+  </a>
 </div>
+
+<!-- Lightbox JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.4/js/lightbox.min.js"></script>
+
 {% endblock %}
+
