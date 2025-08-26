@@ -172,16 +172,15 @@ body, html {
 
 /* Masonry Grid */
 .masonry {
-  column-count: 4;  
-  column-gap: 12px;
+  column-count: 4;
+  column-gap: 16px;   /* 列间距 */
   max-width: 1200px;
   margin: 12px auto;
-  padding: 0;
 }
 
 .masonry-item {
   break-inside: avoid;
-  margin-bottom: 12px;
+  margin-bottom: 16px;  /* 行间距 */
 }
 
 /* 卡片样式 */
