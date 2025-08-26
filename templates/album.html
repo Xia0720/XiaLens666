@@ -4,63 +4,16 @@
 {% block content %}
 <h1 style="text-align:center; margin-top:20px;">Albums</h1>
 
-<div class="album-grid">
-  <div class="grid-sizer"></div>
-  <div class="gutter-sizer"></div>
-
+<div class="masonry">
   {% for album in albums %}
-  <div class="album-item">
+  <div class="masonry-item">
     <a href="{{ url_for('view_album', album_name=album.name) }}">
       <img src="{{ album.cover }}" alt="{{ album.name }}" loading="lazy">
-      <div class="album-overlay">{{ album.name }}</div>
+      <div class="album-name">{{ album.name }}</div>
     </a>
   </div>
   {% endfor %}
 </div>
-
-<style>
-.album-grid {
-  max-width: 1300px;
-  margin: 12px auto;
-}
-
-.grid-sizer { width: 25%; }
-.gutter-sizer { width: 2%; }
-
-.album-item {
-  margin-bottom: 12px;
-  position: relative;
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-.album-item img {
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  border-radius: 8px;
-  display: block;
-  transition: transform .24s ease;
-}
-
-.album-item:hover img {
-  transform: translateY(-4px) scale(1.02);
-}
-
-.album-overlay {
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  padding: 10px;
-  background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
-  color: white;
-  text-align: center;
-  font-weight: 700;
-}
-
-/* 响应式 */
-@media (max-width: 900px) { .grid-sizer, .album-item { width: 48%; } }
-@media (max-width: 480px) { .grid-sizer, .album-item { width: 100%; } }
-</style>
 
 <script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
 <script src="https://unpkg.com/imagesloaded@4/imagesloaded.pkgd.min.js"></script>
