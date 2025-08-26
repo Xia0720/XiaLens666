@@ -172,45 +172,45 @@ body, html {
 
 /* Masonry Grid */
 .masonry {
-  column-count: 4;
-  column-gap: 16px;   /* 列间距 */
   max-width: 1200px;
   margin: 12px auto;
 }
 
 .masonry-item {
-  break-inside: avoid;
-  margin-bottom: 16px;  /* 行间距 */
+  width: 23%; /* 桌面端四列 */
+  margin-bottom: 16px;
 }
 
-/* 卡片样式 */
 .album-card {
-  display: flex;
-  flex-direction: column;
-  border-radius: 8px;
+  position: relative;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  background: #fff;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
 .album-card img {
   width: 100%;
+  height: 200px;       /* 固定高度，保证卡片统一 */
+  object-fit: cover;   /* 保持比例并裁剪 */
   display: block;
-  object-fit: cover;  /* 保持纵横比例 */
+  transition: transform .2s ease;
 }
 
-.album-card:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+.album-card:hover img {
+  transform: scale(1.05);
 }
 
 .album-name {
-  padding: 8px;
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  padding: 10px;
+  background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+  color: #fff;
   text-align: center;
-  font-weight: 600;
-  font-size: 1rem;
-  background-color: #f8f8f8; /* 卡片底色，可选 */
+  font-weight: bold;
+  font-size: 1.1rem;
+  box-sizing: border-box;
 }
 
 /* Responsive */
