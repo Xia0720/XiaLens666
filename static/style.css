@@ -172,7 +172,7 @@ body, html {
 
 /* Masonry Grid */
 .masonry {
-  column-count: 4;          /* 桌面端大约 4 列 */
+  column-count: 4;  
   column-gap: 12px;
   max-width: 1200px;
   margin: 12px auto;
@@ -182,36 +182,48 @@ body, html {
 .masonry-item {
   break-inside: avoid;
   margin-bottom: 12px;
-  position: relative;
 }
 
-.masonry-item img {
-  width: 100%;       /* 保持原图比例 */
-  display: block;
+/* 卡片样式 */
+.album-card {
+  display: flex;
+  flex-direction: column;
   border-radius: 8px;
-  transition: transform 0.2s ease;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  background: #fff;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.masonry-item img:hover {
-  transform: scale(1.02);
+.album-card img {
+  width: 100%;
+  display: block;
+  object-fit: cover;  /* 保持纵横比例 */
+}
+
+.album-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
 .album-name {
+  padding: 8px;
   text-align: center;
-  margin-top: 6px;
   font-weight: 600;
+  font-size: 1rem;
+  background-color: #f8f8f8; /* 卡片底色，可选 */
 }
 
 /* Responsive */
 @media (max-width: 900px) {
   .masonry {
-    column-count: 2;
+    column-count: 3;
   }
 }
 
 @media (max-width: 600px) {
   .masonry {
-    column-count: 1;
+    column-count: 2;
   }
 }
 
