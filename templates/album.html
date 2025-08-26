@@ -1,41 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Album - XiaCapture</title>
+{% extends "base.html" %}
+{% block title %}{{ album_name }} - Album{% endblock %}
 
-  <!-- 引入 Lightbox 的 CSS -->
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css" rel="stylesheet">
+{% block content %}
+<h1 style="text-align:center; margin-top:20px;">{{ album_name }} Album</h1>
 
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 20px;
-    }
-    .gallery img {
-      width: 200px;
-      margin: 10px;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
-
-  <h1>Album Test</h1>
-
-  <div class="gallery">
-    <a href="https://picsum.photos/800/600?random=1" data-lightbox="album" data-title="Picture 1">
-      <img src="https://picsum.photos/200/150?random=1" alt="Pic 1">
-    </a>
-    <a href="https://picsum.photos/800/600?random=2" data-lightbox="album" data-title="Picture 2">
-      <img src="https://picsum.photos/200/150?random=2" alt="Pic 2">
+<div class="photo-grid" style="display:flex; flex-wrap:wrap; gap:12px; justify-content:center; padding:12px;">
+  {% for img in images %}
+  <div class="photo-item" style="position:relative; border-radius:8px; overflow:hidden;">
+    {% if logged_in %}
+    <input type="checkbox" name="public_ids" value="{{ img.public_id }}" style="position:absolute; z-index:5; margin:8px;">
+    {% endif %}
+    <a href="{{ img.secure_url }}" data-lightbox="album-{{ album_name }}" data-title="{{ album_name }}">
+      <img src="{{ img.secure_url }}" alt="Photo" loading="lazy" style="width:200px; height:auto; border-radius:6px; object-fit:cover;">
     </a>
   </div>
-
-  <!-- 引入 Lightbox 的 JS -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox-plus-jquery.min.js"></script>
-</body>
-</html>
-
+  {% endfor %}
+</div>
+{% endblock %}
