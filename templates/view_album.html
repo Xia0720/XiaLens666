@@ -30,47 +30,26 @@
 </div>
 
 <style>
-.inner-album-grid {
-  margin: 20px auto;
-}
+.inner-album-grid { margin: 20px auto; }
 
-/* 列宽用百分比 */
-.inner-grid-sizer { width: 19%; }   /* 默认 5列 */
-.inner-gutter-sizer { width: 2%; }
+.inner-grid-sizer   { width: 19%; }
+.inner-gutter-sizer { width: 1%; }
 
 .inner-album-item {
   width: 19%;
-  margin-bottom: 2%;
+  margin-bottom: 1%;
   position: relative;
+  border-radius: 10px;
   overflow: hidden;
-  border-radius: 10px;
   transition: transform .2s ease, box-shadow .2s ease;
-  box-sizing: border-box;
 }
 
-.inner-album-item img {
-  display: block;
-  width: 100%;
-  height: auto;
-  border-radius: 10px;
-  object-fit: cover;
-}
-
-.inner-album-item:hover {
-  transform: scale(1.015);
-  box-shadow: 0 6px 12px rgba(0,0,0,.12);
-}
-
-.inner-album-item input[type="checkbox"] {
-  position: absolute; top: 8px; left: 8px;
-  width: 20px; height: 20px; z-index: 5;
-}
+.inner-album-item img { width: 100%; height: auto; border-radius: 10px; object-fit: cover; }
 
 /* 响应式 */
-@media (max-width: 1100px){ .inner-grid-sizer, .inner-album-item { width: 23%; } } /* 4列 */
-@media (max-width: 900px){ .inner-grid-sizer, .inner-album-item { width: 31%; } }  /* 3列 */
-@media (max-width: 700px){ .inner-grid-sizer, .inner-album-item { width: 48%; } }  /* 2列 */
-@media (max-width: 480px){ .inner-grid-sizer, .inner-album-item { width: 100%; } } /* 1列 */
+@media (max-width: 1100px){ .inner-grid-sizer, .inner-album-item { width: 30%; margin-bottom: 2%; } }
+@media (max-width: 700px){ .inner-grid-sizer, .inner-album-item { width: 48%; margin-bottom: 3%; } }
+@media (max-width: 480px){ .inner-grid-sizer, .inner-album-item { width: 100%; margin-bottom: 4%; } }
 </style>
 
 <script>
@@ -87,7 +66,6 @@ document.addEventListener('DOMContentLoaded', function(){
     });
   });
 
-  // Lightbox
   GLightbox({
     selector: '.glightbox',
     loop: true,
