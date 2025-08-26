@@ -1,29 +1,67 @@
 {% extends "base.html" %}
-{% block title %}Album - XiaCapture{% endblock %}
-{% block content %}
-<h1 class="page-title">Albums</h1>
+{% block title %}Albums - XiaCapture{% endblock %}
 
-<div class="masonry">
+{% block content %}
+<h1 style="text-align:center; margin-top:20px;">Albums</h1>
+
+<div class="album-grid">
   {% for album in albums %}
-    <div class="masonry-item">
-      <a href="{{ url_for('view_album', album_id=album.id) }}">
-        <img src="{{ album.cover_url }}" alt="{{ album.name }}">
-      </a>
-      <p class="album-name">{{ album.name }}</p>
-    </div>
+  <div class="album-item">
+    <a href="{{ url_for('view_album', album_name=album.name) }}">
+      <img src="{{ album.cover }}" alt="{{ album.name }}" loading="lazy">
+      <div class="album-overlay">{{ album.name }}</div>
+    </a>
+  </div>
   {% endfor %}
 </div>
 
-{% if photos %}
-  <h2 class="page-subtitle">Photos</h2>
-  <div class="masonry">
-    {% for photo in photos %}
-      <div class="masonry-item">
-        <a href="{{ photo.url }}" data-lightbox="album" data-title="{{ photo.caption }}">
-          <img src="{{ photo.url }}" alt="{{ photo.caption }}">
-        </a>
-      </div>
-    {% endfor %}
-  </div>
-{% endif %}
+<!-- 简单样式：使用 CSS columns 实现瀑布流效果（响应式） -->
+<style>
+.album-grid {
+  column-count: 4;
+  column-gap: 16px;
+  padding: 12px;
+  max-width: 1200px;
+  margin: 12px auto;
+}
+
+.album-item {
+  display: inline-block;
+  width: 100%;
+  margin: 0 0 16px;
+  break-inside: avoid;
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.album-item img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  border-radius: 8px;
+  transition: transform .24s ease;
+}
+
+.album-item:hover img {
+  transform: translateY(-4px) scale(1.02);
+}
+
+.album-overlay {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 10px;
+  background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
+  color: white;
+  text-align: center;
+  font-weight: 700;
+}
+
+/* 响应式列数 */
+@media (max-width: 1100px) { .album-grid { column-count: 3; } }
+@media (max-width: 800px)  { .album-grid { column-count: 2; } }
+@media (max-width: 480px)  { .album-grid { column-count: 1; } }
+</style>
 {% endblock %}
+
