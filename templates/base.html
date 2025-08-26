@@ -10,6 +10,8 @@
 
     <!-- Lightbox 样式 -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css" rel="stylesheet">
+
+    {% block head_extra %}{% endblock %}
 </head>
 <body>
     <nav class="navbar {% if request.path.startswith('/story_list') %}story-navbar{% endif %}">
@@ -24,7 +26,6 @@
                     <a href="{{ url_for('private_space') }}">Private space</a>
                 {% endif %}
             </div>
-
             <div class="nav-right">
                 {% if logged_in and request.path.startswith('/story_list') %}
                     <a href="{{ url_for('upload_story') }}" class="upload-btn">+ Upload New Story</a>
@@ -46,12 +47,12 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- 建议所有第三方 JS 都放在 body 底部 -->
+    <!-- JS 放在 body 底部，保证 DOM 已加载 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox.min.js"></script>
     <script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
     <script src="https://unpkg.com/imagesloaded@4/imagesloaded.pkgd.min.js"></script>
 
-    <!-- 让子模板可以插入额外的 JS -->
+    <!-- 允许子模板插入额外 JS -->
     {% block scripts %}{% endblock %}
 </body>
 </html>
