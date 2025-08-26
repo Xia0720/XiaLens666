@@ -1,73 +1,29 @@
 {% extends "base.html" %}
-{% block title %}Albums - XiaCapture{% endblock %}
-
+{% block title %}Album - XiaCapture{% endblock %}
 {% block content %}
-<h1 style="text-align:center; margin-top:20px;">Albums</h1>
+<h1 class="page-title">Albums</h1>
 
-<div class="home-album-grid">
-  <div class="home-grid-sizer"></div>
-  <div class="home-gutter-sizer"></div>
-
+<div class="masonry">
   {% for album in albums %}
-  <div class="home-album-item">
-    <a href="{{ url_for('view_album', album_name=album.name) }}">
-      <img src="{{ album.cover }}" alt="{{ album.name }}" loading="lazy">
-      <div class="overlay">{{ album.name }}</div>
-    </a>
-  </div>
+    <div class="masonry-item">
+      <a href="{{ url_for('view_album', album_id=album.id) }}">
+        <img src="{{ album.cover_url }}" alt="{{ album.name }}">
+      </a>
+      <p class="album-name">{{ album.name }}</p>
+    </div>
   {% endfor %}
 </div>
 
-<style>
-.home-album-grid { margin: 20px auto; }
-
-/* 百分比列宽 + gutter */
-.home-grid-sizer   { width: 23%; }
-.home-gutter-sizer { width: 2%; }
-
-.home-album-item {
-  width: 23%;             /* 与 grid-sizer 相同 */
-  margin-bottom: 2%;
-  position: relative;
-  border-radius: 12px;
-  overflow: hidden;
-  transition: transform .3s ease, box-shadow .3s ease;
-}
-
-.home-album-item img {
-  display: block;
-  width: 100%;
-  height: auto;
-  border-radius: 12px;
-  object-fit: cover;
-}
-
-.overlay {
-  position: absolute; left:0; right:0; bottom:0;
-  padding: 12px 10px;
-  background: linear-gradient(to top, rgba(0,0,0,.55), transparent 70%);
-  color: #fff; text-align:center; font-weight:700; font-size:16px;
-}
-
-/* 响应式列数 */
-@media (max-width: 1100px){ .home-grid-sizer, .home-album-item { width: 31%; margin-bottom: 3%; } }
-@media (max-width: 700px){ .home-grid-sizer, .home-album-item { width: 48%; margin-bottom: 4%; } }
-@media (max-width: 480px){ .home-grid-sizer, .home-album-item { width: 100%; margin-bottom: 5%; } }
-</style>
-
-<script>
-document.addEventListener('DOMContentLoaded', function(){
-  var grid = document.querySelector('.home-album-grid');
-  imagesLoaded(grid, function(){
-    new Masonry(grid, {
-      itemSelector: '.home-album-item',
-      columnWidth: '.home-grid-sizer',
-      gutter: '.home-gutter-sizer',
-      percentPosition: true,
-      // ❌ 删除 fitWidth: true
-      transitionDuration: '0.2s'
-    });
-  });
-});
-</script>
+{% if photos %}
+  <h2 class="page-subtitle">Photos</h2>
+  <div class="masonry">
+    {% for photo in photos %}
+      <div class="masonry-item">
+        <a href="{{ photo.url }}" data-lightbox="album" data-title="{{ photo.caption }}">
+          <img src="{{ photo.url }}" alt="{{ photo.caption }}">
+        </a>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
 {% endblock %}
