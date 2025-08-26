@@ -1,25 +1,41 @@
-{% extends "base.html" %}
-{% block title %}Album - XiaCapture{% endblock %}
-{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Album - XiaCapture</title>
 
-<h1 style="text-align:center; margin:20px 0;">My Album</h1>
+  <!-- 引入 Lightbox 的 CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css" rel="stylesheet">
 
-<!-- Lightbox CSS -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.4/css/lightbox.min.css" rel="stylesheet">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    .gallery img {
+      width: 200px;
+      margin: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
 
-<div style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;">
-  <!-- 示例图片，记得换成你的 Cloudinary 链接 -->
-  <a href="https://res.cloudinary.com/demo/image/upload/w_1200,h_800,c_fill/kitten.jpg" data-lightbox="album" data-title="Cute Kitten">
-    <img src="https://res.cloudinary.com/demo/image/upload/w_300,h_200,c_fill/kitten.jpg" alt="Kitten" style="border-radius:8px;">
-  </a>
+  <h1>Album Test</h1>
 
-  <a href="https://res.cloudinary.com/demo/image/upload/w_1200,h_800,c_fill/dog.jpg" data-lightbox="album" data-title="Lovely Dog">
-    <img src="https://res.cloudinary.com/demo/image/upload/w_300,h_200,c_fill/dog.jpg" alt="Dog" style="border-radius:8px;">
-  </a>
-</div>
+  <div class="gallery">
+    <a href="https://picsum.photos/800/600?random=1" data-lightbox="album" data-title="Picture 1">
+      <img src="https://picsum.photos/200/150?random=1" alt="Pic 1">
+    </a>
+    <a href="https://picsum.photos/800/600?random=2" data-lightbox="album" data-title="Picture 2">
+      <img src="https://picsum.photos/200/150?random=2" alt="Pic 2">
+    </a>
+  </div>
 
-<!-- Lightbox JS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.4/js/lightbox.min.js"></script>
-
-{% endblock %}
+  <!-- 引入 Lightbox 的 JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox-plus-jquery.min.js"></script>
+</body>
+</html>
 
