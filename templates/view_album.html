@@ -76,7 +76,7 @@
 }
 /* 平板：3 列 */
 @media (max-width: 900px){
-  .grid-sizer, .inner-album-item { width: 30%; }   /* 用百分比更灵活 */
+  .grid-sizer, .inner-album-item { width: 140%; }   /* 用百分比更灵活 */
 }
 /* 大手机：2 列 */
 @media (max-width: 700px){
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', function(){
       columnWidth: '.grid-sizer',
       gutter: '.gutter-sizer',
       fitWidth: true,         // ✅ 关键：容器根据列宽自适应并水平居中
-      percentPosition: true, // 像素列宽更稳
+      percentPosition: false, // 像素列宽更稳
       transitionDuration: '0.2s'
     });
   });
