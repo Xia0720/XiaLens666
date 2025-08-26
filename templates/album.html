@@ -2,6 +2,12 @@
 {% block title %}Albums - XiaCapture{% endblock %}
 
 {% block content %}
+<!-- Masonry & Lightbox -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox.min.js"></script>
+<script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
+<script src="https://unpkg.com/imagesloaded@4/imagesloaded.pkgd.min.js"></script>
+
 <h1 style="text-align:center; margin-top:20px;">Albums</h1>
 
 <div class="album-grid">
@@ -18,20 +24,18 @@
   {% endfor %}
 </div>
 
-<script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
-<script src="https://unpkg.com/imagesloaded@4/imagesloaded.pkgd.min.js"></script>
-
 <style>
-.album-grid { 
-  margin: 20px auto; 
-  max-width: 1400px; 
+.album-grid {
+  margin: 0 auto;        /* 上下居中，左右由 Masonry 自适应 */
+  padding: 12px;
 }
 
-.grid-sizer   { width: 300px; }   /* 增大列宽 */
+/* Masonry 基准宽度和间隙 */
+.grid-sizer   { width: 300px; }
 .gutter-sizer { width: 16px; }
 
 .album-item {
-  width: 300px; 
+  width: 300px;
   margin-bottom: 16px;
   position: relative;
   border-radius: 10px;
@@ -41,11 +45,10 @@
 
 .album-item img {
   width: 100%;
-  height: auto;           /* 高度自适应，让 Masonry 错落明显 */
+  height: 200px;        /* 固定封面高度 */
   object-fit: cover;
   border-radius: 8px;
   display: block;
-  transition: transform .3s ease;
 }
 
 .album-item:hover img {
@@ -55,30 +58,41 @@
 
 .album-overlay {
   position: absolute;
-  left:0; right:0; bottom:0;
+  left: 0; right: 0; bottom: 0;
   padding: 10px;
   background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
-  color: #fff;
+  color: white;
   text-align: center;
   font-weight: 700;
+  font-size: 16px;
 }
 
-/* 响应式：平板、手机 */
-@media (max-width: 1100px){ .grid-sizer, .album-item { width: 48%; } }
-@media (max-width: 600px){ .grid-sizer, .album-item { width: 100%; } }
+/* 响应式列数 */
+@media (max-width: 1000px) {
+  .grid-sizer, .album-item { width: 45%; }
+}
+@media (max-width: 600px) {
+  .grid-sizer, .album-item { width: 48%; }   /* 手机 2 列 */
+}
+@media (max-width: 480px) {
+  .grid-sizer, .album-item { width: 100%; }  /* 手机 1 列 */
+}
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function(){
   var grid = document.querySelector('.album-grid');
+
+  // 等图片加载完再初始化 Masonry
   imagesLoaded(grid, function(){
     new Masonry(grid, {
       itemSelector: '.album-item',
       columnWidth: '.grid-sizer',
       gutter: '.gutter-sizer',
-      fitWidth: true,
-      percentPosition: false,
-      transitionDuration: '0.3s'
+      fitWidth: true,         // 容器宽度自适应
+      percentPosition: false, // 使用像素列宽
+      transitionDuration: '0.3s',
+      horizontalOrder: true   // 顺序排列，避免偏右
     });
   });
 });
