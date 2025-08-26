@@ -2,16 +2,9 @@
 {% block title %}{{ album_name }} - Album{% endblock %}
 
 {% block content %}
-<!-- Lightbox2 & Masonry -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox.min.js"></script>
-<script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
-<script src="https://unpkg.com/imagesloaded@4/imagesloaded.pkgd.min.js"></script>
-
 <h1 style="text-align:center; margin-top:20px;">{{ album_name }} Album</h1>
 
 <div class="photo-grid">
-  <!-- 必须放在最前 -->
   <div class="grid-sizer"></div>
   <div class="gutter-sizer"></div>
 
@@ -26,48 +19,9 @@
   </div>
   {% endfor %}
 </div>
+{% endblock %}
 
-<style>
-.photo-grid {
-  margin: 0 auto;
-  padding: 12px;
-}
-
-/* Masonry 列宽控制 */
-.grid-sizer   { width: 25%; }   /* 默认四列 */
-.gutter-sizer { width: 2%; }
-
-.photo-item {
-  margin-bottom: 12px;
-  position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  transition: transform .2s ease, box-shadow .2s ease;
-}
-
-/* 图片样式 */
-.photo-item img {
-  width: 100%;
-  height: auto;
-  display: block;
-  border-radius: 6px;
-  object-fit: cover;
-  transition: transform .18s ease;
-}
-.photo-item img:hover { transform: scale(1.02); }
-
-/* 响应式 Masonry */
-@media (max-width: 1100px) {
-  .grid-sizer { width: 33.3%; }  /* 三列 */
-}
-@media (max-width: 700px) {
-  .grid-sizer { width: 50%; }    /* 两列 */
-}
-@media (max-width: 480px) {
-  .grid-sizer { width: 100%; }   /* 一列 */
-}
-</style>
-
+{% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function(){
   var grid = document.querySelector('.photo-grid');
@@ -76,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function(){
       itemSelector: '.photo-item',
       columnWidth: '.grid-sizer',
       gutter: '.gutter-sizer',
-      percentPosition: true,  /* ✅ 用百分比布局更好 */
+      percentPosition: true,
       fitWidth: true,
       transitionDuration: '0.2s'
     });
