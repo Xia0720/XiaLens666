@@ -43,14 +43,18 @@ imagesLoaded(grid, function() {
 
 <style>
 .photo-grid {
-  max-width: 1000px;
+  max-width: 1200px;   /* 宽度可以调节 */
   margin: 12px auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;           /* 图片之间的间距 */
+  justify-content: center; /* 居中 */
 }
 
 .photo-item {
-  width: 20%;  /* 桌面端列数大约 4 列 */
-  margin-bottom: 12px;
-  position: relative;
+  flex: 1 1 calc(20% - 12px);  /* 5列布局，每列占20%减去gap */
+  max-width: calc(20% - 12px);
+  box-sizing: border-box;
 }
 
 .photo-item img {
@@ -60,11 +64,18 @@ imagesLoaded(grid, function() {
   object-fit: cover;
   transition: transform .18s ease;
 }
-.photo-item img:hover { transform: scale(1.02); }
+
+.photo-item img:hover {
+  transform: scale(1.02);
+}
 
 /* 响应式 */
-@media (max-width: 900px)  { .photo-item { width: 48%; } }  /* 手机两列 */
-@media (max-width: 480px)  { .photo-item { width: 100%; } } /* 小屏单列 */
+@media (max-width: 900px) {
+  .photo-item { flex: 1 1 calc(50% - 12px); max-width: calc(50% - 12px); }
+}
+@media (max-width: 480px) {
+  .photo-item { flex: 1 1 100%; max-width: 100%; }
+}
 </style>
 
 {% if logged_in %}
