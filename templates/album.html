@@ -2,39 +2,13 @@
 {% block title %}{{ album_name }} - Album{% endblock %}
 
 {% block content %}
-<h1 style="text-align:center; margin-top:20px;">{{ album_name }} Album</h1>
+<h1>{{ album_name }} Album</h1>
 
-<div class="photo-grid">
-  <div class="grid-sizer"></div>
-  <div class="gutter-sizer"></div>
-
+<div>
   {% for img in images %}
-  <div class="photo-item">
-    {% if logged_in %}
-    <input type="checkbox" name="public_ids" value="{{ img.public_id }}" style="position:absolute; z-index:5; margin:8px;">
-    {% endif %}
-    <a href="{{ img.secure_url }}" data-lightbox="album-{{ album_name }}">
-      <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
-    </a>
-  </div>
+  <a href="{{ img.secure_url }}" data-lightbox="album-{{ album_name }}">
+    <img src="{{ img.secure_url }}" alt="Photo" style="max-width:200px; margin:10px;">
+  </a>
   {% endfor %}
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function(){
-  var grid = document.querySelector('.photo-grid');
-  imagesLoaded(grid, function(){
-    new Masonry(grid, {
-      itemSelector: '.photo-item',
-      columnWidth: '.grid-sizer',
-      gutter: '.gutter-sizer',
-      percentPosition: true,
-      fitWidth: true,
-      transitionDuration: '0.2s'
-    });
-  });
-});
-</script>
 {% endblock %}
