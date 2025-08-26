@@ -34,38 +34,4 @@
 </form>
 {% endif %}
 
-<style>
-.photo-grid {
-  column-count: 5;
-  column-gap: 12px;
-  padding: 12px;
-  max-width: 1300px;
-  margin: 12px auto;
-}
-.photo-item {
-  display: inline-block;
-  width: 100%;
-  margin-bottom: 12px;
-  break-inside: avoid;
-  position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-}
-.photo-item img {
-  width: 100%;
-  height: auto;
-  display: block;
-  object-fit: cover;
-  border-radius: 6px;
-  transition: transform .18s ease;
-}
-.photo-item img:hover { transform: scale(1.02); }
-
-/* 响应式 */
-@media (max-width: 1300px) { .photo-grid { column-count: 4; } }
-@media (max-width: 1000px) { .photo-grid { column-count: 3; } }
-@media (max-width: 700px)  { .photo-grid { column-count: 2; } }
-@media (max-width: 480px)  { .photo-grid { column-count: 1; } }
-</style>
-
 {% endblock %}
