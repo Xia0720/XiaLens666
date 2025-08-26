@@ -16,15 +16,56 @@
   {% for img in images %}
   <div class="photo-item">
     {% if logged_in %}
-    <input type="checkbox" name="public_ids" value="{{ img.public_id }}" style="position:absolute; z-index:5; margin:8px;">
+      <input type="checkbox" name="public_ids" value="{{ img.public_id }}" style="position:absolute; z-index:5; margin:8px;">
     {% endif %}
-    <!-- data-lightbox 分组名相同可实现左右切换 -->
     <a href="{{ img.secure_url }}" data-lightbox="album-{{ album_name }}" data-title="{{ album_name }}">
       <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
     </a>
   </div>
   {% endfor %}
 </div>
+
+<!-- 引入 Masonry & imagesLoaded -->
+<script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
+<script src="https://unpkg.com/imagesloaded@4/imagesloaded.pkgd.min.js"></script>
+
+<script>
+var grid = document.querySelector('.photo-grid');
+imagesLoaded(grid, function() {
+  new Masonry(grid, {
+    itemSelector: '.photo-item',
+    columnWidth: '.photo-item',
+    gutter: 12,
+    percentPosition: true
+  });
+});
+</script>
+
+<style>
+.photo-grid {
+  max-width: 1300px;
+  margin: 12px auto;
+}
+
+.photo-item {
+  width: 23%;  /* 桌面端列数大约 4 列 */
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.photo-item img {
+  width: 100%;
+  display: block;
+  border-radius: 6px;
+  object-fit: cover;
+  transition: transform .18s ease;
+}
+.photo-item img:hover { transform: scale(1.02); }
+
+/* 响应式 */
+@media (max-width: 900px)  { .photo-item { width: 48%; } }  /* 手机两列 */
+@media (max-width: 480px)  { .photo-item { width: 100%; } } /* 小屏单列 */
+</style>
 
 {% if logged_in %}
   <input type="hidden" name="album_name" value="{{ album_name }}">
