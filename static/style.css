@@ -231,11 +231,9 @@ body, html {
 
 .album-item img {
   width: 100%;
-  height: auto;
-  display: block;
-  object-fit: cover;
+  height: 200px;      /* 固定封面高度 */
+  object-fit: cover;  /* 保持比例并裁剪 */
   border-radius: 8px;
-  transition: transform .24s ease;
 }
 
 .album-item:hover img {
