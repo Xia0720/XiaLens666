@@ -11,6 +11,7 @@
 <h1 style="text-align:center; margin-top:20px;">{{ album_name }} Album</h1>
 
 <div class="photo-grid">
+  <!-- 必须放在最前 -->
   <div class="grid-sizer"></div>
   <div class="gutter-sizer"></div>
 
@@ -32,11 +33,11 @@
   padding: 12px;
 }
 
-.grid-sizer   { width: 220px; }
-.gutter-sizer { width: 12px; }
+/* Masonry 列宽控制 */
+.grid-sizer   { width: 25%; }   /* 默认四列 */
+.gutter-sizer { width: 2%; }
 
 .photo-item {
-  width: 220px;
   margin-bottom: 12px;
   position: relative;
   border-radius: 8px;
@@ -44,42 +45,39 @@
   transition: transform .2s ease, box-shadow .2s ease;
 }
 
+/* 图片样式 */
 .photo-item img {
   width: 100%;
-  height: auto;        /* 高度自适应，保证错落效果 */
+  height: auto;
   display: block;
   border-radius: 6px;
   object-fit: cover;
   transition: transform .18s ease;
 }
+.photo-item img:hover { transform: scale(1.02); }
 
-.photo-item img:hover {
-  transform: scale(1.02);
-}
-
-/* 响应式列数 */
+/* 响应式 Masonry */
 @media (max-width: 1100px) {
-  .grid-sizer, .photo-item { width: 180px; }
+  .grid-sizer { width: 33.3%; }  /* 三列 */
 }
 @media (max-width: 700px) {
-  .grid-sizer, .photo-item { width: 48%; }
+  .grid-sizer { width: 50%; }    /* 两列 */
 }
 @media (max-width: 480px) {
-  .grid-sizer, .photo-item { width: 100%; }
+  .grid-sizer { width: 100%; }   /* 一列 */
 }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function(){
   var grid = document.querySelector('.photo-grid');
-
   imagesLoaded(grid, function(){
     new Masonry(grid, {
       itemSelector: '.photo-item',
       columnWidth: '.grid-sizer',
       gutter: '.gutter-sizer',
+      percentPosition: true,  /* ✅ 用百分比布局更好 */
       fitWidth: true,
-      percentPosition: false,
       transitionDuration: '0.2s'
     });
   });
