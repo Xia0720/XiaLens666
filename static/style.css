@@ -172,15 +172,16 @@ body, html {
 
 /* Masonry Grid 容器 */
 .masonry {
-  max-width: 100%;       /* 不限制死 1200px */
-  margin: 12px auto;
-  padding: 0 12px;       /* 给左右一点呼吸空间 */
+  max-width: 1200px;      /* 限制整体宽度，避免无限贴左 */
+  margin: 12px auto;      /* 居中 */
+  padding: 0 12px;        /* 两边留点空间 */
 }
 
 /* Masonry 项目 */
 .masonry-item {
-  width: calc(20% - 16px); /* 100% / 5 列 - gap */
+  width: 20%;             /* 让 Masonry 控制精确定位 */
   margin-bottom: 16px;
+  box-sizing: border-box;
 }
 
 
