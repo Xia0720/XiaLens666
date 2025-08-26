@@ -19,22 +19,19 @@
 </div>
 
 <style>
-.home-album-grid {
-  margin: 20px auto;
-}
+.home-album-grid { margin: 20px auto; }
 
-/* 列宽用百分比，更易响应式 */
-.home-grid-sizer { width: 23%; }   /* 默认 4 列 */
+/* 百分比列宽 + gutter */
+.home-grid-sizer   { width: 23%; }
 .home-gutter-sizer { width: 2%; }
 
 .home-album-item {
-  width: 23%;
+  width: 23%;             /* 与 grid-sizer 相同 */
   margin-bottom: 2%;
   position: relative;
-  overflow: hidden;
   border-radius: 12px;
+  overflow: hidden;
   transition: transform .3s ease, box-shadow .3s ease;
-  box-sizing: border-box;
 }
 
 .home-album-item img {
@@ -42,13 +39,7 @@
   width: 100%;
   height: auto;
   border-radius: 12px;
-  transition: transform .3s ease;
   object-fit: cover;
-}
-
-.home-album-item:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0,0,0,.15);
 }
 
 .overlay {
@@ -58,10 +49,10 @@
   color: #fff; text-align:center; font-weight:700; font-size:16px;
 }
 
-/* 响应式 */
-@media (max-width: 1100px){ .home-grid-sizer, .home-album-item { width: 31%; } } /* 3列 */
-@media (max-width: 700px){ .home-grid-sizer, .home-album-item { width: 48%; } }   /* 2列 */
-@media (max-width: 480px){ .home-grid-sizer, .home-album-item { width: 100%; } }   /* 1列 */
+/* 响应式列数 */
+@media (max-width: 1100px){ .home-grid-sizer, .home-album-item { width: 31%; margin-bottom: 3%; } }
+@media (max-width: 700px){ .home-grid-sizer, .home-album-item { width: 48%; margin-bottom: 4%; } }
+@media (max-width: 480px){ .home-grid-sizer, .home-album-item { width: 100%; margin-bottom: 5%; } }
 </style>
 
 <script>
