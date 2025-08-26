@@ -8,13 +8,15 @@
 <form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
 {% endif %}
 
+<!-- 图片网格 -->
 <div class="photo-grid">
-  <!-- Masonry 列宽参考 -->
   <div class="grid-sizer"></div>
+  <div class="gutter-sizer"></div>
+
   {% for img in images %}
   <div class="photo-item">
     {% if logged_in %}
-    <input type="checkbox" name="public_ids" value="{{ img.public_id }}" style="position:absolute; z-index:5; margin:8px;">
+      <input type="checkbox" name="public_ids" value="{{ img.public_id }}" style="position:absolute; z-index:5; margin:8px;">
     {% endif %}
     <a href="{{ img.secure_url }}" data-lightbox="album-{{ album_name }}" data-title="{{ album_name }}">
       <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
@@ -23,27 +25,24 @@
   {% endfor %}
 </div>
 
-{% if logged_in %}
-  <input type="hidden" name="album_name" value="{{ album_name }}">
-  <div style="text-align: right; margin-top: 12px;">
-    <button type="submit" style="padding: 6px 12px;">Delete Selected Images</button>
-  </div>
-</form>
-{% endif %}
-
+<!-- 样式 -->
 <style>
 .photo-grid {
-  max-width: 1200px;
+  max-width: 1300px;
   margin: 12px auto;
-  padding: 0;
 }
 
-/* Masonry 列宽 */
-.grid-sizer { width: 25%; } /* 默认 4 列 */
+.grid-sizer { width: 25%; }   /* 四列 */
+.gutter-sizer { width: 2%; }
+
 .photo-item {
   margin-bottom: 12px;
   position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform .2s ease;
 }
+
 .photo-item img {
   width: 100%;
   display: block;
@@ -54,27 +53,41 @@
 .photo-item img:hover { transform: scale(1.02); }
 
 /* 响应式 */
-@media (max-width: 900px) { .grid-sizer, .photo-item { width: 48%; } }  /* 两列 */
-@media (max-width: 480px) { .grid-sizer, .photo-item { width: 100%; } } /* 单列 */
+@media (max-width: 1100px) { .grid-sizer, .photo-item { width: 33.3%; } }
+@media (max-width: 700px)  { .grid-sizer, .photo-item { width: 48%; } }
+@media (max-width: 480px)  { .grid-sizer, .photo-item { width: 100%; } }
 </style>
+
+{% if logged_in %}
+  <input type="hidden" name="album_name" value="{{ album_name }}">
+  <div style="text-align: right; margin-top: 12px;">
+    <button type="submit" style="padding: 6px 12px;">Delete Selected Images</button>
+  </div>
+</form>
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}
-<!-- Lightbox -->
-<script src="https://cdn.jsdelivr.net/npm/lightbox2@2.11.3/dist/js/lightbox.min.js"></script>
-<!-- Masonry + imagesLoaded -->
+<!-- 引入 jQuery（必须在 Lightbox2 之前） -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+<!-- Lightbox2 -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox.min.js"></script>
+
+<!-- Masonry & imagesLoaded -->
 <script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
 <script src="https://unpkg.com/imagesloaded@4/imagesloaded.pkgd.min.js"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function(){
-  var grid = document.querySelector('.photo-grid');
-  if (!grid) return;
-  imagesLoaded(grid, function(){
-    new Masonry(grid, {
+$(document).ready(function(){
+  var $grid = $('.photo-grid');
+  $grid.imagesLoaded(function(){
+    $grid.masonry({
       itemSelector: '.photo-item',
       columnWidth: '.grid-sizer',
-      gutter: 12,
+      gutter: '.gutter-sizer',
       percentPosition: true,
       fitWidth: true,
       transitionDuration: '0.2s'
