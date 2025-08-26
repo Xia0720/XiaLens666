@@ -32,17 +32,17 @@
 
 <style>
 .inner-album-grid{
-  margin: 20px auto;    /* 由 Masonry + fitWidth 计算宽度，自动居中 */
+  margin: 20px auto;    /* Masonry + fitWidth 居中 */
 }
 
-/* 期望大屏约 5 列：5x220 + 4x14 = 1,254px */
+/* 默认大屏约 5 列 */
 .grid-sizer   { width: 220px; }
 .gutter-sizer { width: 14px; }
 
 .inner-album-item{
-  width: 220px;                /* 与 grid-sizer 一致 */
+  width: 220px;
   margin-bottom: 14px;
-  position: relative;          /* 让复选框能绝对定位 */
+  position: relative;
   overflow: hidden;
   border-radius: 10px;
   transition: transform .2s ease, box-shadow .2s ease;
@@ -52,7 +52,7 @@
 .inner-album-item img{
   display: block;
   width: 100%;
-  height: auto;                /* 高度自适应，形成错落 */
+  height: auto;
   border-radius: 10px;
   object-fit: cover;
 }
@@ -69,22 +69,19 @@
 
 /* ========= 响应式 ========= */
 @media (max-width: 1300px){
-  .grid-sizer, .inner-album-item { width: 200px; }
+  .grid-sizer, .inner-album-item { width: 200px; } /* 4~5 列 */
 }
 @media (max-width: 1100px){
-  .grid-sizer, .inner-album-item { width: 180px; }
+  .grid-sizer, .inner-album-item { width: 180px; } /* 3~4 列 */
 }
-/* 平板：3 列 */
 @media (max-width: 900px){
-  .grid-sizer, .inner-album-item { width: 140%; }   /* 用百分比更灵活 */
+  .grid-sizer, .inner-album-item { width: 48%; }   /* 2 列 */
 }
-/* 大手机：2 列 */
 @media (max-width: 700px){
-  .grid-sizer, .inner-album-item { width: 48%; }   /* 两列居中 */
+  .grid-sizer, .inner-album-item { width: 48%; }   /* 2 列 */
 }
-/* 小手机：1 列 */
 @media (max-width: 480px){
-  .grid-sizer, .inner-album-item { width: 100%; }  /* 单列 */
+  .grid-sizer, .inner-album-item { width: 100%; }  /* 1 列 */
 }
 </style>
 
@@ -92,19 +89,17 @@
 document.addEventListener('DOMContentLoaded', function(){
   var grid = document.querySelector('.inner-album-grid');
 
-  // 先等图片加载完再 Masonry
   imagesLoaded(grid, function(){
     new Masonry(grid, {
       itemSelector: '.inner-album-item',
       columnWidth: '.grid-sizer',
       gutter: '.gutter-sizer',
-      fitWidth: true,         // ✅ 关键：容器根据列宽自适应并水平居中
-      percentPosition: false, // 像素列宽更稳
+      fitWidth: true,         // 容器自适应居中
+      percentPosition: false, // 使用像素列宽
       transitionDuration: '0.2s'
     });
   });
 
-  // Lightbox
   GLightbox({
     selector: '.glightbox',
     loop: true,
