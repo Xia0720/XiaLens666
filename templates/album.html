@@ -1,60 +1,112 @@
 {% extends "base.html" %}
-{% block title %}{{ album_name }} - Album{% endblock %}
 
-{% block content %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
-<script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
+{% block title %}Albums - XiaCapture{% endblock %}
 
+{# 如果 base.html 支持 body_class block，会把 class 直接加到 body 上；若不支持，下面的脚本会动态添加 #}
+{% block body_class %}album-page{% endblock %}
+
+{% block extra_css %}
 <style>
-/* 背景图 */
-.album-background {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: url("https://images.unsplash.com/photo-1506748686214-e9df14d4d9d0?auto=format&fit=crop&w=1920&q=80");
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    z-index: -1;  /* 放到所有内容的后面 */
+/* 基本保障 */
+html, body { height: 100%; }
+
+/* 清除全局 body 渐变（仅在 album 页面生效） */
+body.album-page { background: none !important; }
+
+/* 主背景：用 body 的伪元素显示（最稳妥且不影响文档流） */
+body.album-page::before {
+  content: "";
+  position: fixed;
+  inset: 0; /* top:0; right:0; bottom:0; left:0; */
+  background-image: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(8px) brightness(0.75);
+  z-index: -1;             /* 放在页面内容下面 */
+  pointer-events: none;
+  will-change: transform;
 }
 
-/* 内容区域保持透明背景 */
-.album-container {
-    position: relative;
-    z-index: 1;  /* 确保内容在背景图上层 */
-    background: rgba(255, 255, 255, 0.8); /* 半透明底，保证文字可读 */
-    border-radius: 12px;
-    padding: 20px;
-    margin: 20px auto;
-    max-width: 1200px;
+/* 备用背景元素（极低层级），在极少数伪元素被覆盖的环境中作为后备） */
+.album-bg-fallback {
+  position: fixed;
+  inset: 0;
+  background-image: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg');
+  background-size: cover;
+  background-position: center;
+  filter: blur(8px) brightness(0.75);
+  z-index: -2;
+  pointer-events: none;
+}
+
+/* 确保页面内容在背景之上 */
+.album-content {
+  position: relative;
+  z-index: 2;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* 把常见 header / nav 抬到更上层以防被背景遮挡（不改变布局，仅确保层级） */
+header, nav, .site-header, .navbar, .main-nav {
+  position: relative; /* 安全的默认定位，不会把它们从文档流取走 */
+  z-index: 3;
+}
+
+/* 保证相册网格也在上层（不会覆写你原来的 grid 行高、跨度等） */
+.album-grid {
+  position: relative;
+  z-index: 2;
 }
 </style>
+{% endblock %}
 
-<div class="album-background"></div>
+{% block content %}
+<!-- 备用背景元素（通常不会显示，因为伪元素优先） -->
+<div class="album-bg-fallback" aria-hidden="true"></div>
 
-<div class="album-container">
-    <h1 style="text-align:center; margin-top:20px;">{{ album_name }} Album</h1>
+<!-- 页面内容（保留你原来的 grid 结构） -->
+<div class="album-content">
+  <h1 class="page-title">Albums</h1>
 
-    {% if logged_in %}
-        <div style="text-align:center; margin:20px;">
-            <a href="{{ url_for('upload', album_name=album_name) }}">Upload Photo</a>
-        </div>
-    {% endif %}
-
-    <div class="album-grid">
-        {% for photo in photos %}
-        <div class="album-item">
-            <a href="{{ photo.url }}" class="glightbox" data-gallery="album-photos">
-                <img src="{{ photo.url }}" alt="Photo" style="max-width:300px; border-radius:8px;">
-            </a>
-        </div>
-        {% endfor %}
-    </div>
+  <div class="album-grid">
+    {% for album in albums %}
+      <div class="album-item 
+                  {% if loop.index == 1 %} item--feature 
+                  {% elif loop.index % 5 == 0 %} item--w3 item--h2 
+                  {% elif loop.index % 3 == 0 %} item--w2 
+                  {% endif %}">
+        <a href="{{ url_for('view_album', album_name=album.name) }}">
+          {% if album.cover %}
+            <img src="{{ album.cover }}" alt="{{ album.name }}">
+          {% else %}
+            <div class="album-cover placeholder">
+              <span>No cover</span>
+            </div>
+          {% endif %}
+          <div class="album-info">
+            <h2>{{ album.name }}</h2>
+          </div>
+        </a>
+      </div>
+    {% endfor %}
+  </div>
 </div>
 
+{# 如果 base.html 没有把 body_class 注入，我们用脚本确保 body 有 album-page 类 #}
 <script>
-    const lightbox = GLightbox({ selector: '.glightbox' });
+(function() {
+  try {
+    if (!document.body.classList.contains('album-page')) {
+      document.body.classList.add('album-page');
+    }
+  } catch (e) {
+    document.addEventListener('DOMContentLoaded', function(){
+      document.body.classList.add('album-page');
+    });
+  }
+})();
 </script>
 {% endblock %}
