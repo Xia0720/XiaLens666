@@ -170,67 +170,96 @@ body, html {
     box-shadow: 0 2px 6px rgba(0,0,0,0.12);
 }
 
-/* Masonry Grid 容器 */
-.masonry {
-  max-width: 1200px;      /* 限制整体宽度，避免无限贴左 */
-  margin: 12px auto;      /* 居中 */
-  padding: 0 12px;        /* 两边留点空间 */
-}
+/* =========================
+   Albums page (CSS Grid)
+   ========================= */
 
-/* Masonry 项目 */
-.masonry-item {
-  width: 20%;             /* 让 Masonry 控制精确定位 */
-  margin-bottom: 16px;
+/* 用来限制整体宽度并居中 */
+.albums-wrap {
+  max-width: 1320px;   /* 可调：控制在桌面时每列大小 */
+  margin: 16px auto;
+  padding: 0 12px;
   box-sizing: border-box;
+  background: transparent;
 }
 
+/* 严格 5 列网格（桌面），gap 控制缝隙 */
+.albums-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr)); /* 五列 */
+  gap: 16px;
+  align-items: start;
+}
 
-/* 卡片效果 */
+/* 卡片 */
 .album-card {
   position: relative;
   overflow: hidden;
   border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-  transition: transform .2s ease, box-shadow .2s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.14);
+  background: #000; /* 防闪白 */
+  transition: transform .18s ease, box-shadow .18s ease;
+  display: block;
 }
 
+/* 链接全覆盖卡片 */
+.album-card a,
+.album-card > a {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* 封面图：固定高度，裁剪保证视觉统一 */
 .album-card img {
   width: 100%;
-  height: 200px;       /* 封面高度统一 */
-  object-fit: cover;   /* 保持比例并裁剪 */
+  height: 200px;       /* 可改成 220/240 看效果 */
+  object-fit: cover;
   display: block;
   transition: transform .2s ease;
 }
 
+/* 悬停效果 */
 .album-card:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 6px 14px rgba(0,0,0,0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+}
+.album-card:hover img {
+  transform: scale(1.03);
 }
 
-/* 相册名字 */
+/* 覆盖在图片上的相册名（看起来像卡片底部） */
 .album-name {
   position: absolute;
-  bottom: 0;
-  width: 100%;
+  left: 0; right: 0; bottom: 0;
   padding: 10px;
   background: linear-gradient(to top, rgba(0,0,0,0.6), transparent);
   color: #fff;
   text-align: center;
-  font-weight: bold;
-  font-size: 1.1rem;
+  font-weight: 700;
   box-sizing: border-box;
 }
 
-/* 响应式 */
-@media (max-width: 1100px) {
-  .masonry-item { width: 180px; }
+/* =========================
+   响应式：自动降列数
+   ========================= */
+@media (max-width: 1200px){
+  .albums-grid { grid-template-columns: repeat(4, minmax(0,1fr)); }
 }
-@media (max-width: 800px) {
-  .masonry-item { width: 48%; }  /* 两列 */
+@media (max-width: 980px){
+  .albums-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
 }
-@media (max-width: 480px) {
-  .masonry-item { width: 100%; } /* 单列 */
+@media (max-width: 720px){
+  .albums-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
 }
+@media (max-width: 420px){
+  .albums-grid { grid-template-columns: 1fr; }
+}
+
+/* --------- 清理/避免老规则影响（可注释掉旧规则） --------- */
+/* 如果你的旧样式里有下面这些类名，请注释或删除它们（避免冲突）:
+.masonry, .masonry-item, .grid-sizer, .gutter-sizer, .album-grid, .masonry .masonry-item { ... }
+*/
 
 /* ===== Story 页面样式（blog 风格） ===== */
 .story-page { padding-bottom:40px; }
