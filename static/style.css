@@ -256,6 +256,46 @@ body, html {
   .albums-grid { grid-template-columns: 1fr; }
 }
 
+
+/* 相册内页标题 */
+.gallery-title {
+    text-align: center;
+    font-size: 28px;
+    margin: 20px 0;
+    font-weight: bold;
+}
+
+/* 照片网格布局 */
+.photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); /* 自动排版，最小220px */
+    gap: 15px; /* 图片间距 */
+    justify-items: center; /* 每列居中 */
+    padding: 0 20px 40px 20px; /* 两边留白 */
+}
+
+/* 单张照片容器 */
+.photo-item {
+    width: 100%;
+    max-width: 250px; /* 限制单张最大宽度 */
+    overflow: hidden;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease;
+}
+
+.photo-item:hover {
+    transform: scale(1.03); /* 鼠标悬停微缩放 */
+}
+
+/* 照片 */
+.photo-item img {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: cover;
+
+    
 /* --------- 清理/避免老规则影响（可注释掉旧规则） --------- */
 /* 如果你的旧样式里有下面这些类名，请注释或删除它们（避免冲突）:
 .masonry, .masonry-item, .grid-sizer, .gutter-sizer, .album-grid, .masonry .masonry-item { ... }
