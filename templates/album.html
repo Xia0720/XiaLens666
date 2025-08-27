@@ -2,13 +2,74 @@
 
 {% block title %}Albums - XiaCapture{% endblock %}
 
-{% block body_class %}album-page{% endblock %}
-
 {% block content %}
-<!-- 背景层 -->
-<div class="album-bg"></div>
+<!-- 内联样式（放在 content 内，确保会被加载） -->
+<style>
+/* 保证高度 */
+html, body {
+  height: 100%;
+}
 
-<!-- 内容层 -->
+/* 如果 body 有 album-page 类，就清除全局背景（使用 !important 覆盖） */
+body.album-page {
+  background: none !important;
+}
+
+/* 用 body 的伪元素显示固定的全屏背景图（在内容之下） */
+body.album-page::before {
+  content: "";
+  position: fixed;
+  inset: 0; /* top:0; right:0; bottom:0; left:0; */
+  background-image: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: blur(8px) brightness(0.75);
+  z-index: -1;               /* 在内容下面 */
+  pointer-events: none;      /* 不阻塞鼠标事件 */
+}
+
+/* 兼容备用：如果伪元素被某些样式影响，我们也保留 .album-bg 固定元素（一般不会显示） */
+.album-bg {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg');
+  background-size: cover;
+  background-position: center;
+  filter: blur(8px) brightness(0.75);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* 确保内容在上层显示 */
+.album-content {
+  position: relative;
+  z-index: 1;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 20px;
+}
+</style>
+
+<!-- 如果 base.html 没有把 body_class 传下来，我们用 JS 动态加 class，确保 body.album-page 可用 -->
+<script>
+  (function() {
+    try {
+      // 在 DOMContentLoaded 之前也能执行，所以直接加
+      document.body.classList.add('album-page');
+    } catch (e) {
+      // 某些环境可能在 head 中执行时 body 未存在，延迟处理
+      document.addEventListener('DOMContentLoaded', function(){
+        document.body.classList.add('album-page');
+      });
+    }
+  })();
+</script>
+
+<!-- 背景层（备用） -->
+<div class="album-bg" aria-hidden="true"></div>
+
+<!-- 页面内容 -->
 <div class="album-content">
   <h1 class="page-title">Albums</h1>
 
@@ -35,34 +96,6 @@
     {% endfor %}
   </div>
 </div>
-{% endblock %}
-
-{% block extra_css %}
-<style>
-/* 针对 album 页面覆盖全局 body 背景 */
-body.album-page {
-    background: none; /* 清掉全局渐变背景 */
-}
-/* 背景层 */
-.album-bg {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg') center/cover no-repeat;
-    filter: blur(8px) brightness(0.75);
-    z-index: 0;
-    pointer-events: none;
-}
-
-/* 内容层 */
-.album-content {
-    position: relative;
-    z-index: 1;
-    padding: 20px;
-    max-width: 1280px;
-    margin: 0 auto;
-}
-</style>
 {% endblock %}
 
 
