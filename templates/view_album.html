@@ -1,31 +1,62 @@
 {% extends "base.html" %}
-{% block title %}{{ album_name }} - XiaCapture{% endblock %}
+{% block title %}{{ album_name }} - Album{% endblock %}
+
 {% block content %}
-<h1>{{ album_name }}</h1>
+<!-- ✅ 直接在 content 里引入 CSS/JS，避免 base.html 未定义 head/scripts 的问题 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
+<script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
 
-{% if images %}
-  <form method="POST" action="{{ url_for('delete_images') }}">
-    <div class="album-grid">
-      {% for image in images %}
-        <div class="album-photo">
-          {% if logged_in %}
-            <input type="checkbox" name="delete" value="{{ image }}" class="delete-checkbox">
-          {% endif %}
-          <img src="{{ image }}" alt="Photo">
-        </div>
-      {% endfor %}
-    </div>
+<h1 style="text-align:center; margin-top:20px;">{{ album_name }} Album</h1>
 
-    {% if logged_in %}
-      <input type="hidden" name="album_name" value="{{ album_name }}">
-      <div style="text-align: right; margin-top: 12px;">
-        <button type="submit" style="padding: 6px 12px;">Delete Selected Images</button>
-      </div>
-    {% endif %}
-  </form>
-{% else %}
-  <p>No images in this album yet.</p>
+{% if logged_in %}
+<form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
 {% endif %}
 
-{% endblock %}
+<style>
+  .album-grid {
+    display:flex; flex-wrap: wrap; gap:10px; justify-content: center;
+  }
+  .album-item {
+    position: relative; width: 200px; height: 200px; overflow: hidden; border-radius: 8px;
+  }
+  .album-item img {
+    width:100%; height:100%; object-fit: cover; display:block;
+  }
+  .album-item input[type="checkbox"]{
+    position:absolute; top:6px; left:6px; z-index:10; width:20px; height:20px;
+  }
+</style>
 
+<div class="album-grid">
+  {% for img in images %}
+    <div class="album-item">
+      {% if logged_in %}
+      <input type="checkbox" name="public_ids" value="{{ img.public_id }}">
+      {% endif %}
+      <!-- 用 GLightbox：class="glightbox" + data-gallery 同名分组 -->
+      <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album">
+        <img src="{{ img.secure_url }}" alt="Photo">
+      </a>
+    </div>
+  {% endfor %}
+</div>
+
+{% if logged_in %}
+  <input type="hidden" name="album_name" value="{{ album_name }}">
+  <div style="text-align: right; margin-top: 20px;">
+    <button type="submit" style="padding: 5px 12px;">Delete Selected Images</button>
+  </div>
+</form>
+{% endif %}
+
+<script>
+  // 初始化 GLightbox（支持左右切换、手势、键盘、循环）
+  const lightbox = GLightbox({
+    selector: '.glightbox',
+    loop: true,
+    touchNavigation: true,
+    keyboardNavigation: true,
+    closeOnOutsideClick: true
+  });
+</script>
+{% endblock %}
