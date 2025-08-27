@@ -220,8 +220,8 @@ html, body {
   position: absolute;
   left: 0; right: 0; bottom: 0;
   padding: 8px 12px;
-  font-size: 0.85rem;
-  font-weight: 500;
+  font-size: 0.65rem;
+  font-weight: 400;
   color: #fff;
   background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%);
 }
