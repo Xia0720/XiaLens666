@@ -3,30 +3,58 @@
 {% block title %}Albums - XiaCapture{% endblock %}
 
 {% block content %}
-<h1 class="page-title">Albums</h1>
+<!-- 背景层 -->
+<div class="album-bg"></div>
 
-<div class="album-grid">
-  {% for album in albums %}
-    <div class="album-item 
-                {% if loop.index == 1 %} item--feature 
-                {% elif loop.index % 5 == 0 %} item--w3 item--h2 
-                {% elif loop.index % 3 == 0 %} item--w2 
-                {% endif %}">
-      <a href="{{ url_for('view_album', album_name=album.name) }}">
-        {% if album.cover %}
-          <img src="{{ album.cover }}" alt="{{ album.name }}">
-        {% else %}
-          <div class="album-cover placeholder">
-            <span>No cover</span>
+<!-- 内容层 -->
+<div class="album-content">
+  <h1 class="page-title">Albums</h1>
+
+  <div class="album-grid">
+    {% for album in albums %}
+      <div class="album-item 
+                  {% if loop.index == 1 %} item--feature 
+                  {% elif loop.index % 5 == 0 %} item--w3 item--h2 
+                  {% elif loop.index % 3 == 0 %} item--w2 
+                  {% endif %}">
+        <a href="{{ url_for('view_album', album_name=album.name) }}">
+          {% if album.cover %}
+            <img src="{{ album.cover }}" alt="{{ album.name }}">
+          {% else %}
+            <div class="album-cover placeholder">
+              <span>No cover</span>
+            </div>
+          {% endif %}
+          <div class="album-info">
+            <h2>{{ album.name }}</h2>
           </div>
-        {% endif %}
-        <div class="album-info">
-          <h2>{{ album.name }}</h2>
-        </div>
-      </a>
-    </div>
-  {% endfor %}
+        </a>
+      </div>
+    {% endfor %}
+  </div>
 </div>
 {% endblock %}
+
+{% block extra_css %}
+<style>
+/* 背景层 */
+.album-bg {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg') center/cover no-repeat;
+    filter: blur(8px) brightness(0.75);
+    z-index: 0;
+}
+
+/* 内容层 */
+.album-content {
+    position: relative;
+    z-index: 1;
+    padding: 20px;
+}
+</style>
+{% endblock %}
+
 
 
