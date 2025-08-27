@@ -12,66 +12,29 @@
 {% endif %}
 
 <style>
-/* ===== Mosaic + 背景模糊填充 ===== */
-:root{
-  --bg-blur: 20px;          /* 模糊强度（可调） */
-  --bg-opacity: 0.30;       /* 背景图片透明度（可调） */
-  --overlay-color: rgba(10,10,12,0.20); /* 额外暗色罩，保证可读性 */
-}
-
-/* 外层容器，使用 CSS 变量注入背景 URL（Jinja 会写入这个变量） */
+/* ===== Mosaic 杂志拼贴布局 ===== */
 .mosaic-grid {
-  position: relative;       /* 以便 ::before 作为背景层 */
   display: grid;
   grid-template-columns: repeat(6, 1fr);
   grid-auto-rows: 180px;
-  gap: 14px;
+  gap: 6px; /* 比之前更小的间距，避免太空 */
   max-width: 1320px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 12px;
   box-sizing: border-box;
-  z-index: 0;               /* 内容层会在上面 */
-  overflow: visible;
-}
-
-/* 背景层：使用伪元素渲染模糊背景图，并加一层色罩 */
-.mosaic-grid::before{
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -2;
-  background-image: var(--bg-url, none);
-  background-position: center;
-  background-size: cover;
-  background-repeat: no-repeat;
-  filter: blur(var(--bg-blur));
-  transform: scale(1.06);   /* 轻微放大避免边缘可见 */
-  opacity: var(--bg-opacity);
-  transition: opacity .35s ease, filter .35s ease;
-  will-change: opacity, filter;
-}
-
-/* 额外的深色或色调罩（半透明层），让前景更可读 */
-.mosaic-grid::after{
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  background: var(--overlay-color);
-  pointer-events: none;
 }
 
 /* mosaic 项目（卡片化 + 浮动保留） */
 .mosaic-item {
   position: relative;
   overflow: hidden;
-  border-radius: 14px;
+  border-radius: 10px;
   background: #fff;
   transition: transform .25s cubic-bezier(.2,.9,.2,1), box-shadow .25s ease;
 }
 .mosaic-item:hover {
   transform: translateY(-6px);
-  box-shadow: 0 12px 24px rgba(0,0,0,0.12);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.12);
 }
 
 .mosaic-item img {
@@ -82,17 +45,20 @@
   transition: transform .35s ease, filter .35s ease;
 }
 .mosaic-item:hover img {
-  transform: scale(1.03);
-  filter: brightness(1.03);
+  transform: scale(1.04);
+  filter: brightness(1.05);
 }
 
 /* 复选框（admin） */
 .mosaic-item input[type="checkbox"]{
-  position: absolute; top: 10px; left: 10px; z-index: 10;
-  width: 20px; height: 20px; accent-color: #007bff;
+  position: absolute;
+  top: 8px; left: 8px;
+  z-index: 10;
+  width: 18px; height: 18px;
+  accent-color: #007bff;
 }
 
-/* 拼贴类（控制跨列/跨行）*/
+/* 拼贴类（控制跨列/跨行） */
 .mosaic-item.wide  { grid-column: span 3; grid-row: span 2; }
 .mosaic-item.tall  { grid-column: span 2; grid-row: span 3; }
 .mosaic-item.square{ grid-column: span 2; grid-row: span 2; }
@@ -100,21 +66,14 @@
 
 /* 响应式 */
 @media (max-width: 900px) {
-  .mosaic-grid { grid-template-columns: repeat(4, 1fr); grid-auto-rows: 160px; }
+  .mosaic-grid { grid-template-columns: repeat(4, 1fr); grid-auto-rows: 150px; }
 }
 @media (max-width: 600px) {
   .mosaic-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 140px; }
 }
-
-/* 可选：当背景不存在时，降低伪元素影响（清晰 fallback） */
-.mosaic-grid.no-bg::before{ display: none; }
 </style>
 
-{# 在容器上注入 --bg-url 变量：使用第一张图片做背景（可替换为随机或后台字段） #}
-<div class="mosaic-grid {% if images|length == 0 %}no-bg{% endif %}"
-     {% if images|length > 0 %}
-       style="--bg-url: url('{{ images[0].secure_url }}'); --bg-blur: 18px; --bg-opacity: 0.30;"
-     {% endif %}>
+<div class="mosaic-grid">
   {% for img in images %}
   <div class="mosaic-item
               {% if loop.index % 7 == 0 %}wide{% elif loop.index % 5 == 0 %}tall
