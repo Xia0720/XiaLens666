@@ -2,7 +2,7 @@
 {% block title %}{{ album_name }} - Album{% endblock %}
 
 {% block content %}
-<!-- ✅ 直接在 content 里引入 CSS/JS，避免 base.html 未定义 head/scripts 的问题 -->
+<!-- 使用 GLightbox（轻量、无外部依赖） -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
 <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
 
@@ -12,45 +12,91 @@
 <form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
 {% endif %}
 
+<!-- ====== 样式（内嵌，先方便验证；后面可移到 static/style.css） ====== -->
 <style>
-  .album-grid {
-    display:flex; flex-wrap: wrap; gap:10px; justify-content: center;
-  }
-  .album-item {
-    position: relative; width: 200px; height: 200px; overflow: hidden; border-radius: 8px;
-  }
-  .album-item img {
-    width:100%; height:100%; object-fit: cover; display:block;
-  }
-  .album-item input[type="checkbox"]{
-    position:absolute; top:6px; left:6px; z-index:10; width:20px; height:20px;
-  }
+/* Masonry-like using CSS columns：无 JS 冲突、性能好 */
+.masonry-columns {
+  column-width: 260px;      /* 每列理想宽度（桌面约 4~5 列，视 max-width 而定） */
+  column-gap: 16px;
+  max-width: 1320px;        /* 容器最大宽度，控制一行列数并居中 */
+  margin: 0 auto;
+  padding: 18px 12px 36px;
+  box-sizing: border-box;
+}
+
+/* 每个条目必须用 inline-block 或者 block-in-inline (保持在 columns 中完整) */
+.masonry-item {
+  display: inline-block;
+  width: 100%;
+  margin: 0 0 16px;
+  break-inside: avoid;      /* 防止被列内部拆分 */
+  position: relative;       /* 复选框绝对定位基准 */
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.masonry-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+}
+
+/* 图片：宽度自适应、保留原比例、不会被拉超大 */
+.masonry-item img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+/* 复选框左上角 */
+.masonry-item input[type="checkbox"] {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 20;
+  width: 20px; height: 20px;
+  accent-color: #007bff;
+  transform: scale(1.05);
+}
+
+/* 响应式：小屏改成两列（或单列）*/
+@media (max-width: 900px) {
+  .masonry-columns { column-width: 180px; column-gap: 12px; padding: 12px; }
+}
+@media (max-width: 520px) {
+  /* 在非常小的屏幕下使用百分比列，避免只有一列太高 */
+  .masonry-columns { column-width: 48%; column-gap: 8px; }
+}
 </style>
 
-<div class="album-grid">
+<!-- ====== 图片容器（瀑布流 columns） ====== -->
+<div class="masonry-columns" aria-live="polite">
   {% for img in images %}
-    <div class="album-item">
-      {% if logged_in %}
+  <div class="masonry-item">
+    {% if logged_in %}
       <input type="checkbox" name="public_ids" value="{{ img.public_id }}">
-      {% endif %}
-      <!-- 用 GLightbox：class="glightbox" + data-gallery 同名分组 -->
-      <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album">
-        <img src="{{ img.secure_url }}" alt="Photo">
-      </a>
-    </div>
+    {% endif %}
+    <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
+      <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
+    </a>
+  </div>
   {% endfor %}
 </div>
 
 {% if logged_in %}
   <input type="hidden" name="album_name" value="{{ album_name }}">
-  <div style="text-align: right; margin-top: 20px;">
-    <button type="submit" style="padding: 5px 12px;">Delete Selected Images</button>
+  <div style="text-align: right; margin: 8px 18px 40px 18px;">
+    <button type="submit" style="padding: 8px 14px; border-radius:6px; background:#d9534f; color:#fff; border:none;">
+      Delete Selected Images
+    </button>
   </div>
 </form>
 {% endif %}
 
+<!-- 初始化 GLightbox（无需等待图片加载） -->
 <script>
-  // 初始化 GLightbox（支持左右切换、手势、键盘、循环）
   const lightbox = GLightbox({
     selector: '.glightbox',
     loop: true,
