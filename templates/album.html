@@ -39,6 +39,10 @@
 
 {% block extra_css %}
 <style>
+/* 针对 album 页面覆盖全局 body 背景 */
+body.album-page {
+    background: none; /* 清掉全局渐变背景 */
+}
 /* 背景层 */
 .album-bg {
     position: fixed;
