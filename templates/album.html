@@ -1,34 +1,32 @@
 {% extends "base.html" %}
 
 {% block title %}Albums - XiaCapture{% endblock %}
+{% block body_class %}album-page{% endblock %} {# 如果 base 支持会直接加到 body 上，若不支持下面脚本会补上 #}
 
-{# 如果 base.html 支持 body_class block，会把 class 直接加到 body 上；若不支持，下面的脚本会动态添加 #}
-{% block body_class %}album-page{% endblock %}
-
-{% block extra_css %}
+{% block content %}
+<!-- 内联样式：专用于 album 页面（放在 content 内确保被加载） -->
 <style>
-/* 基本保障 */
-html, body { height: 100%; }
+/* 基础保障 */
+html, body { height: 100%; margin: 0; padding: 0; }
 
 /* 清除全局 body 渐变（仅在 album 页面生效） */
 body.album-page { background: none !important; }
 
-/* 主背景：用 body 的伪元素显示（最稳妥且不影响文档流） */
+/* 首选背景：用 body 的伪元素显示全屏虚化背景，放在最底层 */
 body.album-page::before {
   content: "";
   position: fixed;
-  inset: 0; /* top:0; right:0; bottom:0; left:0; */
+  inset: 0;
   background-image: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   filter: blur(8px) brightness(0.75);
-  z-index: -1;             /* 放在页面内容下面 */
+  z-index: -9999;            /* **非常低的 z-index，确保在所有内容之下** */
   pointer-events: none;
-  will-change: transform;
 }
 
-/* 备用背景元素（极低层级），在极少数伪元素被覆盖的环境中作为后备） */
+/* 备用背景（极端环境下作为后备） */
 .album-bg-fallback {
   position: fixed;
   inset: 0;
@@ -36,38 +34,55 @@ body.album-page::before {
   background-size: cover;
   background-position: center;
   filter: blur(8px) brightness(0.75);
-  z-index: -2;
+  z-index: -10000;
   pointer-events: none;
 }
 
 /* 确保页面内容在背景之上 */
 .album-content {
   position: relative;
-  z-index: 2;
+  z-index: 10;
   max-width: 1280px;
   margin: 0 auto;
   padding: 20px;
 }
 
-/* 把常见 header / nav 抬到更上层以防被背景遮挡（不改变布局，仅确保层级） */
-header, nav, .site-header, .navbar, .main-nav {
-  position: relative; /* 安全的默认定位，不会把它们从文档流取走 */
-  z-index: 3;
+/* 把常见 header / nav 明确抬到上层，避免被背景或其他低层遮挡
+   使用 !important 以覆盖任何 base.css 的层级设置（这是最小且直接的方式） */
+header, nav, .site-header, .navbar, .main-nav, .topbar {
+  position: relative !important;
+  z-index: 99999 !important;
 }
 
-/* 保证相册网格也在上层（不会覆写你原来的 grid 行高、跨度等） */
+/* 兼容：确保相册网格本身在上层 */
 .album-grid {
   position: relative;
-  z-index: 2;
+  z-index: 11;
 }
-</style>
-{% endblock %}
 
-{% block content %}
+/* 保留你的原有 grid/item 样式（如果你在全局 css 已定义，这里不重复） */
+/* 如果你需要，我也可以把你原来全量的 .album-grid/.album-item CSS 合并进来 */
+</style>
+
+<!-- JS 保险：如果 base.html 没把 body_class 注入，这段脚本会给 body 加上 album-page 类 -->
+<script>
+(function() {
+  try {
+    if (!document.body.classList.contains('album-page')) {
+      document.body.classList.add('album-page');
+    }
+  } catch (e) {
+    document.addEventListener('DOMContentLoaded', function(){
+      document.body.classList.add('album-page');
+    });
+  }
+})();
+</script>
+
 <!-- 备用背景元素（通常不会显示，因为伪元素优先） -->
 <div class="album-bg-fallback" aria-hidden="true"></div>
 
-<!-- 页面内容（保留你原来的 grid 结构） -->
+<!-- 页面主体：保留你原来的相册循环与结构 -->
 <div class="album-content">
   <h1 class="page-title">Albums</h1>
 
@@ -94,19 +109,4 @@ header, nav, .site-header, .navbar, .main-nav {
     {% endfor %}
   </div>
 </div>
-
-{# 如果 base.html 没有把 body_class 注入，我们用脚本确保 body 有 album-page 类 #}
-<script>
-(function() {
-  try {
-    if (!document.body.classList.contains('album-page')) {
-      document.body.classList.add('album-page');
-    }
-  } catch (e) {
-    document.addEventListener('DOMContentLoaded', function(){
-      document.body.classList.add('album-page');
-    });
-  }
-})();
-</script>
 {% endblock %}
