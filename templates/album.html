@@ -2,6 +2,8 @@
 
 {% block title %}Albums - XiaCapture{% endblock %}
 
+{% block body_class %}album-page{% endblock %}
+
 {% block content %}
 <!-- 背景层 -->
 <div class="album-bg"></div>
@@ -37,13 +39,6 @@
 
 {% block extra_css %}
 <style>
-/* 全局高度 */
-html, body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-}
-
 /* 背景层 */
 .album-bg {
     position: fixed;
