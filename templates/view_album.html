@@ -2,7 +2,6 @@
 {% block title %}{{ album_name }} - Album{% endblock %}
 
 {% block content %}
-<!-- 使用 GLightbox（轻量、无外部依赖） -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
 <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
 
@@ -12,69 +11,67 @@
 <form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
 {% endif %}
 
-<!-- ====== 样式（内嵌，先方便验证；后面可移到 static/style.css） ====== -->
 <style>
-/* Masonry-like using CSS columns：无 JS 冲突、性能好 */
-.masonry-columns {
-  column-width: 260px;      /* 每列理想宽度（桌面约 4~5 列，视 max-width 而定） */
-  column-gap: 16px;
-  max-width: 1320px;        /* 容器最大宽度，控制一行列数并居中 */
+/* ====== Mosaic Grid ====== */
+.mosaic-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr); /* 6 列网格，灵活拼贴 */
+  grid-auto-rows: 180px; /* 基础行高 */
+  gap: 14px;
+  max-width: 1320px;
   margin: 0 auto;
-  padding: 18px 12px 36px;
+  padding: 20px;
   box-sizing: border-box;
 }
 
-/* 每个条目必须用 inline-block 或者 block-in-inline (保持在 columns 中完整) */
-.masonry-item {
-  display: inline-block;
-  width: 100%;
-  margin: 0 0 16px;
-  break-inside: avoid;      /* 防止被列内部拆分 */
-  position: relative;       /* 复选框绝对定位基准 */
-  border-radius: 10px;
+/* 每个格子 */
+.mosaic-item {
+  position: relative;
   overflow: hidden;
+  border-radius: 14px;
   background: #fff;
-  transition: transform .18s ease, box-shadow .18s ease;
+  transition: transform .25s ease, box-shadow .25s ease;
 }
-.masonry-item:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+.mosaic-item:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.12);
 }
 
-/* 图片：宽度自适应、保留原比例、不会被拉超大 */
-.masonry-item img {
+/* 图片 */
+.mosaic-item img {
   width: 100%;
-  height: auto;
-  display: block;
+  height: 100%;
   object-fit: cover;
-  border-radius: 6px;
+  display: block;
 }
 
-/* 复选框左上角 */
-.masonry-item input[type="checkbox"] {
+/* 复选框 */
+.mosaic-item input[type="checkbox"] {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  z-index: 20;
+  top: 8px; left: 8px;
+  z-index: 10;
   width: 20px; height: 20px;
   accent-color: #007bff;
-  transform: scale(1.05);
 }
 
-/* 响应式：小屏改成两列（或单列）*/
+/* 拼贴规则：大图/小图组合（可调整节奏） */
+.mosaic-item.wide { grid-column: span 3; grid-row: span 2; }
+.mosaic-item.tall { grid-column: span 2; grid-row: span 3; }
+.mosaic-item.square { grid-column: span 2; grid-row: span 2; }
+.mosaic-item.small { grid-column: span 2; grid-row: span 1; }
+
+/* 响应式 */
 @media (max-width: 900px) {
-  .masonry-columns { column-width: 180px; column-gap: 12px; padding: 12px; }
+  .mosaic-grid { grid-template-columns: repeat(4, 1fr); grid-auto-rows: 160px; }
 }
-@media (max-width: 520px) {
-  /* 在非常小的屏幕下使用百分比列，避免只有一列太高 */
-  .masonry-columns { column-width: 48%; column-gap: 8px; }
+@media (max-width: 600px) {
+  .mosaic-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 140px; }
 }
 </style>
 
-<!-- ====== 图片容器（瀑布流 columns） ====== -->
-<div class="masonry-columns" aria-live="polite">
+<div class="mosaic-grid">
   {% for img in images %}
-  <div class="masonry-item">
+  <div class="mosaic-item {% if loop.index % 7 == 0 %}wide{% elif loop.index % 5 == 0 %}tall{% elif loop.index % 3 == 0 %}square{% else %}small{% endif %}">
     {% if logged_in %}
       <input type="checkbox" name="public_ids" value="{{ img.public_id }}">
     {% endif %}
@@ -95,7 +92,6 @@
 </form>
 {% endif %}
 
-<!-- 初始化 GLightbox（无需等待图片加载） -->
 <script>
   const lightbox = GLightbox({
     selector: '.glightbox',
