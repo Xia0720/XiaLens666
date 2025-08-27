@@ -4,9 +4,9 @@ body, html {
     margin: 0;
     padding: 0;
     height: 100%;
-    font-family: Arial, sans-serif;
-    background: #fff;
-    color: #222;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background: linear-gradient(135deg, #fdf6f0, #e3f2fd); /* 左上淡米色 → 右下浅蓝 */
+    color: #333; /* 主文字颜色，深灰可读性好 */
 }
 
 /* ===== 顶部导航栏 ===== */
