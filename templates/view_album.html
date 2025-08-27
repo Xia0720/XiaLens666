@@ -1,87 +1,31 @@
 {% extends "base.html" %}
-{% block title %}{{ album_name }} - Album{% endblock %}
-
+{% block title %}{{ album_name }} - XiaCapture{% endblock %}
 {% block content %}
-<!-- Lightbox2 引入（轻量、无需初始化） -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox.min.js"></script>
+<h1>{{ album_name }}</h1>
 
-<h1 style="text-align:center; margin-top:20px;">{{ album_name }} Album</h1>
+{% if images %}
+  <form method="POST" action="{{ url_for('delete_images') }}">
+    <div class="album-grid">
+      {% for image in images %}
+        <div class="album-photo">
+          {% if logged_in %}
+            <input type="checkbox" name="delete" value="{{ image }}" class="delete-checkbox">
+          {% endif %}
+          <img src="{{ image }}" alt="Photo">
+        </div>
+      {% endfor %}
+    </div>
 
-{% if logged_in %}
-<form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
-{% endif %}
-
-<div class="photo-grid">
-  {% for img in images %}
-  <div class="photo-item">
     {% if logged_in %}
-      <input type="checkbox" name="public_ids" value="{{ img.public_id }}" style="position:absolute; z-index:5; margin:8px;">
+      <input type="hidden" name="album_name" value="{{ album_name }}">
+      <div style="text-align: right; margin-top: 12px;">
+        <button type="submit" style="padding: 6px 12px;">Delete Selected Images</button>
+      </div>
     {% endif %}
-    <a href="{{ img.secure_url }}" data-lightbox="album-{{ album_name }}" data-title="{{ album_name }}">
-      <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
-    </a>
-  </div>
-  {% endfor %}
-</div>
-
-<!-- 引入 Masonry & imagesLoaded -->
-<script src="https://unpkg.com/masonry-layout@4/dist/masonry.pkgd.min.js"></script>
-<script src="https://unpkg.com/imagesloaded@4/imagesloaded.pkgd.min.js"></script>
-
-<script>
-var grid = document.querySelector('.photo-grid');
-imagesLoaded(grid, function() {
-  new Masonry(grid, {
-    itemSelector: '.photo-item',
-    columnWidth: '.photo-item',
-    gutter: 12,
-    percentPosition: true
-  });
-});
-</script>
-
-<style>
-.photo-grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;              /* 控制图片间的间距 */
-  max-width: 1200px;      /* 整体宽度限制 */
-  margin: 12px auto;
-}
-
-.photo-item {
-  flex: 1 1 calc(20% - 10px);  /* 每列约 20%，减去间距 */
-  box-sizing: border-box;
-}
-
-.photo-item img {
-  width: 100%;
-  display: block;
-  border-radius: 6px;
-  object-fit: cover;
-  transition: transform .18s ease;
-}
-.photo-item img:hover {
-  transform: scale(1.02);
-}
-
-/* 响应式 */
-@media (max-width: 900px)  {
-  .photo-item { flex: 1 1 calc(50% - 10px); }  /* 手机两列 */
-}
-@media (max-width: 480px) {
-  .photo-item { flex: 1 1 100%; }              /* 小屏单列 */
-}
-</style>
-
-{% if logged_in %}
-  <input type="hidden" name="album_name" value="{{ album_name }}">
-  <div style="text-align: right; margin-top: 12px;">
-    <button type="submit" style="padding: 6px 12px;">Delete Selected Images</button>
-  </div>
-</form>
+  </form>
+{% else %}
+  <p>No images in this album yet.</p>
 {% endif %}
 
 {% endblock %}
+
