@@ -1,225 +1,67 @@
 {% extends "base.html" %}
-{% block title %}{{ album_name }} - Album{% endblock %}
+{% block title %}{{ album_name }} - View Album{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
 <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
 
-{# 背景选择（保留你原来的逻辑） #}
-{% set bg = images[0].secure_url if images|length > 0 else 'https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756396039/pexels-pixabay-289618_iyg9c4.jpg' %}
-{% set fallback_bg = 'https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg' %}
-
+{% set bg = 'https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg' %}
 <style>
-  /* ---------- 背景 & 基础 ---------- */
-  html, body { height: 100%; margin: 0; padding: 0; }
-  body.album-page { background: none !important; }
+html, body { margin:0; padding:0; height:100%; }
+body.album-page { background: none !important; }
+body.album-page::before {
+    content:""; position: fixed; inset:0;
+    background-image: url('{{ bg }}'); background-size:cover; background-position:center;
+    filter: blur(8px) brightness(0.86); z-index:-2; pointer-events:none;
+}
+header, nav, .site-header, .navbar, .main-nav, .topbar { position: relative !important; z-index:60 !important; }
 
-  body.album-page::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background-image: url('{{ bg }}');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    filter: blur(8px) brightness(0.86);
-    z-index: -2;
-    pointer-events: none;
-  }
+h1 { text-align:center; margin-top:20px; color:#222; text-shadow:2px 2px 6px rgba(0,0,0,0.25); }
 
-  .album-bg-fallback {
-    position: fixed;
-    inset: 0;
-    background-image: url('{{ fallback_bg }}');
-    background-size: cover;
-    background-position: center;
-    filter: blur(10px) brightness(0.78);
-    z-index: -3;
-    pointer-events: none;
-  }
+.magazine { display:flex; flex-direction:row; gap:16px; overflow-x:auto; padding:18px; box-sizing:border-box; }
+.magazine::-webkit-scrollbar { height:10px; }
+.magazine::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.3); border-radius:5px; }
 
-  header, nav, .site-header, .navbar, .main-nav, .topbar {
-    position: relative !important;
-    z-index: 60 !important;
-  }
-
-  /* ---------- 容器：取消中间 max-width 限制（保证铺满） ---------- */
-  .magazine {
-    max-width: none !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 18px 14px;
-    box-sizing: border-box;
-  }
-
-  /* ---------- 核心：拼接网格 Mosaic（12 列） ---------- */
-  .mosaic-grid {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    grid-auto-rows: 8.5vw;          /* 行高随视口宽度变化，照片比例更自然 */
-    gap: 14px;
-    width: calc(100% - 28px);
-    margin: 18px auto;
-    box-sizing: border-box;
-  }
-
-  /* 网格项基础视觉 */
-  .mosaic-item {
-    position: relative;
-    overflow: visible;               /* 允许子元素溢出，图片不被裁切 */
-    border-radius: 10px;
-    background: rgba(255,255,255,0.9);
-    box-shadow: 0 8px 18px rgba(0,0,0,0.08);
-    transition: transform .32s cubic-bezier(.2,.9,.2,1), box-shadow .32s ease;
-    will-change: transform;
-  }
-  .mosaic-item:hover {
-    transform: translateY(-8px) scale(1.01);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.16);
-    z-index: 6; /* hover 时置顶，避免被邻近项遮挡 */
-  }
-
-  /* 图片在项内铺满 */
-  .mosaic-item img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-    border-radius: 8px;
-  }
-
-  /* 管理复选框（保留） */
-  .mosaic-item .mag-check {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    z-index: 12;
-    width: 18px;
-    height: 18px;
-  }
-
-  /* 轻微信息遮罩（鼠标悬停显示标题/描述） */
-  .mosaic-item .caption {
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    padding: 10px 12px;
-    font-size: 0.95rem;
-    color: #fff;
-    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%);
-    opacity: 0;
-    transform: translateY(6px);
-    transition: opacity .28s ease, transform .28s ease;
-    border-bottom-left-radius: 8px;
-    border-bottom-right-radius: 8px;
-    pointer-events: none;
-  }
-  .mosaic-item:hover .caption { opacity: 1; transform: translateY(0); }
-
-  /* ---------- 尺寸类（按列跨度） ---------- */
-  .item--w2 { grid-column: span 2; }
-  .item--w3 { grid-column: span 3; }
-  .item--w4 { grid-column: span 4; }
-  .item--w6 { grid-column: span 6; }
-  .item--w8 { grid-column: span 8; }
-  .item--h1 { grid-row: span 1; }
-  .item--h2 { grid-row: span 2; }
-  .item--h3 { grid-row: span 3; }
-
-  /* 额外：让部分大图在视觉上溢出一点（更杂志感，可选） */
-  .item--feature img {
-    box-shadow: 0 14px 40px rgba(0,0,0,0.18);
-  }
-
-  /* 响应式：在窄屏时减少列数 */
-  @media (max-width: 1200px) {
-    .mosaic-grid { grid-template-columns: repeat(10, 1fr); grid-auto-rows: 9.5vw; }
-  }
-  @media (max-width: 900px) {
-    .mosaic-grid { grid-template-columns: repeat(8, 1fr); grid-auto-rows: 12vw; gap: 12px; }
-    .item--w8 { grid-column: span 8; } /* 保持 feature 横跨整行 */
-    .item--w6 { grid-column: span 8; }
-    .item--w4 { grid-column: span 4; }
-  }
-  @media (max-width: 600px) {
-    .mosaic-grid { grid-template-columns: repeat(4, 1fr); grid-auto-rows: 32vw; gap: 10px; }
-    .item--w2, .item--w3, .item--w4, .item--w6, .item--w8 { grid-column: span 4; } /* 单列堆栈 */
-    .item--h2, .item--h3 { grid-row: span 1; } /* 防止过高 */
-  }
+.mag-card { flex:0 0 auto; width:300px; height:220px; position:relative; border-radius:10px; background: rgba(255,255,255,0.9); box-shadow:0 8px 18px rgba(0,0,0,0.08); transition: transform .32s, box-shadow .32s; }
+.mag-card:hover { transform: translateY(-6px) scale(1.02); box-shadow:0 18px 36px rgba(0,0,0,0.14); z-index:2; }
+.mag-card img { width:100%; height:100%; object-fit:cover; border-radius:8px; display:block; }
+.mag-check { position:absolute; top:10px; left:10px; width:18px; height:18px; z-index:10; }
 </style>
 
-{# 背景回退层 #}
-<div class="album-bg-fallback" aria-hidden="true"></div>
+<script>(function(){ if(!document.body.classList.contains('album-page')){ document.body.classList.add('album-page'); }})();</script>
 
-{# 保持 album-page class（和 album.html 一致） #}
-<script>
-  (function(){
-    try {
-      if (!document.body.classList.contains('album-page')) {
-        document.body.classList.add('album-page');
-      }
-    } catch (e) {
-      document.addEventListener('DOMContentLoaded', function(){ document.body.classList.add('album-page'); });
-    }
-  })();
-</script>
+<h1>{{ album_name }} Album</h1>
 
-<h1 style="text-align:center; margin-top:20px; color: #222; text-shadow: 2px 2px 6px rgba(0,0,0,0.25);">{{ album_name }} Album</h1>
-
-{# 如果登录就把表单包裹在 mosaic 内（保留删除功能） #}
 {% if logged_in %}
 <form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
 {% endif %}
 
 <div class="magazine">
-  <div class="mosaic-grid">
-    {# 使用 images 列表，按 index 决定每个项的跨度，产生拼接效果 #}
+  {% if images|length == 0 %}
+    <p style="color:white; margin:20px;">This album has no photos yet.</p>
+  {% else %}
     {% for img in images %}
-      {% set idx = loop.index0 %}
-      {% if idx == 0 %}
-        {% set classes = "mosaic-item item--w8 item--h3 item--feature" %}
-      {% elif idx % 11 == 0 %}
-        {% set classes = "mosaic-item item--w6 item--h2" %}
-      {% elif idx % 7 == 0 %}
-        {% set classes = "mosaic-item item--w4 item--h2" %}
-      {% elif idx % 3 == 0 %}
-        {% set classes = "mosaic-item item--w3 item--h1" %}
-      {% else %}
-        {% set classes = "mosaic-item item--w2 item--h1" %}
-      {% endif %}
-
-      <div class="{{ classes }}">
+      <div class="mag-card">
         {% if logged_in %}
           <input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">
         {% endif %}
-        <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}" aria-label="Open photo">
+        <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
           <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
         </a>
-        <div class="caption">
-          <div style="font-weight:600;">{{ img.public_id | default('Photo') }}</div>
-          {# 若你有描述字段可以在这里显示： {{ img.description }} #}
-        </div>
       </div>
     {% endfor %}
-  </div>
+  {% endif %}
 </div>
 
 {% if logged_in %}
   <input type="hidden" name="album_name" value="{{ album_name }}">
-  <div style="text-align: right; margin: 10px 18px 40px 18px;">
-    <button type="submit" style="padding: 8px 14px; border-radius:6px; background:#d9534f; color:#fff; border:none;">
-      Delete Selected Images
-    </button>
+  <div style="text-align:right; margin:10px 18px 40px 18px;">
+    <button type="submit" style="padding:8px 14px; border-radius:6px; background:#d9534f; color:#fff; border:none;">Delete Selected Images</button>
   </div>
 </form>
 {% endif %}
 
 <script>
-  const lightbox = GLightbox({
-    selector: '.glightbox',
-    loop: true,
-    touchNavigation: true,
-    keyboardNavigation: true,
-    closeOnOutsideClick: true
-  });
+const lightbox = GLightbox({selector: '.glightbox', loop:true, touchNavigation:true, keyboardNavigation:true, closeOnOutsideClick:true});
 </script>
 {% endblock %}
