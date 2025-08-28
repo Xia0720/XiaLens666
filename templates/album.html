@@ -57,22 +57,6 @@
     text-shadow: 2px 2px 6px rgba(0,0,0,0.4); /* 黑色阴影 */
   }
 
-.album-info h2 {
-  font-family: "Georgia", serif; /* 修改字体 */
-  font-size: 22px;              /* 字体大小 */
-  font-weight: bold;            /* 加粗 */
-  color: #fff;                  /* 白色字体 */
-  text-shadow: 2px 2px 4px rgba(0,0,0,0.6); /* 阴影更清晰 */
-  margin: 0;
-}
-
-.album-info {
-  background: rgba(0, 0, 0, 0.4); /* 半透明黑底 */
-  padding: 8px;
-  text-align: center;
-  border-radius: 8px;
-}
-  
   /* ===== 核心：Mosaic 网格（自适应宽度 + 居中） ===== */
   .album-grid {
     display: grid;
@@ -118,16 +102,17 @@
   .item--min { grid-column: span 3; grid-row: span 1; }
 
   /* 相册名遮罩 */
-  .album-info {
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    padding: 8px 12px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: #fff;
-    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%);
-  }
-
+ .album-info {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  padding: 8px 12px;
+  font-size: 0.9rem;         /* 字大一点 */
+  font-weight: 500;          /* 稍微加粗 */
+  color: #fff;
+  font-family: "Poppins", "Helvetica Neue", Arial, sans-serif; /* 改字体 */
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.7); /* 黑色阴影，让字更清晰 */
+  background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%);
+}
   /* ===== 响应式：逐步减少列数，但保持“相对比例” ===== */
   @media (max-width: 1200px) {
     .album-grid {
