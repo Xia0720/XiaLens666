@@ -5,12 +5,12 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
 <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
 
-{# 选择背景：若有图片用第一张，否则用回退图 #}
+{# 背景选择（保留你原来的逻辑） #}
 {% set bg = images[0].secure_url if images|length > 0 else 'https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756396039/pexels-pixabay-289618_iyg9c4.jpg' %}
 {% set fallback_bg = 'https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg' %}
 
 <style>
-  /* 基础 - 保证页面可铺满并且背景虚化（和 album.html 风格一致） */
+  /* ---------- 背景 & 基础 ---------- */
   html, body { height: 100%; margin: 0; padding: 0; }
   body.album-page { background: none !important; }
 
@@ -43,47 +43,44 @@
     z-index: 60 !important;
   }
 
-  /* ===========================
-     核心修改：让内容不被“中间容器”限制
-     =========================== */
-
-  /* 1) .magazine 取消 max-width / 居中，强制全文宽（覆盖可能来自 base.html 的 container 规则） */
+  /* ---------- 容器：取消中间 max-width 限制（保证铺满） ---------- */
   .magazine {
-    max-width: none !important;   /* 关键：移除宽度上限 */
-    width: 100% !important;       /* 占满可用宽度 */
-    margin: 0 !important;         /* 取消自动居中空白 */
-    padding: 18px 20px !important;/* 适度内边距，避免贴边过紧 */
+    max-width: none !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 18px 14px;
     box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    gap: 22px;
   }
 
-  /* 2) 如果你想让某些“行”真正贴满视口左右（edge-to-edge），可以用 .edge-row。
-     它会超出父容器，延伸到视口边缘（可选）。*/
-  .edge-row {
-    width: 100vw;
+  /* ---------- 核心：拼接网格 Mosaic（12 列） ---------- */
+  .mosaic-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-auto-rows: 8.5vw;          /* 行高随视口宽度变化，照片比例更自然 */
+    gap: 14px;
+    width: calc(100% - 28px);
+    margin: 18px auto;
+    box-sizing: border-box;
+  }
+
+  /* 网格项基础视觉 */
+  .mosaic-item {
     position: relative;
-    left: 50%;
-    right: 50%;
-    margin-left: -50vw;
-    margin-right: -50vw;
-    padding: 0 12px; /* 保留一点内边距 */
-    box-sizing: border-box;
-  }
-
-  /* 保留你的卡片样式，但去掉会造成裁切的 overflow（保证图片自由排列） */
-  .mag-card {
-    overflow: visible;               /* 允许子元素自由展示，不被裁切 */
+    overflow: visible;               /* 允许子元素溢出，图片不被裁切 */
     border-radius: 10px;
     background: rgba(255,255,255,0.9);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.10);
-    transition: transform .28s, box-shadow .28s;
-    position: relative;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+    transition: transform .32s cubic-bezier(.2,.9,.2,1), box-shadow .32s ease;
+    will-change: transform;
   }
-  .mag-card:hover { transform: translateY(-6px) scale(1.003); box-shadow: 0 14px 30px rgba(0,0,0,0.14); }
+  .mosaic-item:hover {
+    transform: translateY(-8px) scale(1.01);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.16);
+    z-index: 6; /* hover 时置顶，避免被邻近项遮挡 */
+  }
 
-  .mag-card img {
+  /* 图片在项内铺满 */
+  .mosaic-item img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -91,57 +88,69 @@
     border-radius: 8px;
   }
 
-  /* 管理复选框 */
-  .mag-check { position: absolute; top: 10px; left: 10px; z-index: 12; width: 18px; height: 18px; }
+  /* 管理复选框（保留） */
+  .mosaic-item .mag-check {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 12;
+    width: 18px;
+    height: 18px;
+  }
 
-  /* 行与网格（保留你原有的布局逻辑，只把宽度逻辑改为相对于可用宽度） */
-  .row-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; align-items: stretch; }
-  .row-1 .big .mag-card { height: 100%; }
-  .row-1 .big img { aspect-ratio: 16/9; }
-  .row-1 .side { display:flex; flex-direction:column; gap:12px; }
-  .row-1 .side .mag-card { height: 100%; flex: 1 1 0; }
-  .row-1 .side .mag-card img { aspect-ratio: 3/4; }
+  /* 轻微信息遮罩（鼠标悬停显示标题/描述） */
+  .mosaic-item .caption {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    color: #fff;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%);
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity .28s ease, transform .28s ease;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+    pointer-events: none;
+  }
+  .mosaic-item:hover .caption { opacity: 1; transform: translateY(0); }
 
-  .row-2 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-  .row-2 .mag-card { height: 260px; }
+  /* ---------- 尺寸类（按列跨度） ---------- */
+  .item--w2 { grid-column: span 2; }
+  .item--w3 { grid-column: span 3; }
+  .item--w4 { grid-column: span 4; }
+  .item--w6 { grid-column: span 6; }
+  .item--w8 { grid-column: span 8; }
+  .item--h1 { grid-row: span 1; }
+  .item--h2 { grid-row: span 2; }
+  .item--h3 { grid-row: span 3; }
 
-  .row-3 .mag-card { height: 420px; }
-  .row-3 .mag-card img { aspect-ratio: 21/8; }
+  /* 额外：让部分大图在视觉上溢出一点（更杂志感，可选） */
+  .item--feature img {
+    box-shadow: 0 14px 40px rgba(0,0,0,0.18);
+  }
 
-  .row-4 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
-  .row-4 .mag-card { height: 220px; }
-
-  .more-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-  .more-grid .mag-card { height: 200px; }
-
-  /* 响应式：小屏时改成单列或少列 */
-  @media (max-width: 1100px) {
-    .row-1 { grid-template-columns: 1.6fr 1fr; }
-    .row-2 .mag-card { height: 220px; }
-    .row-3 .mag-card { height: 320px; }
-    .row-4 .mag-card { height: 180px; }
+  /* 响应式：在窄屏时减少列数 */
+  @media (max-width: 1200px) {
+    .mosaic-grid { grid-template-columns: repeat(10, 1fr); grid-auto-rows: 9.5vw; }
   }
   @media (max-width: 900px) {
-    .row-1 { grid-template-columns: 1fr; }
-    .row-1 .side { flex-direction: row; }
-    .row-1 .side .mag-card img { aspect-ratio: 4/3; }
-    .row-1 .big img { aspect-ratio: 3/2; }
-    .row-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
-    .row-3 .mag-card { height: 240px; }
-    .row-4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
-    .more-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+    .mosaic-grid { grid-template-columns: repeat(8, 1fr); grid-auto-rows: 12vw; gap: 12px; }
+    .item--w8 { grid-column: span 8; } /* 保持 feature 横跨整行 */
+    .item--w6 { grid-column: span 8; }
+    .item--w4 { grid-column: span 4; }
   }
-  @media (max-width: 480px) {
-    .row-2 { grid-template-columns: 1fr; }
-    .row-4 { grid-template-columns: 1fr; }
-    .magazine { padding: 12px; gap: 16px; }
+  @media (max-width: 600px) {
+    .mosaic-grid { grid-template-columns: repeat(4, 1fr); grid-auto-rows: 32vw; gap: 10px; }
+    .item--w2, .item--w3, .item--w4, .item--w6, .item--w8 { grid-column: span 4; } /* 单列堆栈 */
+    .item--h2, .item--h3 { grid-row: span 1; } /* 防止过高 */
   }
 </style>
 
 {# 背景回退层 #}
 <div class="album-bg-fallback" aria-hidden="true"></div>
 
-{# 把 body 加上 album-page class（与 album.html 保持一致） #}
+{# 保持 album-page class（和 album.html 一致） #}
 <script>
   (function(){
     try {
@@ -154,125 +163,45 @@
   })();
 </script>
 
-<h1 style="text-align:center; margin-top:20px;">{{ album_name }} Album</h1>
+<h1 style="text-align:center; margin-top:20px; color: #222; text-shadow: 2px 2px 6px rgba(0,0,0,0.25);">{{ album_name }} Album</h1>
 
+{# 如果登录就把表单包裹在 mosaic 内（保留删除功能） #}
 {% if logged_in %}
 <form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
 {% endif %}
 
-{# ========== 把 images 按行切片（兼容图片少的情况） ========== #}
-{% set r1 = images[0:3] %}
-{% set r2 = images[3:6] %}
-{% set r3 = images[6:7] %}
-{% set r4 = images[7:11] %}
-{% set rest = images[11:] %}
-
 <div class="magazine">
+  <div class="mosaic-grid">
+    {# 使用 images 列表，按 index 决定每个项的跨度，产生拼接效果 #}
+    {% for img in images %}
+      {% set idx = loop.index0 %}
+      {% if idx == 0 %}
+        {% set classes = "mosaic-item item--w8 item--h3 item--feature" %}
+      {% elif idx % 11 == 0 %}
+        {% set classes = "mosaic-item item--w6 item--h2" %}
+      {% elif idx % 7 == 0 %}
+        {% set classes = "mosaic-item item--w4 item--h2" %}
+      {% elif idx % 3 == 0 %}
+        {% set classes = "mosaic-item item--w3 item--h1" %}
+      {% else %}
+        {% set classes = "mosaic-item item--w2 item--h1" %}
+      {% endif %}
 
-  {# 第一行：大图 + 右侧两竖图 #}
-  {% if r1|length > 0 %}
-  <div class="row-1">
-    <div class="big">
-      {% if r1[0] %}
-      <div class="mag-card">
+      <div class="{{ classes }}">
         {% if logged_in %}
-          <input class="mag-check" type="checkbox" name="public_ids" value="{{ r1[0].public_id }}">
+          <input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">
         {% endif %}
-        <a href="{{ r1[0].secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-          <img src="{{ r1[0].secure_url }}" alt="Photo" loading="lazy">
+        <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}" aria-label="Open photo">
+          <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
         </a>
+        <div class="caption">
+          <div style="font-weight:600;">{{ img.public_id | default('Photo') }}</div>
+          {# 若你有描述字段可以在这里显示： {{ img.description }} #}
+        </div>
       </div>
-      {% endif %}
-    </div>
-
-    <div class="side">
-      {% if r1|length > 1 %}
-      <div class="mag-card">
-        {% if logged_in %}
-          <input class="mag-check" type="checkbox" name="public_ids" value="{{ r1[1].public_id }}">
-        {% endif %}
-        <a href="{{ r1[1].secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-          <img src="{{ r1[1].secure_url }}" alt="Photo" loading="lazy">
-        </a>
-      </div>
-      {% endif %}
-      {% if r1|length > 2 %}
-      <div class="mag-card">
-        {% if logged_in %}
-          <input class="mag-check" type="checkbox" name="public_ids" value="{{ r1[2].public_id }}">
-        {% endif %}
-        <a href="{{ r1[2].secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-          <img src="{{ r1[2].secure_url }}" alt="Photo" loading="lazy">
-        </a>
-      </div>
-      {% endif %}
-    </div>
-  </div>
-  {% endif %}
-
-  {# 第二行：三张横向并列 #}
-  {% if r2|length > 0 %}
-  <div class="row-2">
-    {% for img in r2 %}
-    <div class="mag-card">
-      {% if logged_in %}
-        <input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">
-      {% endif %}
-      <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-        <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
-      </a>
-    </div>
     {% endfor %}
   </div>
-  {% endif %}
-
-  {# 第三行：一张超宽横图 #}
-  {% if r3|length > 0 %}
-  <div class="row-3">
-    <div class="mag-card">
-      {% if logged_in %}
-        <input class="mag-check" type="checkbox" name="public_ids" value="{{ r3[0].public_id }}">
-      {% endif %}
-      <a href="{{ r3[0].secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-        <img src="{{ r3[0].secure_url }}" alt="Photo" loading="lazy">
-      </a>
-    </div>
-  </div>
-  {% endif %}
-
-  {# 第四行：四宫格 #}
-  {% if r4|length > 0 %}
-  <div class="row-4">
-    {% for img in r4 %}
-    <div class="mag-card">
-      {% if logged_in %}
-        <input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">
-      {% endif %}
-      <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-        <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
-      </a>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  {# 其余图片：紧凑响应式小网格（自动填充） #}
-  {% if rest|length > 0 %}
-  <div class="more-grid">
-    {% for img in rest %}
-    <div class="mag-card">
-      {% if logged_in %}
-        <input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">
-      {% endif %}
-      <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-        <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
-      </a>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-</div> {# .magazine end #}
+</div>
 
 {% if logged_in %}
   <input type="hidden" name="album_name" value="{{ album_name }}">
