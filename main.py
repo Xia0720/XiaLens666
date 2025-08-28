@@ -221,7 +221,7 @@ def view_album(album_name):
         logged_in = session.get("logged_in", False)
         return render_template("view_album.html",
                                album_name=album_name,
-                               images=images,
+                               photos=images,
                                logged_in=logged_in)
     except Exception as e:
         return f"Error loading album: {str(e)}"
