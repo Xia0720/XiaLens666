@@ -7,6 +7,7 @@
   html, body { height: 100%; margin: 0; padding: 0; }
   body.album-page { background: none !important; }
 
+  /* 全屏虚化背景 */
   body.album-page::before {
     content: "";
     position: fixed;
@@ -44,6 +45,7 @@
     padding: 24px 30px;
   }
 
+  /* 页面标题 */
   body.album-page .page-title {
     text-align: center;
     margin: 30px 0 20px;
@@ -54,16 +56,17 @@
     text-shadow: 0 2px 6px rgba(0,0,0,0.6);
   }
 
-  /* ===== Mosaic 网格 ===== */
+  /* ===== 核心：Mosaic 网格（自适应宽度 + 居中） ===== */
   .album-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    grid-auto-rows: 16vw; /* 保持更统一的 16:9 比例感 */
-    gap: 16px;
-    justify-content: center; /* 内容整体居中 */
-    margin: 0 auto;
-    width: 100%;
-    max-width: 1600px; /* 避免拉得太散 */
+    grid-template-columns: repeat(12, 1fr);
+    grid-auto-rows: 9.5vw;     /* 行高单位用 vw，随屏幕变化；可微调 9~11 */
+    grid-auto-flow: dense;     /* 自动回填空隙，拼贴更紧凑 */
+    gap: 14px;
+
+    /* 让整块网格在视口中水平居中，而不是吃满 100% 靠左 */
+    width: min(1680px, calc(100vw - 48px));  /* 宽屏封顶 1680px，小屏留 24px 边距 */
+    margin: 0 auto;                           /* 居中对齐 */
   }
 
   .album-item {
@@ -72,7 +75,6 @@
     border-radius: 12px;
     box-shadow: 0 6px 18px rgba(0,0,0,0.08);
     background: #f6f7f9;
-    aspect-ratio: 16 / 9; /* 确保封面比例 */
   }
 
   .album-item img {
@@ -84,38 +86,62 @@
   }
   .album-item:hover img { transform: scale(1.03); }
 
-  /* ===== Mosaic span 定义（重新平衡大小） ===== */
-  .item--w2 { grid-column: span 2; }
-  .item--w3 { grid-column: span 3; }
-  .item--h2 { grid-row: span 2; }
-  .item--feature {
-    grid-column: span 5; /* 从6缩小到5，更平衡 */
-    grid-row: span 3;
-  }
-  .item--min { grid-column: span 3; grid-row: span 1; } /* 最小的也大一些 */
+  /* ===== 尺寸等级重新平衡 =====
+     让差距控制在：小(3x1) / 中(4x2) / 特写(5x3)，避免极端大/小 */
+  .item--w2 { grid-column: span 3; }   /* 小：横向 3 列 */
+  .item--w3 { grid-column: span 4; }   /* 中：横向 4 列 */
+  .item--h2 { grid-row: span 2; }      /* 纵向 2 行 */
 
+  .item--feature {
+    grid-column: span 5;               /* 特写从 6 列降到 5 列 */
+    grid-row: span 3;                  /* 高度从 4 行降到 3 行 */
+  }
+
+  /* 没命中的默认项（给它一个“较小但不迷你”的基础尺寸） */
+  .item--min { grid-column: span 3; grid-row: span 1; }
+
+  /* 相册名遮罩 */
   .album-info {
     position: absolute;
     left: 0; right: 0; bottom: 0;
     padding: 8px 12px;
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: 0.75rem;
+    font-weight: 500;
     color: #fff;
     background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%);
   }
 
-  /* ===== 响应式调整 ===== */
+  /* ===== 响应式：逐步减少列数，但保持“相对比例” ===== */
   @media (max-width: 1200px) {
-    .album-grid { grid-auto-rows: 22vw; }
-    .item--feature { grid-column: span 4; grid-row: span 3; }
-    .item--w2 { grid-column: span 2; }
-    .item--w3 { grid-column: span 3; }
+    .album-grid {
+      grid-template-columns: repeat(10, 1fr);
+      grid-auto-rows: 12vw;
+      width: min(1280px, calc(100vw - 40px));
+    }
+    .item--feature { grid-column: span 6; grid-row: span 3; }
+    .item--w2 { grid-column: span 4; }
+    .item--w3 { grid-column: span 5; }
   }
 
-  @media (max-width: 768px) {
-    .album-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 45vw; }
-    .item--feature { grid-column: span 2; grid-row: span 2; }
-    .item--w2, .item--w3 { grid-column: span 2; }
+  @media (max-width: 900px) {
+    .album-grid {
+      grid-template-columns: repeat(8, 1fr);
+      grid-auto-rows: 15vw;
+      width: calc(100vw - 32px);
+    }
+    .item--feature { grid-column: span 8; grid-row: span 3; }
+    .item--w2 { grid-column: span 4; }
+    .item--w3 { grid-column: span 4; }
+  }
+
+  @media (max-width: 640px) {
+    .album-grid {
+      grid-template-columns: repeat(2, 1fr);
+      grid-auto-rows: 45vw;
+      width: calc(100vw - 24px);
+    }
+    .item--feature { grid-column: 1 / span 2; grid-row: span 2; }
+    .item--w2, .item--w3, .item--min { grid-column: span 2; grid-row: span 1; }
   }
 </style>
 
@@ -135,12 +161,13 @@
 
 <div class="album-content">
   <h1 class="page-title">Albums</h1>
+
   <div class="album-grid">
     {% for album in albums %}
-      <div class="album-item 
-                  {% if loop.index == 1 %} item--feature 
-                  {% elif loop.index % 5 == 0 %} item--w3 item--h2 
-                  {% elif loop.index % 3 == 0 %} item--w2 
+      <div class="album-item
+                  {% if loop.index == 1 %} item--feature
+                  {% elif loop.index % 5 == 0 %} item--w3 item--h2
+                  {% elif loop.index % 3 == 0 %} item--w2
                   {% else %} item--min {% endif %}">
         <a href="{{ url_for('view_album', album_name=album.name) }}">
           {% if album.cover %}
@@ -155,3 +182,4 @@
   </div>
 </div>
 {% endblock %}
+
