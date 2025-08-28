@@ -3,29 +3,23 @@
 {% block body_class %}album-page{% endblock %}
 
 {% block content %}
-<!-- 页面内联样式，仅作用于 album 页面（保持对 base.html 无侵入） -->
 <style>
-  /* 基础保障 */
   html, body { height: 100%; margin: 0; padding: 0; }
-
-  /* 仅在 album 页面清除全局渐变背景 */
   body.album-page { background: none !important; }
 
-  /* 全屏虚化背景（首选） */
   body.album-page::before {
     content: "";
     position: fixed;
     inset: 0;
-    background-image: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756329504/pexels-alex-andrews-271121-1983038_dbwaac.jpg');
+    background-image: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756329271/pexels-thepaintedsquare-593324_aibcoi.jpg');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
     filter: blur(6px) brightness(0.85);
-    z-index: -2;              /* 放在最底层 */
+    z-index: -2;
     pointer-events: none;
   }
 
-  /* 后备背景（极端环境下） */
   .album-bg-fallback {
     position: fixed;
     inset: 0;
@@ -37,39 +31,37 @@
     pointer-events: none;
   }
 
-  /* 确保导航与常见 header 在上层（避免被任何负 z-index 背景遮挡） */
   header, nav, .site-header, .navbar, .main-nav, .topbar {
     position: relative !important;
     z-index: 50 !important;
   }
 
-  /* 页面内容容器 */
   .album-content {
     position: relative;
     z-index: 5;
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 24px 20px;
+    /* ❌ 移除 max-width 限制，改为全宽 */
+    width: 100%;
+    margin: 0;
+    padding: 24px 30px;
   }
 
-  /* 标题：只针对 album 页面 */
   body.album-page .page-title {
     text-align: center;
     margin: 30px 0 20px;
     font-size: 2rem;
     font-weight: 700;
     letter-spacing: 1px;
-    color: #ffffff; /* 可改为你喜欢的颜色 */
+    color: #ffffff;
     text-shadow: 0 2px 6px rgba(0,0,0,0.6);
   }
 
-  /* --- Mosaic 网格调整（在本页覆盖全局设置，使最小格更大、整体更饱满） --- */
+  /* ===== Mosaic 网格 ===== */
   .album-grid {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
-    grid-auto-rows: 11.5vw; /* 从 8vw 提高到 11.5vw，让最小图更高 */
+    grid-auto-rows: 10vw; /* 高度更合适，避免过长 */
     gap: 14px;
-    padding: 0; /* 外边距由 .album-content 处理 */
+    width: 100%;          /* 让 grid 撑满页面 */
   }
 
   .album-item {
@@ -89,45 +81,41 @@
   }
   .album-item:hover img { transform: scale(1.03); }
 
-  /* 调整跨度，使“最小图”变大一点，同时保留混排感 */
-  .item--w2 { grid-column: span 3; }  /* 原来 span 2 -> 3 */
-  .item--w3 { grid-column: span 4; }  /* 原来 span 3 -> 4 */
+  /* Mosaic span 定义 */
+  .item--w2 { grid-column: span 3; }
+  .item--w3 { grid-column: span 4; }
   .item--h2 { grid-row: span 2; }
   .item--feature {
-    grid-column: 1 / span 6;  /* 保持占 6 列 */
-    grid-row: span 4;         /* 从 span 3 提到 span 4，让 feature 更高、更有视觉重心 */
+    grid-column: 1 / span 6;
+    grid-row: span 4;
   }
-
-  /* 小改：可选最小项样式（若你在模板里给某些项加 .item--min） */
   .item--min { grid-column: span 2; grid-row: span 1; }
 
-  /* 覆盖相册名遮罩（保持原来透明渐变） */
   .album-info {
     position: absolute;
     left: 0; right: 0; bottom: 0;
     padding: 8px 12px;
-    font-size: 0.65rem;
-    font-weight: 400;
+    font-size: 0.75rem;
+    font-weight: 500;
     color: #fff;
     background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%);
   }
 
-  /* 响应式：在窄屏保持可读与布局合理 */
-  @media (max-width: 1000px) {
-    .album-grid { grid-template-columns: repeat(8, 1fr); grid-auto-rows: 13vw; }
+  /* ===== 响应式调整 ===== */
+  @media (max-width: 1200px) {
+    .album-grid { grid-template-columns: repeat(8, 1fr); grid-auto-rows: 14vw; }
     .item--feature { grid-column: 1 / span 8; grid-row: span 4; }
     .item--w2 { grid-column: span 4; }
     .item--w3 { grid-column: span 4; }
   }
 
-  @media (max-width: 640px) {
-    .album-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 40vw; }
+  @media (max-width: 768px) {
+    .album-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 45vw; }
     .item--feature { grid-column: 1 / span 2; grid-row: span 2; }
     .item--w2, .item--w3 { grid-column: span 2; }
   }
 </style>
 
-<!-- 保险脚本：若 base.html 不注入 body_class，则动态加上 album-page -->
 <script>
   (function(){
     try {
@@ -140,13 +128,10 @@
   })();
 </script>
 
-<!-- 后备背景元素 -->
 <div class="album-bg-fallback" aria-hidden="true"></div>
 
-<!-- 页面内容（保持你原始的相册循环结构） -->
 <div class="album-content">
   <h1 class="page-title">Albums</h1>
-
   <div class="album-grid">
     {% for album in albums %}
       <div class="album-item 
@@ -158,13 +143,9 @@
           {% if album.cover %}
             <img src="{{ album.cover }}" alt="{{ album.name }}">
           {% else %}
-            <div class="album-cover placeholder">
-              <span>No cover</span>
-            </div>
+            <div class="album-cover placeholder"><span>No cover</span></div>
           {% endif %}
-          <div class="album-info">
-            <h2>{{ album.name }}</h2>
-          </div>
+          <div class="album-info"><h2>{{ album.name }}</h2></div>
         </a>
       </div>
     {% endfor %}
