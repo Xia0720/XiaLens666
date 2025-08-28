@@ -1,67 +1,31 @@
 {% extends "base.html" %}
-{% block title %}{{ album_name }} - View Album{% endblock %}
+{% block title %}{{ album_name }} - Debug{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
-<script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
+<h1>Debug Album Page</h1>
 
-{% set bg = 'https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg' %}
-<style>
-html, body { margin:0; padding:0; height:100%; }
-body.album-page { background: none !important; }
-body.album-page::before {
-    content:""; position: fixed; inset:0;
-    background-image: url('{{ bg }}'); background-size:cover; background-position:center;
-    filter: blur(8px) brightness(0.86); z-index:-2; pointer-events:none;
-}
-header, nav, .site-header, .navbar, .main-nav, .topbar { position: relative !important; z-index:60 !important; }
+<p><strong>Album name:</strong> {{ album_name }}</p>
 
-h1 { text-align:center; margin-top:20px; color:#222; text-shadow:2px 2px 6px rgba(0,0,0,0.25); }
+<h2>Raw Photos Data:</h2>
+<pre>
+{{ photos | safe }}
+</pre>
 
-.magazine { display:flex; flex-direction:row; gap:16px; overflow-x:auto; padding:18px; box-sizing:border-box; }
-.magazine::-webkit-scrollbar { height:10px; }
-.magazine::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.3); border-radius:5px; }
-
-.mag-card { flex:0 0 auto; width:300px; height:220px; position:relative; border-radius:10px; background: rgba(255,255,255,0.9); box-shadow:0 8px 18px rgba(0,0,0,0.08); transition: transform .32s, box-shadow .32s; }
-.mag-card:hover { transform: translateY(-6px) scale(1.02); box-shadow:0 18px 36px rgba(0,0,0,0.14); z-index:2; }
-.mag-card img { width:100%; height:100%; object-fit:cover; border-radius:8px; display:block; }
-.mag-check { position:absolute; top:10px; left:10px; width:18px; height:18px; z-index:10; }
-</style>
-
-<script>(function(){ if(!document.body.classList.contains('album-page')){ document.body.classList.add('album-page'); }})();</script>
-
-<h1>{{ album_name }} Album</h1>
-
-{% if logged_in %}
-<form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
+<h2>Loop Test:</h2>
+{% if photos %}
+  <ul>
+  {% for p in photos %}
+    <li>
+      <p><strong>URL:</strong> {{ p }}</p>
+      <img src="{{ p }}" alt="photo" style="max-width:300px; border:1px solid #ccc; margin:10px;">
+    </li>
+  {% endfor %}
+  </ul>
+{% else %}
+  <p style="color:red; font-weight:bold;">⚠️ photos 变量为空！</p>
 {% endif %}
 
-<div class="magazine">
-  {% if images|length == 0 %}
-    <p style="color:white; margin:20px;">This album has no photos yet.</p>
-  {% else %}
-    {% for img in images %}
-      <div class="mag-card">
-        {% if logged_in %}
-          <input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">
-        {% endif %}
-        <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-          <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
-        </a>
-      </div>
-    {% endfor %}
-  {% endif %}
-</div>
+<hr>
+<p><strong>logged_in:</strong> {{ logged_in }}</p>
 
-{% if logged_in %}
-  <input type="hidden" name="album_name" value="{{ album_name }}">
-  <div style="text-align:right; margin:10px 18px 40px 18px;">
-    <button type="submit" style="padding:8px 14px; border-radius:6px; background:#d9534f; color:#fff; border:none;">Delete Selected Images</button>
-  </div>
-</form>
-{% endif %}
-
-<script>
-const lightbox = GLightbox({selector: '.glightbox', loop:true, touchNavigation:true, keyboardNavigation:true, closeOnOutsideClick:true});
-</script>
 {% endblock %}
