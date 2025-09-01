@@ -71,22 +71,24 @@
       <div class="empty-hint">This album has no photos yet.</div>
     {% else %}
       <div class="gallery-wrap" id="galleryWrap" aria-label="Horizontal photo gallery">
-        {% for img in imgs %}
-          {% set src = img.secure_url if img.secure_url is defined and img.secure_url
-                       else (img.url if img.url is defined and img.url
-                       else (img.path if img.path is defined and img.path else '')) %}
-          {% if not src %}{% continue %}{% endif %}
-          {% set pid = img.public_id if img.public_id is defined else (img.id if img.id is defined else '') %}
+       {% for img in imgs %}
+         {% set src = img.secure_url if img.secure_url is defined and img.secure_url
+                      else (img.url if img.url is defined and img.url
+                      else (img.path if img.path is defined and img.path else '')) %}
+         {% set pid = img.public_id if img.public_id is defined else (img.id if img.id is defined else '') %}
 
-          <div class="slide" data-index="{{ loop.index0 }}">
-            {% if logged_in %}
-              <input class="mag-check" type="checkbox" name="public_ids" value="{{ pid }}">
-            {% endif %}
-            <a href="{{ src }}" class="glightbox" data-gallery="album-{{ album_name if album_name is defined else 'Album' }}" aria-label="Open photo">
-              <img src="{{ src }}" alt="{{ pid or ('Photo ' ~ loop.index) }}" loading="lazy">
-            </a>
-            <div class="caption"><div style="font-weight:600;">{{ pid or ('Photo ' ~ loop.index) }}</div></div>
-          </div>
+
+         {% if src %}
+         <div class="slide" data-index="{{ loop.index0 }}">
+           {% if logged_in %}
+             <input class="mag-check" type="checkbox" name="public_ids" value="{{ pid }}">
+           {% endif %}
+           <a href="{{ src }}" class="glightbox" data-gallery="album-{{ album_name if album_name is defined else 'Album' }}" aria-label="Open photo">
+             <img src="{{ src }}" alt="{{ pid or ('Photo ' ~ loop.index) }}" loading="lazy">
+           </a>
+           <div class="caption"><div style="font-weight:600;">{{ pid or ('Photo ' ~ loop.index) }}</div></div>
+         </div>
+         {% endif %}
         {% endfor %}
       </div>
 
