@@ -6,21 +6,20 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
 <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
 
-{% set bg_url = background_url if background_url else "https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg" %}
-
 <style>
 html, body { height: 100%; margin: 0; padding: 0; }
 body.album-page { background: none !important; }
 
-/* ===== 全屏虚化背景 ===== */
+/* ========== 背景虚化 ========== */
 body.album-page::before {
   content: "";
   position: fixed;
   inset: 0;
-  background-image: url('{{ bg_url }}');
+  background-image: url('{{ background_url if background_url else "https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756396039/pexels-pixabay-289618_iyg9c4.jpg" }}');
   background-size: cover;
   background-position: center;
-  filter: blur(6px) brightness(0.82);
+  background-repeat: no-repeat;
+  filter: blur(6px) brightness(0.85);
   z-index: -2;
   pointer-events: none;
 }
@@ -28,110 +27,119 @@ body.album-page::before {
 .album-bg-fallback {
   position: fixed;
   inset: 0;
-  background-image: url('{{ bg_url }}');
+  background-image: url('{{ background_fallback_url if background_fallback_url else "https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg" }}');
   background-size: cover;
   background-position: center;
-  filter: blur(5px) brightness(0.92);
+  filter: blur(6px) brightness(0.82);
   z-index: -3;
   pointer-events: none;
 }
 
-.album-header {
+.album-content {
+  position: relative;
+  z-index: 5;
+  width: 100%;
+  margin: 0;
+  padding: 30px 20px;
+}
+
+/* 页面标题 */
+.album-content h1 {
   text-align: center;
-  margin: 30px 0 20px;
   font-size: 2rem;
-  font-weight: 700;
   color: #fff;
   text-shadow: 0 2px 6px rgba(0,0,0,0.6);
-  z-index: 5;
-  position: relative;
+  margin-bottom: 24px;
 }
 
+/* ---------- 横向滑动长廊 ---------- */
 .album-row {
   display: flex;
+  gap: 14px;
   overflow-x: auto;
-  gap: 12px;
-  padding: 12px 0;
+  padding: 0 24px;
   scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 24px;
 }
-.album-row::-webkit-scrollbar { height: 10px; }
-.album-row::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.3); border-radius: 5px; }
 
-.album-card {
+.album-row::-webkit-scrollbar { height: 8px; }
+.album-row::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius:4px; }
+.album-row::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius:4px; }
+
+.album-item {
   flex: 0 0 auto;
-  width: 160px;
+  width: calc((100% - 24px*9)/10); /* 一行 10 张，gap 14px，总间距 9*14 */
   height: 160px;
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
   box-shadow: 0 6px 18px rgba(0,0,0,0.08);
-  scroll-snap-align: start;
   position: relative;
-  transition: transform .28s ease, box-shadow .28s ease;
+  scroll-snap-align: center;
+  background: #f6f7f9;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
-.album-card:hover {
-  transform: scale(1.03);
-  box-shadow: 0 12px 26px rgba(0,0,0,0.12);
-}
-.album-card img {
+
+.album-item:hover { transform: scale(1.03); box-shadow: 0 10px 24px rgba(0,0,0,0.12); }
+
+.album-item img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform .32s ease, filter .32s ease;
-}
-.album-card:hover img {
-  transform: scale(1.05);
-  filter: brightness(1.03);
 }
 
-/* 管理员 checkbox */
-.album-check {
+/* checkbox */
+.album-item input[type="checkbox"] {
   position: absolute;
   top: 8px;
   left: 8px;
+  z-index: 10;
   width: 18px;
   height: 18px;
-  z-index: 12;
   accent-color: #007bff;
 }
 
-@media (max-width: 768px) {
-  .album-card { width: 120px; height: 120px; }
+/* 响应式调整 */
+@media (max-width: 1200px) {
+  .album-item { width: calc((100% - 24px*4)/5); height: 140px; } /* 一行 5 张 */
+}
+@media (max-width: 800px) {
+  .album-item { width: calc((100% - 14px*2)/3); height: 120px; } /* 一行 3 张 */
 }
 @media (max-width: 480px) {
-  .album-card { width: 100px; height: 100px; }
+  .album-item { width: calc(100% - 16px); height: 100px; } /* 单列滚动 */
 }
 </style>
 
 <div class="album-bg-fallback" aria-hidden="true"></div>
 
 <div class="album-content">
-  <div class="album-header">{{ album_name }}</div>
+  <h1>{{ album_name }} Album</h1>
 
   {% if logged_in %}
   <form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
   {% endif %}
 
-  {# 将图片分批，每行最多10张 #}
-  {% set batch_size = 10 %}
-  {% for i in range(0, images|length, batch_size) %}
+  {% set row_size = 10 %}
+  {% for i in range(0, images|length, row_size) %}
     <div class="album-row">
-      {% for img in images[i:i+batch_size] %}
-        <div class="album-card">
-          {% if logged_in %}
-          <input type="checkbox" class="album-check" name="public_ids" value="{{ img.public_id }}">
-          {% endif %}
-          <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-            <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
-          </a>
-        </div>
+      {% for img in images[i:i+row_size] %}
+      <div class="album-item">
+        {% if logged_in %}
+          <input type="checkbox" name="public_ids" value="{{ img.public_id }}">
+        {% endif %}
+        <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
+          <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
+        </a>
+      </div>
       {% endfor %}
     </div>
   {% endfor %}
 
   {% if logged_in %}
     <input type="hidden" name="album_name" value="{{ album_name }}">
-    <div style="text-align: right; margin: 12px 0 40px;">
+    <div style="text-align: right; margin: 10px 18px 40px 18px;">
       <button type="submit" style="padding: 8px 14px; border-radius:6px; background:#d9534f; color:#fff; border:none;">
         Delete Selected Images
       </button>
@@ -141,13 +149,12 @@ body.album-page::before {
 </div>
 
 <script>
-const lightbox = GLightbox({
-  selector: '.glightbox',
-  loop: true,
-  touchNavigation: true,
-  keyboardNavigation: true,
-  closeOnOutsideClick: true
-});
+  const lightbox = GLightbox({
+    selector: '.glightbox',
+    loop: true,
+    touchNavigation: true,
+    keyboardNavigation: true,
+    closeOnOutsideClick: true
+  });
 </script>
-
 {% endblock %}
