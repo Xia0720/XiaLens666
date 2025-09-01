@@ -15,7 +15,7 @@
     content: "";
     position: fixed;
     inset: 0;
-    background-image: url('{{ background_url | default("https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg") }}');
+    background-image: url('{{ https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756400863/pexels-arts-1124960_itvbiw.jpg") }}');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -49,7 +49,6 @@
     box-sizing: border-box;
   }
 
-  /* 页面标题 */
   .page-title {
     text-align: center;
     margin: 30px 0 20px;
@@ -60,22 +59,25 @@
     text-shadow: 0 2px 6px rgba(0,0,0,0.6);
   }
 
-  /* ===== 横向滑动画廊 ===== */
-  .h-viewport {
+  /* ===== 横向滚动行 ===== */
+  .h-row-container {
     position: relative;
     width: 100%;
-    overflow-x: auto;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .h-viewport {
     display: flex;
     gap: 12px;
-    padding: 12px 0;
+    overflow-x: auto;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
+    padding: 12px 0;
   }
-
   .h-card {
     flex: 0 0 auto;
-    width: 260px;
-    height: 180px;
+    width: 200px;
+    height: 140px;
     border-radius: 12px;
     overflow: hidden;
     scroll-snap-align: start;
@@ -88,7 +90,6 @@
     transform: translateY(-4px) scale(1.01);
     box-shadow: 0 14px 30px rgba(0,0,0,0.14);
   }
-
   .h-card img {
     width: 100%;
     height: 100%;
@@ -107,13 +108,11 @@
     accent-color: #007bff;
   }
 
-  /* 导航按钮（左右） */
   .h-nav {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    width: 48px;
-    height: 48px;
+    width: 48px; height: 48px;
     border-radius: 10px;
     border: none;
     background: rgba(0,0,0,0.45);
@@ -131,14 +130,8 @@
   .h-next { right: 12px; }
 
   /* 响应式 */
-  @media (max-width: 900px) {
-    .h-card { width: 200px; height: 140px; }
-    .h-nav { display: none; }
-  }
-  @media (max-width: 480px) {
-    .h-card { width: 150px; height: 110px; }
-  }
-
+  @media (max-width: 900px) { .h-card { width: 160px; height: 120px; } .h-nav { display:none; } }
+  @media (max-width: 480px) { .h-card { width: 120px; height: 90px; } }
 </style>
 
 <div class="album-bg-fallback" aria-hidden="true"></div>
@@ -153,22 +146,26 @@
   {% if images|length == 0 %}
     <div style="text-align:center; color:#fff; opacity:.9; margin-top:60px;">This album has no images.</div>
   {% else %}
-    <div class="h-viewport-container" style="position:relative;">
-      <button class="h-nav h-prev" aria-label="Scroll left">‹</button>
-      <div class="h-viewport" tabindex="0">
-        {% for img in images %}
-        <div class="h-card">
-          {% if logged_in %}
-            <input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">
-          {% endif %}
-          <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-            <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
-          </a>
+    {% set row_size = 10 %}
+    {% for i in range(0, images|length, row_size) %}
+      {% set row_imgs = images[i:i+row_size] %}
+      <div class="h-row-container">
+        <button class="h-nav h-prev" aria-label="Scroll left">‹</button>
+        <div class="h-viewport">
+          {% for img in row_imgs %}
+          <div class="h-card">
+            {% if logged_in %}
+              <input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">
+            {% endif %}
+            <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
+              <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
+            </a>
+          </div>
+          {% endfor %}
         </div>
-        {% endfor %}
+        <button class="h-nav h-next" aria-label="Scroll right">›</button>
       </div>
-      <button class="h-nav h-next" aria-label="Scroll right">›</button>
-    </div>
+    {% endfor %}
   {% endif %}
 
   {% if logged_in %}
@@ -178,7 +175,6 @@
         Delete Selected Images
       </button>
     </div>
-  </form>
   {% endif %}
 </div>
 
@@ -191,35 +187,22 @@
     closeOnOutsideClick: true
   });
 
-  (function(){
-    const gallery = document.querySelector('.h-viewport');
-    if (!gallery) return;
+  document.querySelectorAll('.h-row-container').forEach(container=>{
+    const viewport = container.querySelector('.h-viewport');
+    const prev = container.querySelector('.h-prev');
+    const next = container.querySelector('.h-next');
+    const scrollAmount = viewport.clientWidth * 0.8;
 
-    const btnPrev = document.querySelector('.h-prev');
-    const btnNext = document.querySelector('.h-next');
-    const scrollAmount = Math.round(window.innerWidth * 0.6);
+    prev.addEventListener('click', ()=>{ viewport.scrollBy({ left:-scrollAmount, behavior:'smooth' }); });
+    next.addEventListener('click', ()=>{ viewport.scrollBy({ left:scrollAmount, behavior:'smooth' }); });
 
-    if (btnPrev && btnNext) {
-      btnPrev.addEventListener('click', () => { gallery.scrollBy({ left: -scrollAmount, behavior: 'smooth' }); });
-      btnNext.addEventListener('click', () => { gallery.scrollBy({ left: scrollAmount, behavior: 'smooth' }); });
-    }
-
-    gallery.addEventListener('wheel', function(e){
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && !e.shiftKey) {
+    viewport.addEventListener('wheel', e=>{
+      if(Math.abs(e.deltaY) > Math.abs(e.deltaX) && !e.shiftKey){
         e.preventDefault();
-        gallery.scrollLeft += e.deltaY;
+        viewport.scrollLeft += e.deltaY;
       }
-    }, { passive: false });
-
-    gallery.addEventListener('mouseenter', () => gallery.focus());
-    gallery.addEventListener('mouseleave', () => gallery.blur());
-
-    gallery.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowRight') { e.preventDefault(); gallery.scrollBy({ left: scrollAmount, behavior: 'smooth' }); }
-      else if (e.key === 'ArrowLeft') { e.preventDefault(); gallery.scrollBy({ left: -scrollAmount, behavior: 'smooth' }); }
-    });
-  })();
+    }, { passive:false });
+  });
 </script>
 
 {% endblock %}
-
