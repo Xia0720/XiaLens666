@@ -5,45 +5,232 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
 <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
 
-{# ---------- 统一固定背景（不再依赖 images[0]） ---------- #}
+<!-- 背景图（统一设置，不依赖相册图片） -->
 <div class="album-bg"></div>
 
-<header class="album-header">
-  <h1>{{ album_name }} Album</h1>
-</header>
+<h1 style="text-align:center; margin-top:20px; color:#fff; text-shadow:2px 2px 6px rgba(0,0,0,0.6);">
+  {{ album_name }} Album
+</h1>
 
-{# 登录用户包裹表单以支持批量删除（表单包裹 gallery，使 checkbox 可提交） #}
 {% if logged_in %}
-<form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
+<form method="POST" action="{{ url_for('delete_images') }}" 
+      onsubmit="return confirm('Are you sure to delete selected images?');">
 {% endif %}
 
-<div class="album-page">
-  {% if images|length == 0 %}
-    <div class="empty-note">This album has no images.</div>
-  {% else %}
-    <div class="h-viewport">
-      <button class="h-nav h-prev" type="button" aria-label="Scroll left">‹</button>
-      <div class="h-gallery" tabindex="0" role="list">
-        {# 遍历所有图片，横向排列，每张图都是一个 card #}
-        {% for img in images %}
-        <div class="h-card mag-card" role="listitem">
-          {% if logged_in %}
-            <input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">
-          {% endif %}
-          <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-            <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
-          </a>
-        </div>
-        {% endfor %}
+<style>
+/* ===== 背景图 ===== */
+.album-bg {
+  position: fixed;
+  inset: 0;
+  background: url("https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg")
+              no-repeat center center / cover;
+  filter: blur(14px) brightness(0.6);
+  z-index: -1;
+}
+
+/* ===== 杂志风布局基础变量 ===== */
+:root{
+  --gap: 12px;
+  --card-radius: 10px;
+  --shadow: 0 8px 20px rgba(0,0,0,0.12);
+  --hover-shadow: 0 14px 32px rgba(0,0,0,0.18);
+  --max-width: 1400px;
+}
+
+/* 容器 */
+.magazine {
+  max-width: var(--max-width);
+  margin: 28px auto;
+  padding: 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* 卡片样式 */
+.mag-card {
+  overflow: hidden;
+  border-radius: var(--card-radius);
+  background: #fff;
+  box-shadow: var(--shadow);
+  transition: transform .28s ease, box-shadow .28s ease;
+  position: relative;
+}
+.mag-card:hover {
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: var(--hover-shadow);
+}
+.mag-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: inherit;
+  transition: transform .3s ease;
+}
+.mag-card:hover img { transform: scale(1.04); }
+
+/* 管理员勾选框 */
+.mag-check {
+  position: absolute;
+  top: 10px; left: 10px;
+  width: 18px; height: 18px;
+  z-index: 5;
+  accent-color: #007bff;
+}
+
+/* ===== 布局行 ===== */
+.row-1 {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--gap);
+}
+.row-1 .big img { aspect-ratio: 16/9; }
+.row-1 .side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+.row-1 .side .mag-card img { aspect-ratio: 3/4; }
+
+.row-2 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gap);
+}
+.row-2 .mag-card { height: 260px; }
+
+.row-3 .mag-card { height: 420px; }
+.row-3 .mag-card img { aspect-ratio: 21/8; }
+
+.row-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--gap);
+}
+.row-4 .mag-card { height: 220px; }
+
+.more-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--gap);
+}
+.more-grid .mag-card { height: 200px; }
+
+/* ===== 响应式 ===== */
+@media (max-width: 1100px) {
+  .row-1 { grid-template-columns: 1.6fr 1fr; }
+  .row-2 .mag-card { height: 220px; }
+  .row-3 .mag-card { height: 320px; }
+  .row-4 .mag-card { height: 180px; }
+}
+@media (max-width: 800px) {
+  .row-1 { grid-template-columns: 1fr; }
+  .row-1 .side { flex-direction: row; }
+  .row-2 { grid-template-columns: repeat(2, 1fr); }
+  .row-3 .mag-card { height: 240px; }
+  .row-4 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+  .row-2, .row-4 { grid-template-columns: 1fr; }
+  .more-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+}
+</style>
+
+{# ===== 按行切片（自动适配图片数量） ===== #}
+{% set r1 = images[0:3] %}
+{% set r2 = images[3:6] %}
+{% set r3 = images[6:7] %}
+{% set r4 = images[7:11] %}
+{% set rest = images[11:] %}
+
+<div class="magazine">
+
+  {# 第一行：大图 + 两小图 #}
+  {% if r1 %}
+  <div class="row-1">
+    <div class="big">
+      {% if r1[0] %}
+      <div class="mag-card">
+        {% if logged_in %}<input class="mag-check" type="checkbox" name="public_ids" value="{{ r1[0].public_id }}">{% endif %}
+        <a href="{{ r1[0].secure_url }}" class="glightbox" data-gallery="album">
+          <img src="{{ r1[0].secure_url }}" alt="Photo" loading="lazy">
+        </a>
       </div>
-      <button class="h-nav h-next" type="button" aria-label="Scroll right">›</button>
+      {% endif %}
     </div>
+    <div class="side">
+      {% for img in r1[1:] %}
+      <div class="mag-card">
+        {% if logged_in %}<input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">{% endif %}
+        <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album">
+          <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
   {% endif %}
+
+  {# 第二行：三图横排 #}
+  {% if r2 %}
+  <div class="row-2">
+    {% for img in r2 %}
+    <div class="mag-card">
+      {% if logged_in %}<input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">{% endif %}
+      <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album">
+        <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# 第三行：一张超宽图 #}
+  {% if r3 %}
+  <div class="row-3">
+    <div class="mag-card">
+      {% if logged_in %}<input class="mag-check" type="checkbox" name="public_ids" value="{{ r3[0].public_id }}">{% endif %}
+      <a href="{{ r3[0].secure_url }}" class="glightbox" data-gallery="album">
+        <img src="{{ r3[0].secure_url }}" alt="Photo" loading="lazy">
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  {# 第四行：四宫格 #}
+  {% if r4 %}
+  <div class="row-4">
+    {% for img in r4 %}
+    <div class="mag-card">
+      {% if logged_in %}<input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">{% endif %}
+      <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album">
+        <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# 其余：响应式网格 #}
+  {% if rest %}
+  <div class="more-grid">
+    {% for img in rest %}
+    <div class="mag-card">
+      {% if logged_in %}<input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">{% endif %}
+      <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album">
+        <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
 </div>
 
 {% if logged_in %}
   <input type="hidden" name="album_name" value="{{ album_name }}">
-  <div style="text-align: right; margin: 10px 18px 40px 18px;">
+  <div style="text-align: right; margin: 20px;">
     <button type="submit" style="padding: 8px 14px; border-radius:6px; background:#d9534f; color:#fff; border:none;">
       Delete Selected Images
     </button>
@@ -51,256 +238,10 @@
 </form>
 {% endif %}
 
-{# ------------------------ 样式 ------------------------ #}
-<style>
-:root{
-  --gap: 18px;
-  --card-radius: 12px;
-  --shadow: 0 12px 30px rgba(0,0,0,0.12);
-  --hover-shadow: 0 20px 40px rgba(0,0,0,0.18);
-  --nav-size: 48px;
-}
-
-/* ----- 统一背景（使用模板变量 background_url 或默认图） ----- */
-.album-bg {
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  background-image: url("{{ background_url | default('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg') }}");
-  background-size: cover;
-  background-position: center;
-  transform: scale(1.06);
-  filter: blur(14px) brightness(0.64);
-  transition: opacity .3s ease;
-}
-/* 半透明遮罩，提升前景可读性 */
-.album-bg::after{
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.22));
-}
-
-/* ----- 页眉 ----- */
-.album-header {
-  text-align: center;
-  margin-top: 18px;
-  margin-bottom: 6px;
-  position: relative;
-  z-index: 3;
-}
-.album-header h1{
-  margin: 0;
-  padding: 8px 14px;
-  font-size: 28px;
-  color: #fff;
-  text-shadow: 0 6px 20px rgba(0,0,0,0.6);
-  letter-spacing: 0.4px;
-  display: inline-block;
-  border-radius: 6px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-}
-
-/* 全页包装，保证 z-index 层级高于背景 */
-.album-page {
-  position: relative;
-  z-index: 2;
-  padding-bottom: 40px;
-}
-
-/* ----- 横向视窗（实现 full-bleed while inside base container） ----- */
-/* 使容器突破外层限制，铺满视口宽度 */
-.h-viewport{
-  position: relative;
-  margin: 28px 0;
-  width: 100vw;
-  left: 50%;
-  transform: translateX(-50%);
-  box-sizing: border-box;
-  z-index: 2;
-}
-
-/* 横向滑动画廊 */
-.h-gallery{
-  display: flex;
-  gap: var(--gap);
-  padding: 48px 10vw;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  align-items: center;
-  align-content: center;
-  will-change: transform;
-  scrollbar-width: thin;
-}
-
-/* 每个横向卡片（保证居中对齐且 snap 到中间） */
-.h-card{
-  flex: 0 0 auto;
-  scroll-snap-align: center;
-  min-width: min(76vw, 1100px); /* 视觉上占据较大比例，带展览感 */
-  max-width: 1100px;
-  height: calc(72vh);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--card-radius);
-  overflow: hidden;
-  background: rgba(255,255,255,0.02);
-  transition: transform .28s cubic-bezier(.2,.9,.2,1), box-shadow .28s ease;
-}
-
-/* 保留并继承你原先的 mag-card 悬浮效果 */
-.mag-card{
-  box-shadow: var(--shadow);
-  transition: transform .28s cubic-bezier(.2,.9,.2,1), box-shadow .28s ease;
-  position: relative;
-  border-radius: var(--card-radius);
-  overflow: hidden;
-}
-.mag-card:hover{
-  transform: translateY(-8px) scale(1.01);
-  box-shadow: var(--hover-shadow);
-}
-
-/* 图片在卡片内自适应 — cover 更有画廊风格 */
-.h-card img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  transition: transform .32s ease, filter .32s ease;
-  border-radius: inherit;
-}
-.h-card:hover img {
-  transform: scale(1.03);
-  filter: brightness(1.03);
-}
-
-/* 管理员 checkbox，固定在卡片左上角 */
-.mag-check {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  z-index: 12;
-  width: 20px; height: 20px;
-  accent-color: #007bff;
-  background: rgba(255,255,255,0.9);
-  border-radius: 4px;
-}
-
-/* 导航按钮（左右） */
-.h-nav{
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: var(--nav-size);
-  height: var(--nav-size);
-  border-radius: 10px;
-  border: none;
-  background: rgba(0,0,0,0.45);
-  color: #fff;
-  font-size: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 5;
-  cursor: pointer;
-  backdrop-filter: blur(6px);
-  box-shadow: 0 8px 22px rgba(0,0,0,0.3);
-}
-.h-nav:hover { transform: translateY(-50%) scale(1.04); background: rgba(0,0,0,0.6); }
-.h-prev { left: 12px; }
-.h-next { right: 12px; }
-
-/* 小屏幕降级：用两列或单列网格，取消横向滚动 */
-@media (max-width: 900px) {
-  .h-gallery{
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    padding: 18px;
-    overflow-x: visible;
-  }
-  .h-card{
-    min-width: auto;
-    height: 240px;
-    border-radius: 10px;
-  }
-  .h-nav { display: none; }
-  .album-header h1 { font-size: 22px; padding: 6px 10px; }
-}
-
-/* 更小屏幕单列 */
-@media (max-width: 480px) {
-  .h-gallery { grid-template-columns: 1fr; }
-  .h-card { height: 200px; }
-  .album-header h1 { font-size: 18px; }
-}
-
-/* 空相册提示 */
-.empty-note {
-  padding: 40px;
-  text-align: center;
-  color: #fff;
-  opacity: .95;
-  font-size: 16px;
-}
-</style>
-
-{# ------------------------ 脚本 ------------------------ #}
 <script>
-  // Lightbox 初始化（保留原选项）
   const lightbox = GLightbox({
     selector: '.glightbox',
-    loop: true,
-    touchNavigation: true,
-    keyboardNavigation: true,
-    closeOnOutsideClick: true
+    loop: true
   });
-
-  // 横向滚动 - 把鼠标滚轮转换为水平滚动（桌面友好）
-  (function(){
-    const gallery = document.querySelector('.h-gallery');
-    if (!gallery) return;
-
-    gallery.addEventListener('wheel', function(e){
-      // 只在桌面上把垂直滚轮转换为横向滑动，允许 shift+wheel 自带横向行为
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && !e.shiftKey) {
-        e.preventDefault();
-        gallery.scrollLeft += e.deltaY;
-      }
-    }, { passive: false });
-
-    // 导航按钮行为
-    const btnPrev = document.querySelector('.h-prev');
-    const btnNext = document.querySelector('.h-next');
-    const scrollAmount = Math.round(window.innerWidth * 0.6);
-
-    if (btnPrev && btnNext) {
-      btnPrev.addEventListener('click', () => {
-        gallery.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-      });
-      btnNext.addEventListener('click', () => {
-        gallery.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-      });
-    }
-
-    // 鼠标进入时获得焦点以便键盘左右键滚动
-    gallery.addEventListener('mouseenter', () => gallery.focus());
-    gallery.addEventListener('mouseleave', () => gallery.blur());
-
-    // 键盘左右滚动（当 gallery 有焦点时）
-    gallery.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        gallery.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-      } else if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        gallery.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-      }
-    });
-  })();
 </script>
-
 {% endblock %}
