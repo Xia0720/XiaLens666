@@ -5,296 +5,110 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
 <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
 
-<h1 style="text-align:center; margin-top:20px; color:#fff; text-shadow:2px 2px 6px rgba(0,0,0,0.6);">
-  {{ album_name }} Album
-</h1>
-
 {% if logged_in %}
 <form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
 {% endif %}
 
 <style>
-/* -----------------------------
-   Background: place on body::before to avoid stacking issues
-   ----------------------------- */
-html, body {
-  height: 100%;
-  background-color: transparent; /* important: avoid white body background covering pseudo-element */
+/* ===== 背景虚化 ===== */
+.album-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background: {% if images|length > 0 %}url('{{ images[0].secure_url }}'){% else %}linear-gradient(180deg, #efefef 0%, #e7e7e7 100%){% endif %} center/cover no-repeat;
+    filter: blur(25px) brightness(0.6);
 }
 
-/* Use body::before so the background reliably covers entire viewport */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1; /* behind page content but above default page background (we set body background transparent) */
-  background-image: linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.22)),
-                    url("{{ background_url | default('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg') }}");
-  background-size: cover;
-  background-position: center;
-  filter: blur(14px) brightness(0.64);
-  transform: scale(1.03);
-  will-change: transform, filter;
+/* ===== 标题 ===== */
+.album-header {
+    text-align: center;
+    margin: 30px 0 20px;
+    font-size: 2.2em;
+    font-weight: bold;
+    color: white;
+    text-shadow: 2px 2px 10px rgba(0,0,0,0.6);
 }
 
-/* -----------------------------
-   Magazine / Editorial Layout (kept from your original)
-   ----------------------------- */
-:root{
-  --gap: 12px;
-  --card-radius: 10px;
-  --shadow: 0 8px 20px rgba(0,0,0,0.10);
-  --hover-shadow: 0 14px 30px rgba(0,0,0,0.14);
-  --max-width: 1400px;
+/* ===== 横向滑动画廊 ===== */
+.album-gallery {
+    display: flex;
+    overflow-x: auto;
+    gap: 12px;
+    padding: 20px;
+    scroll-behavior: smooth;
 }
 
-/* 页面容器 */
-.magazine {
-  max-width: var(--max-width);
-  margin: 28px auto;
-  padding: 0 14px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-  position: relative; /* ensure it's above body::before */
-  z-index: 0;
+.album-gallery::-webkit-scrollbar {
+    height: 10px;
+}
+.album-gallery::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.4);
+    border-radius: 5px;
+}
+.album-gallery::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.2);
 }
 
-/* 通用卡片样式 */
-.mag-card {
-  overflow: hidden;
-  border-radius: var(--card-radius);
-  background: rgba(255,255,255,0.98); /* 保持卡片白底但微透明，更融入背景 */
-  box-shadow: var(--shadow);
-  transition: transform .28s cubic-bezier(.2,.9,.2,1), box-shadow .28s ease;
-  position: relative;
-}
-.mag-card:hover{
-  transform: translateY(-6px) scale(1.003);
-  box-shadow: var(--hover-shadow);
+/* 每张图片卡片 */
+.album-gallery a {
+    flex: 0 0 auto;
+    width: 14%; /* 一行大约6-7张 */
+    min-width: 160px;
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* 图片在卡片内自适应 */
-.mag-card img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  transition: transform .32s ease, filter .32s ease;
-  border-radius: inherit;
-}
-.mag-card:hover img {
-  transform: scale(1.03);
-  filter: brightness(1.03);
+.album-gallery a img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: inherit;
 }
 
-/* checkbox（管理员） */
-.mag-check {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  z-index: 12;
-  width: 18px; height: 18px;
-  accent-color: #007bff;
-  background: rgba(255,255,255,0.95);
-  border-radius: 4px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+.album-gallery a:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.4);
 }
 
-/* ---------- Row 1: 大图(2/3) + 右侧竖排两小图(1/3) ---------- */
-.row-1 {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: var(--gap);
-  align-items: stretch;
+/* 管理员 checkbox */
+.album-gallery input[type="checkbox"] {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 10;
+    width: 18px;
+    height: 18px;
+    accent-color: #007bff;
 }
 
-/* 左侧大图（横向偏宽） */
-.row-1 .big {
-  display: block;
-  height: 100%;
+/* 响应式调整 */
+@media (max-width: 1024px) {
+    .album-gallery a { width: 18%; min-width: 140px; }
 }
-.row-1 .big .mag-card { height: 100%; }
-.row-1 .big img { aspect-ratio: 16/9; }
-
-/* 右侧两张竖图堆叠 */
-.row-1 .side {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap);
-}
-.row-1 .side .mag-card { height: 100%; flex: 1 1 0; }
-.row-1 .side .mag-card img { aspect-ratio: 3/4; }
-
-/* ---------- Row 2: 三张等分横图 ---------- */
-.row-2 {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--gap);
-}
-.row-2 .mag-card { height: 260px; } /* 固定行高，使第二行视觉统一 */
-.row-2 .mag-card img { height: 100%; }
-
-/* ---------- Row 3: 一张超宽横图（full-width within container） ---------- */
-.row-3 .mag-card { height: 420px; }
-.row-3 .mag-card img { height: 100%; aspect-ratio: 21/8; }
-
-/* ---------- Row 4: 四宫格 ---------- */
-.row-4 {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--gap);
-}
-.row-4 .mag-card { height: 220px; }
-.row-4 .mag-card img { height: 100%; }
-
-/* ---------- More: 其余图片按响应式网格排列 ---------- */
-.more-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: var(--gap);
-}
-.more-grid .mag-card { height: 200px; }
-.more-grid .mag-card img { height: 100%; }
-
-/* ---------- Responsive 调整 ---------- */
-@media (max-width: 1100px) {
-  .row-1 { grid-template-columns: 1.6fr 1fr; }
-  .row-2 .mag-card { height: 220px; }
-  .row-3 .mag-card { height: 320px; }
-  .row-4 .mag-card { height: 180px; }
-}
-@media (max-width: 800px) {
-  .row-1 { grid-template-columns: 1fr; }
-  .row-1 .side { flex-direction: row; }
-  .row-1 .side .mag-card img { aspect-ratio: 4/3; }
-  .row-1 .big img { aspect-ratio: 3/2; }
-  .row-2 { grid-template-columns: repeat(2, 1fr); }
-  .row-3 .mag-card { height: 240px; }
-  .row-4 { grid-template-columns: repeat(2, 1fr); }
-  .more-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+@media (max-width: 768px) {
+    .album-gallery a { width: 28%; min-width: 120px; }
 }
 @media (max-width: 480px) {
-  .row-2 { grid-template-columns: 1fr; }
-  .row-4 { grid-template-columns: 1fr; }
-  .magazine { padding: 0 8px; gap: 16px; }
+    .album-gallery a { width: 45%; min-width: 100px; }
 }
 </style>
 
-{# ========== 把 images 按行切片（兼容图片少的情况） ========== #}
-{% set r1 = images[0:3] %}
-{% set r2 = images[3:6] %}
-{% set r3 = images[6:7] %}
-{% set r4 = images[7:11] %}
-{% set rest = images[11:] %}
+<div class="album-bg"></div>
 
-<div class="magazine">
+<header class="album-header">{{ album_name }} Album</header>
 
-  {# 第一行：大图 + 右侧两竖图（如果图片不足则自动降级） #}
-  {% if r1|length > 0 %}
-  <div class="row-1">
-    <div class="big">
-      {% if r1[0] %}
-      <div class="mag-card">
+<div class="album-gallery">
+    {% for img in images %}
+    <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
         {% if logged_in %}
-          <input class="mag-check" type="checkbox" name="public_ids" value="{{ r1[0].public_id }}">
+        <input type="checkbox" name="public_ids" value="{{ img.public_id }}">
         {% endif %}
-        <a href="{{ r1[0].secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-          <img src="{{ r1[0].secure_url }}" alt="Photo" loading="lazy">
-        </a>
-      </div>
-      {% endif %}
-    </div>
-
-    <div class="side">
-      {% if r1|length > 1 %}
-      <div class="mag-card">
-        {% if logged_in %}
-          <input class="mag-check" type="checkbox" name="public_ids" value="{{ r1[1].public_id }}">
-        {% endif %}
-        <a href="{{ r1[1].secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-          <img src="{{ r1[1].secure_url }}" alt="Photo" loading="lazy">
-        </a>
-      </div>
-      {% endif %}
-      {% if r1|length > 2 %}
-      <div class="mag-card">
-        {% if logged_in %}
-          <input class="mag-check" type="checkbox" name="public_ids" value="{{ r1[2].public_id }}">
-        {% endif %}
-        <a href="{{ r1[2].secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-          <img src="{{ r1[2].secure_url }}" alt="Photo" loading="lazy">
-        </a>
-      </div>
-      {% endif %}
-    </div>
-  </div>
-  {% endif %}
-
-  {# 第二行：三张横向并列（若不足按实际数量显示） #}
-  {% if r2|length > 0 %}
-  <div class="row-2">
-    {% for img in r2 %}
-    <div class="mag-card">
-      {% if logged_in %}
-        <input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">
-      {% endif %}
-      <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-        <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
-      </a>
-    </div>
+        <img src="{{ img.secure_url }}" alt="Photo in {{ album_name }}" loading="lazy">
+    </a>
     {% endfor %}
-  </div>
-  {% endif %}
-
-  {# 第三行：一张超宽横图 #}
-  {% if r3|length > 0 %}
-  <div class="row-3">
-    <div class="mag-card">
-      {% if logged_in %}
-        <input class="mag-check" type="checkbox" name="public_ids" value="{{ r3[0].public_id }}">
-      {% endif %}
-      <a href="{{ r3[0].secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-        <img src="{{ r3[0].secure_url }}" alt="Photo" loading="lazy">
-      </a>
-    </div>
-  </div>
-  {% endif %}
-
-  {# 第四行：四宫格 #}
-  {% if r4|length > 0 %}
-  <div class="row-4">
-    {% for img in r4 %}
-    <div class="mag-card">
-      {% if logged_in %}
-        <input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">
-      {% endif %}
-      <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-        <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
-      </a>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-  {# 其余图片：紧凑响应式小网格（自动填充） #}
-  {% if rest|length > 0 %}
-  <div class="more-grid">
-    {% for img in rest %}
-    <div class="mag-card">
-      {% if logged_in %}
-        <input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">
-      {% endif %}
-      <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-        <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
-      </a>
-    </div>
-    {% endfor %}
-  </div>
-  {% endif %}
-
-</div> {# .magazine end #}
+</div>
 
 {% if logged_in %}
   <input type="hidden" name="album_name" value="{{ album_name }}">
@@ -307,12 +121,12 @@ body::before {
 {% endif %}
 
 <script>
-  const lightbox = GLightbox({
+const lightbox = GLightbox({
     selector: '.glightbox',
     loop: true,
     touchNavigation: true,
     keyboardNavigation: true,
     closeOnOutsideClick: true
-  });
+});
 </script>
 {% endblock %}
