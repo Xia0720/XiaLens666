@@ -1,108 +1,273 @@
 {% extends "base.html" %}
-
-{% block title %}{{ album_name if album_name is defined else ('Album') }} - Album{% endblock %}
+{% block title %}{{ album_name }} - Album{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
 <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
 
-{# 统一数据源 -> imgs 并转成 list（兼容 photos / images / album_images） #}
-{% set imgs = (
-    photos if photos is defined else
-    (images if images is defined else
-    (album_images if album_images is defined else []))
-) | list %}
-
-{# 固定背景图 #}
-{% set bg_fixed = 'https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg' %}
-{% set bg_fallback = 'https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756396039/pexels-pixabay-289618_iyg9c4.jpg' %}
-
-<style>
-  html, body { height: 100%; margin: 0; padding: 0; }
-  body.album-page { background: none !important; }
-  body.album-page::before { content: ""; position: fixed; inset: 0; background-image: url('{{ bg_fixed }}'); background-size: cover; background-position: center; background-repeat: no-repeat; filter: blur(10px) brightness(0.82); z-index: -2; pointer-events: none; }
-  .album-bg-fallback { position: fixed; inset: 0; background-image: url('{{ bg_fallback }}'); background-size: cover; background-position: center; filter: blur(12px) brightness(0.72); z-index: -3; pointer-events: none; }
-  header, nav, .site-header, .navbar, .main-nav, .topbar { position: relative !important; z-index: 60 !important; }
-
-  .magazine { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 18px 18px; box-sizing: border-box; }
-  h1.album-title { text-align: center; margin-top: 20px; color: #222; text-shadow: 2px 2px 6px rgba(0,0,0,0.22); font-size: 1.9rem; }
-
-  :root { --gallery-height: 72vh; --gap: 20px; --card-radius: 12px; }
-  .gallery-wrap { width: 100%; overflow-x: auto; overflow-y: visible; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; padding: 28px 48px; box-sizing: border-box; display: flex; gap: var(--gap); align-items: center; }
-  .slide { flex: 0 0 auto; width: clamp(320px, 70vw, 1200px); height: var(--gallery-height); scroll-snap-align: center; position: relative; overflow: visible; border-radius: var(--card-radius); transition: transform .32s cubic-bezier(.2,.9,.2,1), box-shadow .32s ease; will-change: transform; }
-  .slide img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: calc(var(--card-radius) - 2px); box-shadow: 0 12px 30px rgba(0,0,0,0.12); transition: transform .32s ease, filter .28s ease; }
-  .slide:hover { transform: translateY(-10px) scale(1.01); z-index: 8; }
-  .slide:hover img { transform: scale(1.03); filter: brightness(1.02); box-shadow: 0 24px 50px rgba(0,0,0,0.18); }
-  .slide .mag-check { position: absolute; top: 12px; left: 12px; z-index: 20; width: 18px; height: 18px; }
-  .slide .caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px; color: #fff; background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.56) 100%); opacity: 0; transform: translateY(6px); transition: opacity .28s ease, transform .28s ease; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; pointer-events: none; }
-  .slide:hover .caption { opacity: 1; transform: translateY(0); }
-
-  .nav-btn { position: fixed; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.9); border: none; box-shadow: 0 8px 18px rgba(0,0,0,0.12); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 120; }
-  .nav-btn:hover { transform: translateY(-50%) scale(1.04); }
-  .nav-btn.left { left: 12px; } .nav-btn.right { right: 12px; }
-  .nav-btn svg { width: 18px; height: 18px; fill: #222; }
-
-  .gallery-wrap::-webkit-scrollbar { height: 10px; }
-  .gallery-wrap::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 8px; }
-
-  @media (max-width: 1000px) { :root { --gallery-height: 62vh; } .gallery-wrap { padding: 18px 20px; gap: 16px; } .slide { width: clamp(260px, 86vw, 900px); } }
-  @media (max-width: 600px) { :root { --gallery-height: 62vh; } .gallery-wrap { padding: 12px 12px; gap: 12px; } .slide { width: 86vw; height: 60vh; } .nav-btn { display: none; } }
-
-  .empty-hint { text-align: center; color: #fff; padding: 60px 18px; font-size: 1.05rem; }
-</style>
-
-<div class="album-bg-fallback" aria-hidden="true"></div>
-
-<script>
-  (function(){
-    try { if (!document.body.classList.contains('album-page')) document.body.classList.add('album-page'); }
-    catch (e) { document.addEventListener('DOMContentLoaded', function(){ document.body.classList.add('album-page'); }); }
-  })();
-</script>
-
-<h1 class="album-title">{{ album_name if album_name is defined else 'Album' }} Album</h1>
+<h1 style="text-align:center; margin-top:20px;">{{ album_name }} Album</h1>
 
 {% if logged_in %}
 <form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
 {% endif %}
 
-  <div class="magazine">
-    {% if imgs|length == 0 %}
-      <div class="empty-hint">This album has no photos yet.</div>
-    {% else %}
-      <div class="gallery-wrap" id="galleryWrap" aria-label="Horizontal photo gallery">
-       {% for img in imgs %}
-         {% set src = img.secure_url if img.secure_url is defined and img.secure_url
-                      else (img.url if img.url is defined and img.url
-                      else (img.path if img.path is defined and img.path else '')) %}
-         {% set pid = img.public_id if img.public_id is defined else (img.id if img.id is defined else '') %}
+<style>
+/* -----------------------------
+   Magazine / Editorial Layout
+   ----------------------------- */
+:root{
+  --gap: 12px;
+  --card-radius: 10px;
+  --shadow: 0 8px 20px rgba(0,0,0,0.10);
+  --hover-shadow: 0 14px 30px rgba(0,0,0,0.14);
+  --max-width: 1400px; /* 减少左右留白，页面更横向铺满 */
+}
 
+/* 页面容器 */
+.magazine {
+  max-width: var(--max-width);
+  margin: 28px auto;
+  padding: 0 14px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
 
-         {% if src %}
-         <div class="slide" data-index="{{ loop.index0 }}">
-           {% if logged_in %}
-             <input class="mag-check" type="checkbox" name="public_ids" value="{{ pid }}">
-           {% endif %}
-           <a href="{{ src }}" class="glightbox" data-gallery="album-{{ album_name if album_name is defined else 'Album' }}" aria-label="Open photo">
-             <img src="{{ src }}" alt="{{ pid or ('Photo ' ~ loop.index) }}" loading="lazy">
-           </a>
-           <div class="caption"><div style="font-weight:600;">{{ pid or ('Photo ' ~ loop.index) }}</div></div>
-         </div>
-         {% endif %}
-        {% endfor %}
+/* 通用卡片样式 */
+.mag-card {
+  overflow: hidden;
+  border-radius: var(--card-radius);
+  background: #fff;
+  box-shadow: var(--shadow);
+  transition: transform .28s cubic-bezier(.2,.9,.2,1), box-shadow .28s ease;
+  position: relative;
+}
+.mag-card:hover{
+  transform: translateY(-6px) scale(1.003);
+  box-shadow: var(--hover-shadow);
+}
+
+/* 图片在卡片内自适应 */
+.mag-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform .32s ease, filter .32s ease;
+  border-radius: inherit;
+}
+.mag-card:hover img {
+  transform: scale(1.03);
+  filter: brightness(1.03);
+}
+
+/* checkbox（管理员） */
+.mag-check {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 12;
+  width: 18px; height: 18px;
+  accent-color: #007bff;
+}
+
+/* ---------- Row 1: 大图(2/3) + 右侧竖排两小图(1/3) ---------- */
+.row-1 {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--gap);
+  align-items: stretch;
+}
+
+/* 左侧大图（横向偏宽） */
+.row-1 .big {
+  display: block;
+  height: 100%;
+}
+.row-1 .big .mag-card { height: 100%; }
+.row-1 .big img { aspect-ratio: 16/9; }
+
+/* 右侧两张竖图堆叠 */
+.row-1 .side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+.row-1 .side .mag-card { height: 100%; flex: 1 1 0; }
+.row-1 .side .mag-card img { aspect-ratio: 3/4; }
+
+/* ---------- Row 2: 三张等分横图 ---------- */
+.row-2 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gap);
+}
+.row-2 .mag-card { height: 260px; } /* 固定行高，使第二行视觉统一 */
+.row-2 .mag-card img { height: 100%; }
+
+/* ---------- Row 3: 一张超宽横图（full-width within container） ---------- */
+.row-3 .mag-card { height: 420px; }
+.row-3 .mag-card img { height: 100%; aspect-ratio: 21/8; }
+
+/* ---------- Row 4: 四宫格 ---------- */
+.row-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--gap);
+}
+.row-4 .mag-card { height: 220px; }
+.row-4 .mag-card img { height: 100%; }
+
+/* ---------- More: 其余图片按响应式网格排列 ---------- */
+.more-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--gap);
+}
+.more-grid .mag-card { height: 200px; }
+.more-grid .mag-card img { height: 100%; }
+
+/* ---------- Responsive 调整 ---------- */
+@media (max-width: 1100px) {
+  .row-1 { grid-template-columns: 1.6fr 1fr; }
+  .row-2 .mag-card { height: 220px; }
+  .row-3 .mag-card { height: 320px; }
+  .row-4 .mag-card { height: 180px; }
+}
+@media (max-width: 800px) {
+  .row-1 { grid-template-columns: 1fr; }
+  .row-1 .side { flex-direction: row; }
+  .row-1 .side .mag-card img { aspect-ratio: 4/3; }
+  .row-1 .big img { aspect-ratio: 3/2; }
+  .row-2 { grid-template-columns: repeat(2, 1fr); }
+  .row-3 .mag-card { height: 240px; }
+  .row-4 { grid-template-columns: repeat(2, 1fr); }
+  .more-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+}
+@media (max-width: 480px) {
+  .row-2 { grid-template-columns: 1fr; }
+  .row-4 { grid-template-columns: 1fr; }
+  .magazine { padding: 0 8px; gap: 16px; }
+}
+</style>
+
+{# ========== 把 images 按行切片（兼容图片少的情况） ========== #}
+{% set r1 = images[0:3] %}
+{% set r2 = images[3:6] %}
+{% set r3 = images[6:7] %}
+{% set r4 = images[7:11] %}
+{% set rest = images[11:] %}
+
+<div class="magazine">
+
+  {# 第一行：大图 + 右侧两竖图（如果图片不足则自动降级） #}
+  {% if r1|length > 0 %}
+  <div class="row-1">
+    <div class="big">
+      {% if r1[0] %}
+      <div class="mag-card">
+        {% if logged_in %}
+          <input class="mag-check" type="checkbox" name="public_ids" value="{{ r1[0].public_id }}">
+        {% endif %}
+        <a href="{{ r1[0].secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
+          <img src="{{ r1[0].secure_url }}" alt="Photo" loading="lazy">
+        </a>
       </div>
+      {% endif %}
+    </div>
 
-      <button class="nav-btn left" id="prevBtn" aria-label="Previous photo" type="button">
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
-      </button>
-      <button class="nav-btn right" id="nextBtn" aria-label="Next photo" type="button">
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
-      </button>
-    {% endif %}
+    <div class="side">
+      {% if r1|length > 1 %}
+      <div class="mag-card">
+        {% if logged_in %}
+          <input class="mag-check" type="checkbox" name="public_ids" value="{{ r1[1].public_id }}">
+        {% endif %}
+        <a href="{{ r1[1].secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
+          <img src="{{ r1[1].secure_url }}" alt="Photo" loading="lazy">
+        </a>
+      </div>
+      {% endif %}
+      {% if r1|length > 2 %}
+      <div class="mag-card">
+        {% if logged_in %}
+          <input class="mag-check" type="checkbox" name="public_ids" value="{{ r1[2].public_id }}">
+        {% endif %}
+        <a href="{{ r1[2].secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
+          <img src="{{ r1[2].secure_url }}" alt="Photo" loading="lazy">
+        </a>
+      </div>
+      {% endif %}
+    </div>
   </div>
+  {% endif %}
+
+  {# 第二行：三张横向并列（若不足按实际数量显示） #}
+  {% if r2|length > 0 %}
+  <div class="row-2">
+    {% for img in r2 %}
+    <div class="mag-card">
+      {% if logged_in %}
+        <input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">
+      {% endif %}
+      <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
+        <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# 第三行：一张超宽横图 #}
+  {% if r3|length > 0 %}
+  <div class="row-3">
+    <div class="mag-card">
+      {% if logged_in %}
+        <input class="mag-check" type="checkbox" name="public_ids" value="{{ r3[0].public_id }}">
+      {% endif %}
+      <a href="{{ r3[0].secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
+        <img src="{{ r3[0].secure_url }}" alt="Photo" loading="lazy">
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  {# 第四行：四宫格 #}
+  {% if r4|length > 0 %}
+  <div class="row-4">
+    {% for img in r4 %}
+    <div class="mag-card">
+      {% if logged_in %}
+        <input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">
+      {% endif %}
+      <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
+        <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {# 其余图片：紧凑响应式小网格（自动填充） #}
+  {% if rest|length > 0 %}
+  <div class="more-grid">
+    {% for img in rest %}
+    <div class="mag-card">
+      {% if logged_in %}
+        <input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">
+      {% endif %}
+      <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
+        <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+</div> {# .magazine end #}
 
 {% if logged_in %}
-  <input type="hidden" name="album_name" value="{{ album_name if album_name is defined else '' }}">
+  <input type="hidden" name="album_name" value="{{ album_name }}">
   <div style="text-align: right; margin: 10px 18px 40px 18px;">
     <button type="submit" style="padding: 8px 14px; border-radius:6px; background:#d9534f; color:#fff; border:none;">
       Delete Selected Images
@@ -112,32 +277,12 @@
 {% endif %}
 
 <script>
-  const lightbox = GLightbox({ selector: '.glightbox', loop: true, touchNavigation: true, keyboardNavigation: true, closeOnOutsideClick: true });
-
-  (function(){
-    const wrap = document.getElementById('galleryWrap'); if (!wrap) return;
-    const slides = Array.from(wrap.querySelectorAll('.slide'));
-    let currentIndex = 0;
-
-    function centerIndex(i, smooth=true){ if (!slides[i]) return; slides[i].scrollIntoView({behavior: smooth ? 'smooth' : 'auto', inline: 'center', block: 'nearest'}); currentIndex = i; }
-    function updateCurrentIndex(){
-      const r = wrap.getBoundingClientRect(), cx = r.left + r.width/2;
-      let best = {i:0,d:Infinity};
-      slides.forEach((s,i)=>{ const sr=s.getBoundingClientRect(), sc=sr.left+sr.width/2, d=Math.abs(sc-cx); if(d<best.d) best={i,d}; });
-      currentIndex = best.i;
-    }
-
-    const prev=document.getElementById('prevBtn'), next=document.getElementById('nextBtn');
-    if(prev&&next){
-      prev.addEventListener('click', ()=>{ updateCurrentIndex(); centerIndex(Math.max(0,currentIndex-1)); });
-      next.addEventListener('click', ()=>{ updateCurrentIndex(); centerIndex(Math.min(slides.length-1,currentIndex+1)); });
-    }
-
-    let t=null; wrap.addEventListener('scroll', ()=>{ if(t)clearTimeout(t); t=setTimeout(updateCurrentIndex,80); }, {passive:true});
-    window.addEventListener('keydown', e=>{ if(e.key==='ArrowRight'&&next) next.click(); if(e.key==='ArrowLeft'&&prev) prev.click(); });
-    window.addEventListener('load', ()=>centerIndex(0,false));
-    window.addEventListener('resize', ()=>centerIndex(currentIndex,false));
-  })();
+  const lightbox = GLightbox({
+    selector: '.glightbox',
+    loop: true,
+    touchNavigation: true,
+    keyboardNavigation: true,
+    closeOnOutsideClick: true
+  });
 </script>
 {% endblock %}
-
