@@ -1,157 +1,184 @@
 {% extends "base.html" %}
-
-{# 页面标题使用更稳健的回退 #}
-{% block title %}{{ album_name if album_name is defined else ('Album') }} - Album{% endblock %}
+{% block title %}Albums - XiaCapture{% endblock %}
+{% block body_class %}album-page{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
-<script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
-
-{# ---- 统一数据源：把任意命名的图片列表收敛到 imgs，并强制转 list ---- #}
-{% set imgs = (
-    photos if photos is defined else
-    (images if images is defined else
-    (album_images if album_images is defined else []))
-) | list %}
-
-{# 固定的相册内页背景图（保持你原来的） #}
-{% set bg_fixed = 'https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756400863/pexels-arts-1124960_itvbiw.jpg' %}
-{% set bg_fallback = 'https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756396039/pexels-pixabay-289618_iyg9c4.jpg' %}
-
 <style>
-  /* ---------- 背景 & 基础 ---------- */
   html, body { height: 100%; margin: 0; padding: 0; }
   body.album-page { background: none !important; }
 
+  /* 全屏虚化背景 */
   body.album-page::before {
     content: "";
-    position: fixed; inset: 0;
-    background-image: url('{{ bg_fixed }}');
-    background-size: cover; background-position: center; background-repeat: no-repeat;
-    filter: blur(10px) brightness(0.82);
-    z-index: -2; pointer-events: none;
+    position: fixed;
+    inset: 0;
+    background-image: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756396039/pexels-pixabay-289618_iyg9c4.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    filter: blur(5px) brightness(0.95);
+    z-index: -2;
+    pointer-events: none;
   }
+
   .album-bg-fallback {
-    position: fixed; inset: 0;
-    background-image: url('{{ bg_fallback }}');
-    background-size: cover; background-position: center;
-    filter: blur(12px) brightness(0.72);
-    z-index: -3; pointer-events: none;
+    position: fixed;
+    inset: 0;
+    background-image: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg');
+    background-size: cover;
+    background-position: center;
+    filter: blur(6px) brightness(0.82);
+    z-index: -3;
+    pointer-events: none;
   }
-  header, nav, .site-header, .navbar, .main-nav, .topbar { position: relative !important; z-index: 60 !important; }
 
-  .magazine { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 18px 18px; box-sizing: border-box; }
-  h1.album-title { text-align: center; margin-top: 20px; color: #222; text-shadow: 2px 2px 6px rgba(0,0,0,0.22); font-size: 1.9rem; }
+  header, nav, .site-header, .navbar, .main-nav, .topbar {
+    position: relative !important;
+    z-index: 50 !important;
+  }
 
-  :root { --gallery-height: 72vh; --gap: 20px; --card-radius: 12px; }
-  .gallery-wrap { width: 100%; overflow-x: auto; overflow-y: visible; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; padding: 28px 48px; box-sizing: border-box; display: flex; gap: var(--gap); align-items: center; }
-  .slide { flex: 0 0 auto; width: clamp(320px, 70vw, 1200px); height: var(--gallery-height); scroll-snap-align: center; position: relative; overflow: visible; border-radius: var(--card-radius); transition: transform .32s cubic-bezier(.2,.9,.2,1), box-shadow .32s ease; will-change: transform; }
-  .slide img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: calc(var(--card-radius) - 2px); box-shadow: 0 12px 30px rgba(0,0,0,0.12); transition: transform .32s ease, filter .28s ease; }
-  .slide:hover { transform: translateY(-10px) scale(1.01); z-index: 8; }
-  .slide:hover img { transform: scale(1.03); filter: brightness(1.02); box-shadow: 0 24px 50px rgba(0,0,0,0.18); }
-  .slide .mag-check { position: absolute; top: 12px; left: 12px; z-index: 20; width: 18px; height: 18px; }
-  .slide .caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px; color: #fff; background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.56) 100%); opacity: 0; transform: translateY(6px); transition: opacity .28s ease, transform .28s ease; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; pointer-events: none; }
-  .slide:hover .caption { opacity: 1; transform: translateY(0); }
-  .nav-btn { position: fixed; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.9); border: none; box-shadow: 0 8px 18px rgba(0,0,0,0.12); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 120; }
-  .nav-btn:hover { transform: translateY(-50%) scale(1.04); }
-  .nav-btn.left { left: 12px; } .nav-btn.right { right: 12px; }
-  .nav-btn svg { width: 18px; height: 18px; fill: #222; }
-  .gallery-wrap::-webkit-scrollbar { height: 10px; } .gallery-wrap::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 8px; }
-  @media (max-width: 1000px) { :root { --gallery-height: 62vh; } .gallery-wrap { padding: 18px 20px; gap: 16px; } .slide { width: clamp(260px, 86vw, 900px); } }
-  @media (max-width: 600px) { :root { --gallery-height: 62vh; } .gallery-wrap { padding: 12px 12px; gap: 12px; } .slide { width: 86vw; height: 60vh; } .nav-btn { display: none; } }
-  .empty-hint { text-align: center; color: #fff; padding: 60px 18px; font-size: 1.05rem; }
+  .album-content {
+    position: relative;
+    z-index: 5;
+    width: 100%;
+    margin: 0;
+    padding: 24px 30px;
+  }
+
+  /* 页面标题 */
+  body.album-page .page-title {
+    text-align: center;
+    margin: 30px 0 20px;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #ffffff;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+  }
+
+  /* ===== 核心：Mosaic 网格（自适应宽度 + 居中） ===== */
+  .album-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-auto-rows: 9.5vw;     /* 行高单位用 vw，随屏幕变化；可微调 9~11 */
+    grid-auto-flow: dense;     /* 自动回填空隙，拼贴更紧凑 */
+    gap: 14px;
+
+    /* 让整块网格在视口中水平居中，而不是吃满 100% 靠左 */
+    width: min(1680px, calc(100vw - 48px));  /* 宽屏封顶 1680px，小屏留 24px 边距 */
+    margin: 0 auto;                           /* 居中对齐 */
+  }
+
+  .album-item {
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    background: #f6f7f9;
+  }
+
+  .album-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform .35s ease;
+  }
+  .album-item:hover img { transform: scale(1.03); }
+
+  /* ===== 尺寸等级重新平衡 =====
+     让差距控制在：小(3x1) / 中(4x2) / 特写(5x3)，避免极端大/小 */
+  .item--w2 { grid-column: span 3; }   /* 小：横向 3 列 */
+  .item--w3 { grid-column: span 4; }   /* 中：横向 4 列 */
+  .item--h2 { grid-row: span 2; }      /* 纵向 2 行 */
+
+  .item--feature {
+    grid-column: span 5;               /* 特写从 6 列降到 5 列 */
+    grid-row: span 3;                  /* 高度从 4 行降到 3 行 */
+  }
+
+  /* 没命中的默认项（给它一个“较小但不迷你”的基础尺寸） */
+  .item--min { grid-column: span 3; grid-row: span 1; }
+
+  /* 相册名遮罩 */
+  .album-info {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #fff;
+    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%);
+  }
+
+  /* ===== 响应式：逐步减少列数，但保持“相对比例” ===== */
+  @media (max-width: 1200px) {
+    .album-grid {
+      grid-template-columns: repeat(10, 1fr);
+      grid-auto-rows: 12vw;
+      width: min(1280px, calc(100vw - 40px));
+    }
+    .item--feature { grid-column: span 6; grid-row: span 3; }
+    .item--w2 { grid-column: span 4; }
+    .item--w3 { grid-column: span 5; }
+  }
+
+  @media (max-width: 900px) {
+    .album-grid {
+      grid-template-columns: repeat(8, 1fr);
+      grid-auto-rows: 15vw;
+      width: calc(100vw - 32px);
+    }
+    .item--feature { grid-column: span 8; grid-row: span 3; }
+    .item--w2 { grid-column: span 4; }
+    .item--w3 { grid-column: span 4; }
+  }
+
+  @media (max-width: 640px) {
+    .album-grid {
+      grid-template-columns: repeat(2, 1fr);
+      grid-auto-rows: 45vw;
+      width: calc(100vw - 24px);
+    }
+    .item--feature { grid-column: 1 / span 2; grid-row: span 2; }
+    .item--w2, .item--w3, .item--min { grid-column: span 2; grid-row: span 1; }
+  }
 </style>
+
+<script>
+  (function(){
+    try {
+      if (!document.body.classList.contains('album-page')) {
+        document.body.classList.add('album-page');
+      }
+    } catch (e) {
+      document.addEventListener('DOMContentLoaded', function(){ document.body.classList.add('album-page'); });
+    }
+  })();
+</script>
 
 <div class="album-bg-fallback" aria-hidden="true"></div>
 
-<script>
-  (function(){
-    try { if (!document.body.classList.contains('album-page')) document.body.classList.add('album-page'); }
-    catch (e) { document.addEventListener('DOMContentLoaded', function(){ document.body.classList.add('album-page'); }); }
-  })();
-</script>
+<div class="album-content">
+  <h1 class="page-title">Albums</h1>
 
-<h1 class="album-title">{{ album_name if album_name is defined else 'Album' }} Album</h1>
-
-{% if logged_in %}
-<form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
-{% endif %}
-
-  <div class="magazine">
-    {% if imgs|length == 0 %}
-      <div class="empty-hint">This album has no photos yet.</div>
-    {% else %}
-      <div class="gallery-wrap" id="galleryWrap" aria-label="Horizontal photo gallery">
-        {% for img in imgs %}
-          {# 统一取图地址：secure_url -> url -> path #}
-          {% set src = img.secure_url if img.secure_url is defined and img.secure_url
-                       else (img.url if img.url is defined and img.url
-                       else (img.path if img.path is defined and img.path else '')) %}
-           {% set pid = img.public_id if img.public_id is defined else (img.id if img.id is defined else '') %}
-
-          {% if src %}
-          <div class="slide" data-index="{{ loop.index0 }}">
-            {% if logged_in %}
-              <input class="mag-check" type="checkbox" name="public_ids" value="{{ pid }}">
-            {% endif %}
-            <a href="{{ src }}" class="glightbox"
-               data-gallery="album-{{ album_name if album_name is defined else 'Album' }}"
-               aria-label="Open photo">
-              <img src="{{ src }}" alt="{{ pid or ('Photo ' ~ loop.index) }}" loading="lazy">
-            </a>
-            <div class="caption"><div style="font-weight:600;">{{ pid or ('Photo ' ~ loop.index) }}</div></div>
-          </div>
+  <div class="album-grid">
+    {% for album in albums %}
+      <div class="album-item
+                  {% if loop.index == 1 %} item--feature
+                  {% elif loop.index % 5 == 0 %} item--w3 item--h2
+                  {% elif loop.index % 3 == 0 %} item--w2
+                  {% else %} item--min {% endif %}">
+        <a href="{{ url_for('view_album', album_name=album.name) }}">
+          {% if album.cover %}
+            <img src="{{ album.cover }}" alt="{{ album.name }}">
+          {% else %}
+            <div class="album-cover placeholder"><span>No cover</span></div>
           {% endif %}
-         {% endfor %}
+          <div class="album-info"><h2>{{ album.name }}</h2></div>
+        </a>
       </div>
-
-      <button class="nav-btn left" id="prevBtn" aria-label="Previous photo" type="button">
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
-      </button>
-      <button class="nav-btn right" id="nextBtn" aria-label="Next photo" type="button">
-        <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
-      </button>
-    {% endif %}
+    {% endfor %}
   </div>
-
-{% if logged_in %}
-  <input type="hidden" name="album_name" value="{{ album_name if album_name is defined else '' }}">
-  <div style="text-align: right; margin: 10px 18px 40px 18px;">
-    <button type="submit" style="padding: 8px 14px; border-radius:6px; background:#d9534f; color:#fff; border:none;">
-      Delete Selected Images
-    </button>
-  </div>
-</form>
-{% endif %}
-
-<script>
-  const lightbox = GLightbox({ selector: '.glightbox', loop: true, touchNavigation: true, keyboardNavigation: true, closeOnOutsideClick: true });
-
-  (function(){
-    const wrap = document.getElementById('galleryWrap');
-    if (!wrap) return;
-    const slides = Array.from(wrap.querySelectorAll('.slide'));
-    let currentIndex = 0;
-
-    function centerIndex(i, smooth=true){ if (!slides[i]) return; slides[i].scrollIntoView({behavior: smooth ? 'smooth' : 'auto', inline: 'center', block: 'nearest'}); currentIndex = i; }
-    function updateCurrentIndex(){
-      const r = wrap.getBoundingClientRect(), cx = r.left + r.width/2;
-      let best = {i:0,d:Infinity};
-      slides.forEach((s,i)=>{ const sr=s.getBoundingClientRect(), sc=sr.left+sr.width/2, d=Math.abs(sc-cx); if(d<best.d) best={i,d}; });
-      currentIndex = best.i;
-    }
-
-    const prev=document.getElementById('prevBtn'), next=document.getElementById('nextBtn');
-    if(prev&&next){
-      prev.addEventListener('click', ()=>{ updateCurrentIndex(); centerIndex(Math.max(0,currentIndex-1)); });
-      next.addEventListener('click', ()=>{ updateCurrentIndex(); centerIndex(Math.min(slides.length-1,currentIndex+1)); });
-    }
-
-    let t=null; wrap.addEventListener('scroll', ()=>{ if(t)clearTimeout(t); t=setTimeout(updateCurrentIndex,80); }, {passive:true});
-    window.addEventListener('keydown', e=>{ if(e.key==='ArrowRight'&&next) next.click(); if(e.key==='ArrowLeft'&&prev) prev.click(); });
-    window.addEventListener('load', ()=>centerIndex(0,false));
-    window.addEventListener('resize', ()=>centerIndex(currentIndex,false));
-  })();
-</script>
+</div>
 {% endblock %}
-
