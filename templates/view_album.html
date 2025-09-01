@@ -27,8 +27,7 @@
   .album-bg-fallback {
     position: fixed;
     inset: 0;
-    background-image: url('{{ fallback_url | default("https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg") }}');
-    background-size: cover;
+    background-image: url('{{ background_url | default(\'https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg\') }}');
     background-position: center;
     filter: blur(6px) brightness(0.82);
     z-index: -3;
