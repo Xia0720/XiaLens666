@@ -1,132 +1,225 @@
 {% extends "base.html" %}
 {% block title %}{{ album_name }} - Album{% endblock %}
+{% block body_class %}album-inner-page{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
 <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
 
-{% if logged_in %}
-<form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
-{% endif %}
-
 <style>
-/* ===== 背景虚化 ===== */
-.album-bg {
+  html, body { height: 100%; margin: 0; padding: 0; }
+  body.album-inner-page { background: none !important; }
+
+  /* 全屏虚化背景 */
+  body.album-inner-page::before {
+    content: "";
     position: fixed;
     inset: 0;
-    z-index: -1;
-    background: {% if images|length > 0 %}url('{{ images[0].secure_url }}'){% else %}linear-gradient(180deg, #efefef 0%, #e7e7e7 100%){% endif %} center/cover no-repeat;
-    filter: blur(25px) brightness(0.6);
-}
+    background-image: url('{{ background_url | default("https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg") }}');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    filter: blur(6px) brightness(0.82);
+    z-index: -2;
+    pointer-events: none;
+  }
 
-/* ===== 标题 ===== */
-.album-header {
+  .album-bg-fallback {
+    position: fixed;
+    inset: 0;
+    background-image: url('{{ fallback_url | default("https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg") }}');
+    background-size: cover;
+    background-position: center;
+    filter: blur(6px) brightness(0.82);
+    z-index: -3;
+    pointer-events: none;
+  }
+
+  header, nav, .site-header, .navbar, .main-nav, .topbar {
+    position: relative !important;
+    z-index: 50 !important;
+  }
+
+  .album-content {
+    position: relative;
+    z-index: 5;
+    width: 100%;
+    margin: 0 auto;
+    padding: 24px 30px;
+    box-sizing: border-box;
+  }
+
+  /* 页面标题 */
+  .page-title {
     text-align: center;
     margin: 30px 0 20px;
-    font-size: 2.2em;
-    font-weight: bold;
-    color: white;
-    text-shadow: 2px 2px 10px rgba(0,0,0,0.6);
-}
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: #ffffff;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+  }
 
-/* ===== 横向滑动画廊 ===== */
-.album-gallery {
-    display: flex;
+  /* ===== 横向滑动画廊 ===== */
+  .h-viewport {
+    position: relative;
+    width: 100%;
     overflow-x: auto;
+    display: flex;
     gap: 12px;
-    padding: 20px;
-    scroll-behavior: smooth;
-}
+    padding: 12px 0;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
 
-.album-gallery::-webkit-scrollbar {
-    height: 10px;
-}
-.album-gallery::-webkit-scrollbar-thumb {
-    background: rgba(255,255,255,0.4);
-    border-radius: 5px;
-}
-.album-gallery::-webkit-scrollbar-track {
-    background: rgba(0,0,0,0.2);
-}
-
-/* 每张图片卡片 */
-.album-gallery a {
+  .h-card {
     flex: 0 0 auto;
-    width: 14%; /* 一行大约6-7张 */
-    min-width: 160px;
+    width: 260px;
+    height: 180px;
     border-radius: 12px;
     overflow: hidden;
+    scroll-snap-align: start;
+    background: #fff;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
     position: relative;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
+    transition: transform .28s ease, box-shadow .28s ease;
+  }
+  .h-card:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 14px 30px rgba(0,0,0,0.14);
+  }
 
-.album-gallery a img {
+  .h-card img {
     width: 100%;
-    height: auto;
+    height: 100%;
+    object-fit: cover;
     display: block;
-    border-radius: inherit;
-}
+    transition: transform .35s ease;
+  }
+  .h-card:hover img { transform: scale(1.03); }
 
-.album-gallery a:hover {
-    transform: scale(1.05);
-    box-shadow: 0 6px 15px rgba(0,0,0,0.4);
-}
-
-/* 管理员 checkbox */
-.album-gallery input[type="checkbox"] {
+  .mag-check {
     position: absolute;
     top: 8px;
     left: 8px;
-    z-index: 10;
-    width: 18px;
-    height: 18px;
+    z-index: 12;
+    width: 18px; height: 18px;
     accent-color: #007bff;
-}
+  }
 
-/* 响应式调整 */
-@media (max-width: 1024px) {
-    .album-gallery a { width: 18%; min-width: 140px; }
-}
-@media (max-width: 768px) {
-    .album-gallery a { width: 28%; min-width: 120px; }
-}
-@media (max-width: 480px) {
-    .album-gallery a { width: 45%; min-width: 100px; }
-}
+  /* 导航按钮（左右） */
+  .h-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    border: none;
+    background: rgba(0,0,0,0.45);
+    color: #fff;
+    font-size: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+  }
+  .h-nav:hover { transform: translateY(-50%) scale(1.04); background: rgba(0,0,0,0.6); }
+  .h-prev { left: 12px; }
+  .h-next { right: 12px; }
+
+  /* 响应式 */
+  @media (max-width: 900px) {
+    .h-card { width: 200px; height: 140px; }
+    .h-nav { display: none; }
+  }
+  @media (max-width: 480px) {
+    .h-card { width: 150px; height: 110px; }
+  }
+
 </style>
 
-<div class="album-bg"></div>
+<div class="album-bg-fallback" aria-hidden="true"></div>
 
-<header class="album-header">{{ album_name }} Album</header>
+<div class="album-content">
+  <h1 class="page-title">{{ album_name }} Album</h1>
 
-<div class="album-gallery">
-    {% for img in images %}
-    <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-        {% if logged_in %}
-        <input type="checkbox" name="public_ids" value="{{ img.public_id }}">
-        {% endif %}
-        <img src="{{ img.secure_url }}" alt="Photo in {{ album_name }}" loading="lazy">
-    </a>
-    {% endfor %}
+  {% if logged_in %}
+  <form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
+  {% endif %}
+
+  {% if images|length == 0 %}
+    <div style="text-align:center; color:#fff; opacity:.9; margin-top:60px;">This album has no images.</div>
+  {% else %}
+    <div class="h-viewport-container" style="position:relative;">
+      <button class="h-nav h-prev" aria-label="Scroll left">‹</button>
+      <div class="h-viewport" tabindex="0">
+        {% for img in images %}
+        <div class="h-card">
+          {% if logged_in %}
+            <input class="mag-check" type="checkbox" name="public_ids" value="{{ img.public_id }}">
+          {% endif %}
+          <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
+            <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+      <button class="h-nav h-next" aria-label="Scroll right">›</button>
+    </div>
+  {% endif %}
+
+  {% if logged_in %}
+    <input type="hidden" name="album_name" value="{{ album_name }}">
+    <div style="text-align:right; margin: 10px 0 40px;">
+      <button type="submit" style="padding: 8px 14px; border-radius:6px; background:#d9534f; color:#fff; border:none;">
+        Delete Selected Images
+      </button>
+    </div>
+  </form>
+  {% endif %}
 </div>
 
-{% if logged_in %}
-  <input type="hidden" name="album_name" value="{{ album_name }}">
-  <div style="text-align: right; margin: 10px 18px 40px 18px;">
-    <button type="submit" style="padding: 8px 14px; border-radius:6px; background:#d9534f; color:#fff; border:none;">
-      Delete Selected Images
-    </button>
-  </div>
-</form>
-{% endif %}
-
 <script>
-const lightbox = GLightbox({
+  const lightbox = GLightbox({
     selector: '.glightbox',
     loop: true,
     touchNavigation: true,
     keyboardNavigation: true,
     closeOnOutsideClick: true
-});
+  });
+
+  (function(){
+    const gallery = document.querySelector('.h-viewport');
+    if (!gallery) return;
+
+    const btnPrev = document.querySelector('.h-prev');
+    const btnNext = document.querySelector('.h-next');
+    const scrollAmount = Math.round(window.innerWidth * 0.6);
+
+    if (btnPrev && btnNext) {
+      btnPrev.addEventListener('click', () => { gallery.scrollBy({ left: -scrollAmount, behavior: 'smooth' }); });
+      btnNext.addEventListener('click', () => { gallery.scrollBy({ left: scrollAmount, behavior: 'smooth' }); });
+    }
+
+    gallery.addEventListener('wheel', function(e){
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && !e.shiftKey) {
+        e.preventDefault();
+        gallery.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
+
+    gallery.addEventListener('mouseenter', () => gallery.focus());
+    gallery.addEventListener('mouseleave', () => gallery.blur());
+
+    gallery.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') { e.preventDefault(); gallery.scrollBy({ left: scrollAmount, behavior: 'smooth' }); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); gallery.scrollBy({ left: -scrollAmount, behavior: 'smooth' }); }
+    });
+  })();
 </script>
+
 {% endblock %}
+
