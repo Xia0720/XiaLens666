@@ -3,29 +3,32 @@
 {% block content %}
 <div class="story-page">
     <div class="story-header">
-        <h1>📖 Xia's Story Collection</h1>
+        <h1>📖 Xia's Story Timeline</h1>
     </div>
 
     {% if stories %}
-        <div class="story-container">
+        <div class="timeline-container">
             {% for story in stories %}
-                <div class="story-card">
-                   {% if story.images %}
-                        <div class="story-images">
-                            {% for img in story.images %}
-                                 <a href="{{ img.image_url }}" target="_blank">
-                                    <img src="{{ img.image_url }}">
-                                </a>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
+                <div class="timeline-item {% if loop.index is odd %}left{% else %}right{% endif %}">
+                    <div class="timeline-content">
+                        {% if story.images %}
+                            <div class="story-images">
+                                {% for img in story.images %}
+                                    <a href="{{ img.image_url }}" target="_blank">
+                                        <img src="{{ img.image_url }}">
+                                    </a>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
 
-                    <div class="story-card-content">
                         <a href="{{ url_for('story_detail', story_id=story.id) }}" class="story-link">
-                            <p>{{ story.text|truncate(80)|safe }}</p>
+                            <p>{{ story.text|truncate(120)|safe }}</p>
                         </a>
+
                         <div class="story-meta">
-                            <span class="created-at">{{ story.created_at.strftime('%Y-%m-%d %H:%M') if story.created_at else '' }}</span>
+                            <span class="created-at">
+                                {{ story.created_at.strftime('%Y-%m-%d %H:%M') if story.created_at else '' }}
+                            </span>
                             {% if logged_in %}
                                 <div class="story-actions">
                                     <a href="{{ url_for('edit_story', story_id=story.id) }}" class="edit-btn">Edit</a>
