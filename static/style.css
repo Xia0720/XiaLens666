@@ -296,18 +296,20 @@ html, body {
   overflow-x: auto;      /* 超出时横向滚动 */
 }
 
-/* 子项不要被压缩或拉伸 */
+/* 覆盖 timeline 里图片被强制放大的问题 */
 .story-page .timeline .story-images a {
-  flex: 0 0 auto;
+  width: auto !important;   /* 不固定 160px */
+  height: auto !important;  /* 不固定 160px */
+  flex: 0 0 auto;           /* 避免被拉伸 */
 }
 
 /* 覆盖可能存在的 width:100% 等规则，保持你现有图片尺寸比例 */
 .story-page .timeline .story-images img {
-  width: auto !important;    /* 防止被拉到一行一个 */
-  max-width: none;           /* 取消任何 max-width 限制 */
-  height: auto;
-  flex: 0 0 auto;            /* 不收缩 */
-  display: block;
+  width: auto !important;
+  height: auto !important;
+  max-height: 120px;        /* ✅ 控制统一高度 */
+  object-fit: contain;      /* 保持比例缩放，不裁剪 */
+  border-radius: 8px;
 }
 
 /* Upload / form container 共用样式 */
