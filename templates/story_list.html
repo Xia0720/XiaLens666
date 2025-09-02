@@ -172,47 +172,6 @@
 .story-meta { display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:13px; color:#555; }
 .story-actions a, .story-actions button { font-size:12px; margin-left:6px; }
 
-/* ===== 延伸线条（连接主轴和卡片） ===== */
-.timeline-item.left::before,
-.timeline-item.right::before {
-    content: "";
-    position: absolute;
-    top: 50%;                /* 垂直居中到卡片 */
-    width: 40px;             /* 延伸线长度 */
-    height: 2px;             /* 线条粗细 */
-    background: rgba(0,0,0,0.3); /* 线条颜色 */
-}
-
-.timeline-item.left::before {
-    right: -40px;            /* 从卡片右侧延伸到中心线 */
-}
-
-.timeline-item.right::before {
-    left: -40px;             /* 从卡片左侧延伸到中心线 */
-}
-
-/* ===== 圆点（延伸线末端的小节点） ===== */
-.timeline-item.left::after,
-.timeline-item.right::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    width: 10px;             /* 圆点直径 */
-    height: 10px;
-    background: #fff;        /* 圆点内部颜色 */
-    border: 2px solid rgba(0,0,0,0.5); /* 圆点边框 */
-    border-radius: 50%;      /* 变圆形 */
-    transform: translateY(-50%);
-}
-
-.timeline-item.left::after {
-    right: -50px;            /* 在延伸线末端（竖线位置） */
-}
-
-.timeline-item.right::after {
-    left: -50px;
-}
-
 /* 响应式 */
 @media (max-width: 768px) {
     .timeline-item, .timeline-item.right, .timeline-item.left {
