@@ -70,7 +70,7 @@
     inset: 0;
     background: url("https://res.cloudinary.com/dpr0pl2tf/image/upload/f_auto,q_auto,w_1920/v1756400863/pexels-arts-1124960_itvbiw.jpg") no-repeat center center fixed;
     background-size: cover;
-    filter: blur(6px) brightness(0.85); /* 模糊 + 降低亮度 */
+    filter: blur(10px) brightness(0.85); /* 模糊 + 降低亮度 */
     z-index: -2;
     pointer-events: none;
 }
@@ -115,7 +115,7 @@
     border-radius: 5px;
 }
 
-@keyframes glow-move {
+@keyframes glow-move-vertical {
     0%   { background-position: 50% 0%; }
     50%  { background-position: 50% 100%; }
     100% { background-position: 50% 0%; }
@@ -209,7 +209,7 @@
 }
 
 /* 保持和主线一样的流光动画 */
-@keyframes glow-move {
+@keyframes glow-move-horizontal {
     0%   { background-position: 0% 50%; }
     50%  { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
@@ -230,11 +230,11 @@
 }
 
 .timeline-item.left::after {
-    right: -50px;            /* 在延伸线末端（竖线位置） */
+    right: -42px;            /* 在延伸线末端（竖线位置） */
 }
 
 .timeline-item.right::after {
-    left: -50px;
+    left: -42px;
 }
     
 /* 响应式 */
