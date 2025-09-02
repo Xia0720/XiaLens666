@@ -368,3 +368,117 @@ html, body {
     .about-container { padding:20px; }
     .nav-container { padding: 0 10px; gap:12px; }
 }
+
+/* 时间轴容器 */
+.timeline-container {
+  position: relative;
+  max-width: 1000px;
+  margin: 40px auto;
+  padding: 20px 0;
+}
+
+.timeline-container::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  background: #ddd;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  margin-left: -2px;
+}
+
+/* 每条 timeline 节点 */
+.timeline-item {
+  position: relative;
+  width: 50%;
+  padding: 20px 40px;
+  box-sizing: border-box;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border: 4px solid #3498db;
+  border-radius: 50%;
+  top: 30px;
+  z-index: 1;
+}
+
+.timeline-item.left {
+  left: 0;
+}
+.timeline-item.left::before {
+  right: -10px;
+}
+
+.timeline-item.right {
+  left: 50%;
+}
+.timeline-item.right::before {
+  left: -10px;
+}
+
+/* 内容卡片 */
+.timeline-content {
+  background: #fff;
+  border-radius: 8px;
+  padding: 18px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+}
+
+.timeline-content p {
+  font-size: 15px;
+  line-height: 1.5;
+  color: #333;
+}
+
+.timeline-content img {
+  width: 100%;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  object-fit: cover;
+}
+
+/* 保留原有按钮样式 */
+.story-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+}
+.story-actions {
+  display: flex;
+  gap: 8px;
+}
+.edit-btn, .delete-btn {
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  text-decoration: none;
+}
+.edit-btn { background: #3498db; color: #fff; }
+.edit-btn:hover { background: #217dbb; }
+.delete-btn { background: #e74c3c; color: #fff; border: none; cursor: pointer; }
+.delete-btn:hover { background: #c0392b; }
+
+/* 响应式处理 */
+@media screen and (max-width: 768px) {
+  .timeline-container::after {
+    left: 30px;
+  }
+  .timeline-item {
+    width: 100%;
+    padding-left: 60px;
+    padding-right: 20px;
+  }
+  .timeline-item::before {
+    left: 18px;
+  }
+  .timeline-item.right {
+    left: 0;
+  }
+}
