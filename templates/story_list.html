@@ -1,13 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Story Collection - XiaCapture{% endblock %}
-
 {% block body_class %}story-page{% endblock %}
 
 {% block content %}
 <div class="story-page">
 
-    <!-- 可更换背景图 -->
-    <div class="story-bg" style="background-image: url('{{ background_url if background_url else url_for('static', filename='images/story-bg.jpg') }}');"></div>
+    <!-- 背景图（固定，覆盖全局渐变） -->
+    <div class="story-bg"></div>
 
     <div class="story-header">
         <h1>📖 Xia's Story Collection</h1>
@@ -18,8 +17,8 @@
         {% for story in stories %}
         <div class="timeline-item {% if loop.index % 2 == 0 %}right{% else %}left{% endif %}">
             <div class="timeline-icon">
-                <!-- 用圆形+emoji代替图片 -->
-                <span>🌟</span>
+                <!-- 卡通小女孩图标 -->
+                <img src="{{ url_for('static', filename='images/girl-icon.png') }}" alt="girl-icon">
             </div>
             <div class="timeline-content">
                 {% if story.images %}
@@ -58,17 +57,14 @@
 </div>
 
 <style>
-/* ===== 全局重写背景 ===== */
-.story-page {
-    position: relative;
-    padding-bottom: 60px;
-    z-index: 0;
-}
+/* ===== 背景 ===== */
+.story-page { position: relative; padding-bottom: 60px; z-index: 0; }
 .story-bg {
     position: fixed;
     inset: 0;
-    background-size: cover;
-    background-position: center;
+    background-image: url('{{ background_url if background_url else url_for("static", filename="images/story-bg.jpg") }}');
+    background-size: cover !important;
+    background-position: center !important;
     filter: brightness(0.85);
     z-index: -1;
     pointer-events: none;
@@ -113,21 +109,20 @@
 .timeline-item.left { left: 0; text-align: right; }
 .timeline-item.right { left: 50%; text-align: left; }
 
-/* 节点图标 */
+/* 节点图标（卡通小女孩） */
 .timeline-icon {
     position: absolute;
     top: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    left: calc(50% - 20px); /* 位于主线旁边 */
+    width: 40px;
+    height: 40px;
     z-index: 10;
-    font-size: 22px;
 }
-.timeline-icon span { display:block; }
+.timeline-icon img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+}
 
 /* 内容卡片 */
 .timeline-content {
@@ -149,8 +144,8 @@
     margin-bottom: 10px;
 }
 .story-images a {
-    width: 120px;
-    height: 120px;
+    width: 150px;
+    height: 150px;
     display: inline-block;
     overflow: hidden;
     border-radius: 8px;
