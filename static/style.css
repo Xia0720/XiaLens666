@@ -260,10 +260,12 @@ html, body {
   transition: transform 0.2s ease;
 }
 .story-page .story-card .story-images a:hover { transform: scale(1.03); }
+/* ✅ 覆盖掉全局 .story-card img 的 100% 宽度 */
 .story-page .story-card .story-images img {
-    max-width: 100%;
-    height: auto;
+    width: auto;        /* 不要撑满 */
+    max-height: 120px;  /* 控制高度，宽度自适应 */
     border-radius: 8px;
+    flex: 0 0 auto;     /* 防止被压缩 */
 }
 
 .story-text {
