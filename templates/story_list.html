@@ -5,38 +5,35 @@
 {% block content %}
 <div class="story-page">
 
-    <!-- 保留占位（实际背景使用 body.story-page::before 渲染） -->
-    <div class="story-bg" aria-hidden="true"></div>
+    <!-- 背景图（虚化效果 + 覆盖全局渐变） -->
+    <div class="story-bg"></div>
 
     <div class="story-header">
         <h1>📖 Xia's Story Collection</h1>
     </div>
 
     {% if stories %}
-    <div class="timeline" role="list">
+    <div class="timeline">
         {% for story in stories %}
-        <div class="timeline-item {% if loop.index % 2 == 0 %}right{% else %}left{% endif %}" role="listitem">
-            <div class="timeline-icon" aria-hidden="true">
-                <!-- 小女孩图标：你已上传到 Cloudinary，替换为你的链接或传入变量 -->
-                <img src="{{ icon_url if icon_url else 'https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756788123/girl-icon_x8bqyd.png' }}" alt="icon">
+        <div class="timeline-item {% if loop.index % 2 == 0 %}right{% else %}left{% endif %}">
+            <div class="timeline-icon">
+                <!-- 卡通小女孩图标（Cloudinary 路径） -->
+                <img src="https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756788123/girl-icon_x8bqyd.png" alt="girl-icon">
             </div>
-
             <div class="timeline-content">
                 {% if story.images %}
                 <div class="story-images">
                     {% for img in story.images %}
-                    <a href="{{ img.image_url }}" target="_blank" rel="noopener">
-                        <img src="{{ img.image_url }}" alt="story image">
-                    </a>
+                        <a href="{{ img.image_url }}" target="_blank">
+                            <img src="{{ img.image_url }}">
+                        </a>
                     {% endfor %}
                 </div>
                 {% endif %}
-
                 <div class="story-card-content">
                     <a href="{{ url_for('story_detail', story_id=story.id) }}" class="story-link">
                         <p>{{ story.text|truncate(120)|safe }}</p>
                     </a>
-
                     <div class="story-meta">
                         <span class="created-at">{{ story.created_at.strftime('%Y-%m-%d %H:%M') if story.created_at else '' }}</span>
                         {% if logged_in %}
@@ -60,225 +57,133 @@
 </div>
 
 <style>
-/* ----------------------------
-   Background: fixed, blurred
-   placed behind everything using body.story-page::before
-   ---------------------------- */
-body.story-page::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  /* 支持传入 background_url（Cloudinary），没有则使用默认示例 */
-  background-image: url('{{ background_url if background_url else "https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756400863/pexels-arts-1124960_itvbiw.jpg" }}');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  filter: blur(8px) brightness(0.78);
-  z-index: -999;              /* 放得足够后面，避免覆盖任何 UI */
-  pointer-events: none;
+/* 导航栏置顶，避免被背景图挡住 */
+.navbar, header, .site-header {
+    position: relative;
+    z-index: 1000;
+}
+    
+/* ===== 背景 ===== */
+.story-page { position: relative; padding-bottom: 60px; z-index: 0; }
+.story-bg {
+    position: fixed;
+    inset: 0;
+    background: url("https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756400863/pexels-arts-1124960_itvbiw.jpg") no-repeat center center fixed;
+    background-size: cover;
+    filter: blur(8px) brightness(0.8); /* 模糊 + 降低亮度 */
+    z-index: -2;
+    pointer-events: none;
 }
 
-/* For safety: hide the placeholder div to avoid duplication */
-.story-bg { display: none; }
-
-/* Ensure header / nav / site chrome are above the background */
-header, nav, .navbar, .site-header, .main-nav, .topbar {
-  position: relative !important;
-  z-index: 1000 !important;
-}
-
-/* Page wrapper */
-.story-page { position: relative; padding-bottom: 60px; }
-
-/* Title: white with thin black outline */
-.story-header {
-  max-width: 1100px;
-  margin: 22px auto;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
+/* 页面标题 */
+.story-header { max-width:1100px; margin:22px auto; display:flex; justify-content:center; align-items:center; }
 .story-header h1 {
   margin: 0;
   font-size: 26px;
-  color: #fff;
-  /* thin 1px black outline using 4-direction shadows */
-  text-shadow:
-    -1px -1px 0 #000,
-     1px -1px 0 #000,
-    -1px  1px 0 #000,
-     1px  1px 0 #000;
-  font-weight: 700;
+  color: #fff;  /* 白色字体 */
+  text-shadow: 
+    -1px -1px 0 #000,  
+     1px -1px 0 #000,  
+    -1px  1px 0 #000,  
+     1px  1px 0 #000;  /* 黑色细边 */
 }
 
-/* ----------------------------
-   Timeline main axis (vertical)
-   ---------------------------- */
+/* 时间轴主线 */
 .timeline {
-  position: relative;
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 20px 0 40px 0;
+    position: relative;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 0;
 }
-
-/* decorative vertical axis: gradient + subtle glow */
 .timeline::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  width: 6px;
-  transform: translateX(-50%);
-  background: linear-gradient(180deg, rgba(106,130,251,0.95), rgba(252,95,123,0.95));
-  box-shadow: 0 0 18px rgba(106,130,251,0.15), inset 0 0 10px rgba(252,95,123,0.06);
-  border-radius: 6px;
-  z-index: 1;
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 6px;
+    background: repeating-linear-gradient(
+        180deg,
+        #6a82fb,
+        #6a82fb 12px,
+        #fc5c7d 12px,
+        #fc5c7d 24px
+    );
+    transform: translateX(-50%);
+    border-radius: 3px;
 }
 
-/* ----------------------------
-   Timeline items
-   ---------------------------- */
+/* 时间轴项 */
 .timeline-item {
-  position: relative;
-  width: 50%;
-  box-sizing: border-box;
-  padding: 6px 20px;
-  margin: 8px 0;              /* overall vertical spacing (kept small) */
-  z-index: 5;
-  clear: both;
+    position: relative;
+    width: 50%;
+    padding: 10px 20px;
+    box-sizing: border-box;
 }
+.timeline-item.left { left: 0; text-align: right; }
+.timeline-item.right { left: 50%; text-align: left; margin-top: -60px; }
 
-/* Left / Right placement */
-.timeline-item.left {
-  left: 0;
-  text-align: right;
-  float: left;
-}
-.timeline-item.right {
-  left: 50%;
-  text-align: left;
-  float: left;
-  /* push right items down to land around left item's mid-lower area */
-  margin-top: -40px;           /* <-- controls how far down the right item sits */
-}
-
-/* small connector from card to central axis */
-.timeline-item.left::after,
-.timeline-item.right::after {
-  content: "";
-  position: absolute;
-  top: 46px;                  /* vertical position of the horizontal connector */
-  height: 3px;
-  width: 40px;                /* length of connector */
-  background: linear-gradient(90deg, rgba(106,130,251,0.95), rgba(252,95,123,0.95));
-  border-radius: 3px;
-  z-index: 3;
-}
-.timeline-item.left::after {
-  right: -40px;               /* extends rightward from left card toward axis */
-}
-.timeline-item.right::after {
-  left: -40px;                /* extends leftward from right card toward axis */
-}
-
-/* Dot at the axis level (small circle where connector meets axis) */
-.timeline-item::before {
-  content: "";
-  position: absolute;
-  top: 40px;
-  left: calc(50% - 8px);      /* centered on axis */
-  width: 16px;
-  height: 16px;
-  background: #fff;
-  border: 3px solid rgba(106,130,251,0.95);
-  border-radius: 50%;
-  box-shadow: 0 0 8px rgba(106,130,251,0.18);
-  z-index: 4;
-}
-
-/* ----------------------------
-   Icon (small girl) — moved above card, not fixed on axis
-   ---------------------------- */
+/* 节点图标（卡通小女孩） */
 .timeline-icon {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 8px;
-  z-index: 6;
+    position: relative;  /* 改为相对内容定位，不会挡住图片 */
+    display: flex;
+    justify-content: center;
+    margin-bottom: 10px;
 }
 .timeline-icon img {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid rgba(255,255,255,0.9);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.28);
-  background: #fff;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
 }
 
-/* ----------------------------
-   Content card
-   ---------------------------- */
+/* 内容卡片 */
 .timeline-content {
-  background: rgba(255,255,255,0.96);
-  padding: 12px 16px;
-  border-radius: 12px;
-  display: inline-block;
-  max-width: 460px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
-  position: relative;
-  z-index: 6;
+    background: rgba(255,255,255,0.95);
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.1);
+    display: inline-block;
+    max-width: 480px;
 }
+.timeline-item.left .timeline-content { margin-right: 40px; }
+.timeline-item.right .timeline-content { margin-left: 40px; }
 
-/* spacing from axis */
-.timeline-item.left .timeline-content { margin-right: 44px; }  /* gap between left card and axis */
-.timeline-item.right .timeline-content { margin-left: 44px; }  /* gap between right card and axis */
-
-/* images inside each story */
+/* 图片稍大 */
 .story-images {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 10px;
 }
 .story-images a {
-  width: 140px;
-  height: 140px;
-  display: inline-block;
-  overflow: hidden;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-  transition: transform 0.18s ease;
+    width: 160px;
+    height: 160px;
+    display: inline-block;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: transform 0.2s ease;
 }
-.story-images a:hover { transform: scale(1.04); }
+.story-images a:hover { transform: scale(1.05); }
 .story-images img { width: 100%; height: 100%; object-fit: cover; }
 
-/* text and meta */
-.story-card-content p { margin:0; font-size:15px; line-height:1.5; color:#222; }
+/* 文字内容 */
+.story-card-content p { margin:0; font-size:16px; line-height:1.6; color:#222; }
 .story-meta { display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:13px; color:#555; }
 .story-actions a, .story-actions button { font-size:12px; margin-left:6px; }
 
-/* clear floats */
-.timeline::after { content: ""; display: table; clear: both; }
-
-/* ----------------------------
-   Responsive: collapse to single column
-   ---------------------------- */
-@media (max-width: 880px) {
-  /* bring axis to left side */
-  .timeline::before { left: 28px; transform: none; width: 4px; }
-  .timeline-item { width: 100%; float: none; margin: 10px 0 18px 0; text-align: left; padding-left: 56px; }
-  .timeline-item.right { margin-top: 10px; } /* reset offset on mobile */
-  .timeline-item.left .timeline-content,
-  .timeline-item.right .timeline-content { margin: 0 12px 0 0; display: block; max-width: calc(100% - 80px); }
-  .timeline-item.left::after, .timeline-item.right::after { display: none; }
-  .timeline-item::before { left: 18px; top: 48px; }
-  .timeline-icon { margin-left: 0; justify-content: flex-start; }
+/* 响应式 */
+@media (max-width: 768px) {
+    .timeline-item, .timeline-item.right, .timeline-item.left {
+        width: 100%;
+        text-align: left;
+        padding: 0 20px;
+    }
+    .timeline-item.left .timeline-content,
+    .timeline-item.right .timeline-content {
+        margin: 0 0 20px 0;
+    }
+    .timeline-icon { justify-content: flex-start; }
 }
-
-/* small accessibility / focus improvements */
-.story-link:focus, .story-link:hover { outline: none; text-decoration: underline; }
 </style>
-
 {% endblock %}
