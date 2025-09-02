@@ -287,28 +287,34 @@ html, body {
 /* 操作按钮对齐右侧 */
 .story-actions { display:flex; gap:8px; align-items:center; }
 
-/* Timeline 列表页：让 .story-images 始终横向一行排布 */
+/* ==== 固定小图 160x160 并保持横向滚动（覆盖之前冲突的规则） ==== */
 .story-page .timeline .story-images {
-  display: flex;
-  flex-wrap: nowrap;     /* 不换行 */
+  display: flex !important;
+  flex-wrap: nowrap !important;      /* 不换行 */
   gap: 12px;
-  margin-top: 15px;
-  overflow-x: auto;      /* 超出时横向滚动 */
+  margin-bottom: 10px;
+  overflow-x: auto;                  /* 超出时出现横向滚动条 */
+  -webkit-overflow-scrolling: touch;  /* 平滑滚动（移动端） */
 }
 
-/* 覆盖 timeline 里图片被强制放大的问题 */
+/* 固定每个图片容器大小（和你原来一致） */
 .story-page .timeline .story-images a {
-  width: auto !important;   /* 不固定 160px */
-  height: auto !important;  /* 不固定 160px */
-  flex: 0 0 auto;           /* 避免被拉伸 */
+  flex: 0 0 160px !important;   /* 固定宽度，不被压缩/拉伸 */
+  width: 160px !important;
+  height: 160px !important;
+  display: inline-block;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: transform 0.2s ease;
 }
 
-/* 覆盖可能存在的 width:100% 等规则，保持你现有图片尺寸比例 */
+/* 图片填满容器并裁剪（保持原先视觉） */
 .story-page .timeline .story-images img {
-  width: auto !important;
-  height: auto !important;
-  max-height: 120px;        /* ✅ 控制统一高度 */
-  object-fit: contain;      /* 保持比例缩放，不裁剪 */
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block;
   border-radius: 8px;
 }
 
