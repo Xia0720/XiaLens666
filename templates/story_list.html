@@ -12,7 +12,8 @@
         {% for story in stories %}
         <div class="timeline-item {% if loop.index % 2 == 0 %}right{% else %}left{% endif %}">
             <div class="timeline-icon">
-                <span>📌</span>
+                <!-- 使用更好看的小图标 -->
+                <img src="{{ url_for('static', filename='images/timeline-dot.svg') }}" alt="dot">
             </div>
             <div class="timeline-content">
                 {% if story.images %}
@@ -50,12 +51,18 @@
 </div>
 
 <style>
+/* 页面背景 */
+.story-page {
+    background: url('{{ url_for('static', filename='images/story-bg.jpg') }}') center top / cover no-repeat, linear-gradient(135deg, #fdf6f0, #e3f2fd);
+    padding-bottom: 40px;
+}
+
 /* 时间轴主线 */
 .timeline {
     position: relative;
     max-width: 900px;
     margin: 0 auto;
-    padding: 20px 0;
+    padding: 40px 0;
 }
 .timeline::before {
     content: '';
@@ -63,10 +70,16 @@
     top: 0;
     bottom: 0;
     left: 50%;
-    width: 4px;
-    background: linear-gradient(to bottom, #6a82fb, #fc5c7d);
+    width: 6px;
+    background: repeating-linear-gradient(
+        180deg,
+        #6a82fb,
+        #6a82fb 12px,
+        #fc5c7d 12px,
+        #fc5c7d 24px
+    );
     transform: translateX(-50%);
-    border-radius: 2px;
+    border-radius: 3px;
 }
 
 /* 每条时间轴项 */
@@ -81,52 +94,53 @@
 .timeline-item.left { left: 0; text-align: right; }
 .timeline-item.right { left: 50%; text-align: left; }
 
-/* 时间轴节点图标 */
+/* 节点图标 */
 .timeline-icon {
     position: absolute;
     top: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background: #fff;
-    border: 3px solid #6a82fb;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
-    width: 24px;
-    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
     z-index: 10;
+}
+.timeline-icon img {
+    width: 100%;
+    height: 100%;
 }
 
 /* 内容卡片 */
 .timeline-content {
-    background: #f7f7f7;
-    padding: 12px 16px;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    background: rgba(255,255,255,0.95);
+    padding: 14px 18px;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
     display: inline-block;
-    max-width: 400px;
+    max-width: 420px;
 }
 
 /* 调整左右位置 */
 .timeline-item.left .timeline-content { margin-right: 40px; }
 .timeline-item.right .timeline-content { margin-left: 40px; }
 
-/* 图片缩小 */
+/* 图片稍大 */
 .story-images {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 8px;
     margin-bottom: 8px;
 }
 .story-images a {
     display: inline-block;
-    width: 60px;
-    height: 60px;
+    width: 90px;
+    height: 90px;
     overflow: hidden;
     border-radius: 6px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
     transition: transform 0.2s ease;
 }
 .story-images a:hover { transform: scale(1.05); }
