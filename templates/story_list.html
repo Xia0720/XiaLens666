@@ -5,7 +5,7 @@
 {% block content %}
 <div class="story-page">
 
-    <!-- 背景图（固定，覆盖全局渐变） -->
+    <!-- 背景图（虚化效果 + 覆盖全局渐变） -->
     <div class="story-bg"></div>
 
     <div class="story-header">
@@ -17,8 +17,8 @@
         {% for story in stories %}
         <div class="timeline-item {% if loop.index % 2 == 0 %}right{% else %}left{% endif %}">
             <div class="timeline-icon">
-                <!-- 卡通小女孩图标 -->
-                <img src="{{ url_for('static', filename='images/girl-icon.png') }}" alt="girl-icon">
+                <!-- 卡通小女孩图标（Cloudinary 路径） -->
+                <img src="https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756788123/girl-icon_x8bqyd.png" alt="girl-icon">
             </div>
             <div class="timeline-content">
                 {% if story.images %}
@@ -62,10 +62,9 @@
 .story-bg {
     position: fixed;
     inset: 0;
-    background-image: url('{{ background_url if background_url else url_for("static", filename="images/story-bg.jpg") }}');
-    background-size: cover !important;
-    background-position: center !important;
-    filter: brightness(0.85);
+    background: url("https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756400863/pexels-arts-1124960_itvbiw.jpg") no-repeat center center fixed;
+    background-size: cover;
+    filter: blur(10px) brightness(0.8); /* 模糊 + 降低亮度 */
     z-index: -1;
     pointer-events: none;
 }
@@ -111,16 +110,14 @@
 
 /* 节点图标（卡通小女孩） */
 .timeline-icon {
-    position: absolute;
-    top: 20px;
-    left: calc(50% - 20px); /* 位于主线旁边 */
-    width: 40px;
-    height: 40px;
-    z-index: 10;
+    position: relative;  /* 改为相对内容定位，不会挡住图片 */
+    display: flex;
+    justify-content: center;
+    margin-bottom: 10px;
 }
 .timeline-icon img {
-    width: 100%;
-    height: 100%;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
 }
 
@@ -144,8 +141,8 @@
     margin-bottom: 10px;
 }
 .story-images a {
-    width: 150px;
-    height: 150px;
+    width: 160px;
+    height: 160px;
     display: inline-block;
     overflow: hidden;
     border-radius: 8px;
@@ -171,7 +168,7 @@
     .timeline-item.right .timeline-content {
         margin: 0 0 20px 0;
     }
-    .timeline-icon { left: 20px; transform: none; }
+    .timeline-icon { justify-content: flex-start; }
 }
 </style>
 {% endblock %}
