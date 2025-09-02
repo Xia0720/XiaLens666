@@ -29,10 +29,10 @@ body.album-page::before {
 .album-bg-fallback {
   position: fixed;
   inset: 0;
-  background-image: url('{{ background_fallback_url if background_fallback_url else "https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756329504/pexels-therato-3374210_a8xin3.jpg" }}');
+  background-image: url('{{ background_fallback_url if background_fallback_url else "https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756395759/pexels-umkreisel-app-956981_khc6i2.jpg" }}');
   background-size: cover;
   background-position: center;
-  filter: blur(8px) brightness(0.82);
+  filter: blur(9px) brightness(0.82);
   z-index: -3;
   pointer-events: none;
 }
@@ -50,15 +50,15 @@ body.album-page::before {
 /* 页面标题 */
 .album-content h1 {
   text-align: center;
-  font-size: 1.8rem; 
-  color: #000; /* 主文字黑色 */
+  font-size: 1.8rem;
+  color: #000; /* 黑色主文字 */
   font-weight: 900; /* 超粗体 */
   text-shadow: 
-    -2px -2px 0 #fff,  
-     2px -2px 0 #fff,  
-    -2px  2px 0 #fff,  
-     2px  2px 0 #fff,  
-     0  2px 6px rgba(0,0,0,0.6); /* 外层阴影 */
+    -1px -1px 0 #fff,
+     1px -1px 0 #fff,
+    -1px  1px 0 #fff,
+     1px  1px 0 #fff,
+     0  2px 5px rgba(0,0,0,0.5); /* 柔和外阴影 */
   margin-bottom: 36px;
 }
 
