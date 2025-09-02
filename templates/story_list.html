@@ -70,7 +70,7 @@
     inset: 0;
     background: url("https://res.cloudinary.com/dpr0pl2tf/image/upload/f_auto,q_auto,w_1920/v1756400863/pexels-arts-1124960_itvbiw.jpg") no-repeat center center fixed;
     background-size: cover;
-    filter: blur(10px) brightness(0.85); /* 模糊 + 降低亮度 */
+    filter: blur(4px) brightness(0.85); /* 模糊 + 降低亮度 */
     z-index: -2;
     pointer-events: none;
 }
@@ -110,7 +110,7 @@
         #fbc2eb
     );
     background-size: 400% 400%; /* 拉长渐变，便于流动 */
-    animation: glow-move 6s ease infinite;
+    animation: glow-move-vertical 6s ease infinite;
     transform: translateX(-50%);
     border-radius: 5px;
 }
@@ -129,7 +129,7 @@
     box-sizing: border-box;
 }
 .timeline-item.left { left: 0; text-align: right; }
-.timeline-item.right { left: 50%; text-align: left; margin-top: -120px; }
+.timeline-item.right { left: 50%; text-align: left; margin-top: -140px; }
 
 /* 节点图标（卡通小女孩） */
 .timeline-icon {
@@ -196,7 +196,7 @@
         #fbc2eb
     );
     background-size: 400% 400%; /* 渐变流动范围 */
-    animation: glow-move 6s ease infinite;
+    animation: glow-move-horizontal 6s ease infinite;
     border-radius: 2px;
 }
 
@@ -230,11 +230,11 @@
 }
 
 .timeline-item.left::after {
-    right: -42px;            /* 在延伸线末端（竖线位置） */
+    right: -41px;            /* 在延伸线末端（竖线位置） */
 }
 
 .timeline-item.right::after {
-    left: -42px;
+    left: -41px;
 }
     
 /* 响应式 */
