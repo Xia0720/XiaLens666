@@ -1,8 +1,14 @@
 {% extends "base.html" %}
 {% block title %}Story Collection - XiaCapture{% endblock %}
 
+{% block body_class %}story-page{% endblock %}
+
 {% block content %}
 <div class="story-page">
+
+    <!-- 可更换背景图 -->
+    <div class="story-bg" style="background-image: url('{{ background_url if background_url else url_for('static', filename='images/story-bg.jpg') }}');"></div>
+
     <div class="story-header">
         <h1>📖 Xia's Story Collection</h1>
     </div>
@@ -12,8 +18,8 @@
         {% for story in stories %}
         <div class="timeline-item {% if loop.index % 2 == 0 %}right{% else %}left{% endif %}">
             <div class="timeline-icon">
-                <!-- 使用更好看的小图标 -->
-                <img src="{{ url_for('static', filename='images/timeline-dot.svg') }}" alt="dot">
+                <!-- 用圆形+emoji代替图片 -->
+                <span>🌟</span>
             </div>
             <div class="timeline-content">
                 {% if story.images %}
@@ -27,7 +33,7 @@
                 {% endif %}
                 <div class="story-card-content">
                     <a href="{{ url_for('story_detail', story_id=story.id) }}" class="story-link">
-                        <p>{{ story.text|truncate(80)|safe }}</p>
+                        <p>{{ story.text|truncate(120)|safe }}</p>
                     </a>
                     <div class="story-meta">
                         <span class="created-at">{{ story.created_at.strftime('%Y-%m-%d %H:%M') if story.created_at else '' }}</span>
@@ -48,19 +54,34 @@
     {% else %}
         <p style="text-align:center; padding:30px;">No stories yet.</p>
     {% endif %}
+
 </div>
 
 <style>
-/* 页面背景 */
+/* ===== 全局重写背景 ===== */
 .story-page {
-    background: url('{{ url_for('static', filename='images/story-bg.jpg') }}') center top / cover no-repeat, linear-gradient(135deg, #fdf6f0, #e3f2fd);
-    padding-bottom: 40px;
+    position: relative;
+    padding-bottom: 60px;
+    z-index: 0;
 }
+.story-bg {
+    position: fixed;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    filter: brightness(0.85);
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* 页面标题 */
+.story-header { max-width:1100px; margin:22px auto; display:flex; justify-content:center; align-items:center; }
+.story-header h1 { margin:0; font-size:26px; text-shadow: 0 2px 6px rgba(0,0,0,0.6); color:#000; }
 
 /* 时间轴主线 */
 .timeline {
     position: relative;
-    max-width: 900px;
+    max-width: 1000px;
     margin: 0 auto;
     padding: 40px 0;
 }
@@ -82,15 +103,13 @@
     border-radius: 3px;
 }
 
-/* 每条时间轴项 */
+/* 时间轴项 */
 .timeline-item {
     position: relative;
     width: 50%;
     padding: 10px 20px;
     box-sizing: border-box;
 }
-
-/* 左右交替 */
 .timeline-item.left { left: 0; text-align: right; }
 .timeline-item.right { left: 50%; text-align: left; }
 
@@ -100,30 +119,25 @@
     top: 20px;
     left: 50%;
     transform: translateX(-50%);
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 10;
+    font-size: 22px;
 }
-.timeline-icon img {
-    width: 100%;
-    height: 100%;
-}
+.timeline-icon span { display:block; }
 
 /* 内容卡片 */
 .timeline-content {
     background: rgba(255,255,255,0.95);
-    padding: 14px 18px;
-    border-radius: 10px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.1);
     display: inline-block;
-    max-width: 420px;
+    max-width: 480px;
 }
-
-/* 调整左右位置 */
 .timeline-item.left .timeline-content { margin-right: 40px; }
 .timeline-item.right .timeline-content { margin-left: 40px; }
 
@@ -131,49 +145,32 @@
 .story-images {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 8px;
+    gap: 12px;
+    margin-bottom: 10px;
 }
 .story-images a {
+    width: 120px;
+    height: 120px;
     display: inline-block;
-    width: 90px;
-    height: 90px;
     overflow: hidden;
-    border-radius: 6px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     transition: transform 0.2s ease;
 }
 .story-images a:hover { transform: scale(1.05); }
 .story-images img { width: 100%; height: 100%; object-fit: cover; }
 
 /* 文字内容 */
-.story-card-content p {
-    margin:0;
-    font-size: 15px;
-    line-height: 1.5;
-}
-
-/* 元信息 & 按钮 */
-.story-meta {
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    margin-top:6px;
-    font-size:13px;
-    color:#666;
-}
-.story-actions a, .story-actions button {
-    font-size:12px;
-    margin-left:6px;
-}
+.story-card-content p { margin:0; font-size:16px; line-height:1.6; color:#222; }
+.story-meta { display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:13px; color:#555; }
+.story-actions a, .story-actions button { font-size:12px; margin-left:6px; }
 
 /* 响应式 */
 @media (max-width: 768px) {
     .timeline-item, .timeline-item.right, .timeline-item.left {
         width: 100%;
         text-align: left;
-        padding-left: 40px;
-        padding-right: 40px;
+        padding: 0 20px;
     }
     .timeline-item.left .timeline-content,
     .timeline-item.right .timeline-content {
