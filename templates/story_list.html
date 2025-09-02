@@ -35,7 +35,7 @@
                         <p>{{ story.text|truncate(120)|safe }}</p>
                     </a>
                     <div class="story-meta">
-                        <span class="created-at">{{ story.created_at.strftime('%Y-%m-%d %H:%M') if story.created_at else '' }}</span>
+                        <span class="story-time" data-utc="{{ story.created_at.isoformat() }}Z"></span>
                         {% if logged_in %}
                         <div class="story-actions">
                             <a href="{{ url_for('edit_story', story_id=story.id) }}" class="edit-btn">Edit</a>
@@ -53,7 +53,24 @@
     {% else %}
         <p style="text-align:center; padding:30px;">No stories yet.</p>
     {% endif %}
+    
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    document.querySelectorAll(".story-time").forEach(el => {
+        const utcStr = el.dataset.utc;
+        if (!utcStr) return;
 
+         const localDate = new Date(utcStr);  // 转本地时间对象
+         el.textContent = localDate.toLocaleString([], {
+             year: 'numeric',
+             month: '2-digit',
+             day: '2-digit',
+             hour: '2-digit',
+             minute: '2-digit'
+         });
+      });
+   });
+  </script>
 </div>
 
 <style>
