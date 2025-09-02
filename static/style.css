@@ -245,10 +245,12 @@ html, body {
 /* 只给列表页的卡片用，不影响详情页 */
 .story-page .story-card .story-images {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;  /* ⬅ 改为横排 */
+    flex-wrap: nowrap;    /* 不换行 */
     gap: 12px;
     margin-top: 15px;
     max-width: 300px;
+    overflow-x: auto;     /* 如果超出宽度，出现横向滚动条 */
 }
 .story-page .story-card .story-images a {
   display: inline-block;
