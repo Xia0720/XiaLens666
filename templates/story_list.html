@@ -185,18 +185,34 @@
 .timeline-item.right::before {
     content: "";
     position: absolute;
-    top: 50%;                /* 垂直居中到卡片 */
-    width: 40px;             /* 延伸线长度 */
-    height: 2px;             /* 线条粗细 */
-    background: rgba(0,0,0,0.3); /* 线条颜色 */
+    top: 50%;                 /* 垂直居中到卡片 */
+    width: 40px;              /* 延伸线长度 */
+    height: 4px;              /* 稍微加粗 */
+    background: linear-gradient(
+        90deg,
+        #fbc2eb,
+        #a6c1ee,
+        #fddbbd,
+        #fbc2eb
+    );
+    background-size: 400% 400%; /* 渐变流动范围 */
+    animation: glow-move 6s ease infinite;
+    border-radius: 2px;
 }
 
 .timeline-item.left::before {
-    right: -40px;            /* 从卡片右侧延伸到中心线 */
+    right: -40px;             /* 从卡片右侧延伸到中心线 */
 }
 
 .timeline-item.right::before {
-    left: -40px;             /* 从卡片左侧延伸到中心线 */
+    left: -40px;              /* 从卡片左侧延伸到中心线 */
+}
+
+/* 保持和主线一样的流光动画 */
+@keyframes glow-move {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 /* ===== 圆点（延伸线末端的小节点） ===== */
