@@ -70,7 +70,7 @@
     inset: 0;
     background: url("https://res.cloudinary.com/dpr0pl2tf/image/upload/f_auto,q_auto,w_1920/v1756400863/pexels-arts-1124960_itvbiw.jpg") no-repeat center center fixed;
     background-size: cover;
-    filter: blur(8px) brightness(0.8); /* 模糊 + 降低亮度 */
+    filter: blur(6px) brightness(0.85); /* 模糊 + 降低亮度 */
     z-index: -2;
     pointer-events: none;
 }
@@ -101,16 +101,24 @@
     top: 0;
     bottom: 0;
     left: 50%;
-    width: 6px;
-    background: repeating-linear-gradient(
+    width: 10px; /* 加粗主线 */
+    background: linear-gradient(
         180deg,
-        #6a82fb,
-        #6a82fb 12px,
-        #fc5c7d 12px,
-        #fc5c7d 24px
+        #fbc2eb,
+        #a6c1ee,
+        #fddbbd,
+        #fbc2eb
     );
+    background-size: 400% 400%; /* 拉长渐变，便于流动 */
+    animation: glow-move 6s ease infinite;
     transform: translateX(-50%);
-    border-radius: 3px;
+    border-radius: 5px;
+}
+
+@keyframes glow-move {
+    0%   { background-position: 50% 0%; }
+    50%  { background-position: 50% 100%; }
+    100% { background-position: 50% 0%; }
 }
 
 /* 时间轴项 */
@@ -121,7 +129,7 @@
     box-sizing: border-box;
 }
 .timeline-item.left { left: 0; text-align: right; }
-.timeline-item.right { left: 50%; text-align: left; margin-top: -80px; }
+.timeline-item.right { left: 50%; text-align: left; margin-top: -120px; }
 
 /* 节点图标（卡通小女孩） */
 .timeline-icon {
