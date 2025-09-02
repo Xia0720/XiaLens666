@@ -29,7 +29,7 @@ body.album-page::before {
 .album-bg-fallback {
   position: fixed;
   inset: 0;
-  background-image: url('{{ background_fallback_url if background_fallback_url else "https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg" }}');
+  background-image: url('{{ background_fallback_url if background_fallback_url else "https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756329504/pexels-alex-andrews-271121-1983038_dbwaac.jpg" }}');
   background-size: cover;
   background-position: center;
   filter: blur(8px) brightness(0.82);
@@ -48,12 +48,16 @@ body.album-page::before {
 }
 
 /* 页面标题 */
+/* 页面标题 */
 .album-content h1 {
   text-align: center;
-  font-size: 2.2rem;
-  color: #fff;
-  text-shadow: 0 2px 6px rgba(0,0,0,0.6);
+  font-size: 1.8rem; /* 调小字体 */
+  background: linear-gradient(90deg, #ff7eb3, #6a82fb); /* 渐变色：粉红→蓝紫 */
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.6); /* 保留阴影 */
   margin-bottom: 36px;
+  font-weight: bold;
 }
 
 /* ---------- 横向滚动行 ---------- */
@@ -76,10 +80,10 @@ body.album-page::before {
 }
 .album-row::-webkit-scrollbar-thumb {
   border-radius: 6px;
-  background: linear-gradient(90deg, #ff9a9e, #fad0c4, #a1c4fd);
+  background: linear-gradient(90deg, #434343, #000000, #ffd700);
 }
 .album-row::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(90deg, #a1c4fd, #ff9a9e, #fad0c4);
+  background: linear-gradient(90deg, #ffd700, #000000, #434343);
 }
 
 /* ---------- 单张图片 ---------- */
@@ -87,7 +91,7 @@ body.album-page::before {
   flex: 0 0 auto;
   width: 260px;   /* 再调大 */
   height: 200px;  /* 再调大 */
-  border-radius: 14px;
+  border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 6px 18px rgba(0,0,0,0.15);
   position: relative;
