@@ -287,6 +287,29 @@ html, body {
 /* 操作按钮对齐右侧 */
 .story-actions { display:flex; gap:8px; align-items:center; }
 
+/* Timeline 列表页：让 .story-images 始终横向一行排布 */
+.story-page .timeline .story-images {
+  display: flex;
+  flex-wrap: nowrap;     /* 不换行 */
+  gap: 12px;
+  margin-top: 15px;
+  overflow-x: auto;      /* 超出时横向滚动 */
+}
+
+/* 子项不要被压缩或拉伸 */
+.story-page .timeline .story-images a {
+  flex: 0 0 auto;
+}
+
+/* 覆盖可能存在的 width:100% 等规则，保持你现有图片尺寸比例 */
+.story-page .timeline .story-images img {
+  width: auto !important;    /* 防止被拉到一行一个 */
+  max-width: none;           /* 取消任何 max-width 限制 */
+  height: auto;
+  flex: 0 0 auto;            /* 不收缩 */
+  display: block;
+}
+
 /* Upload / form container 共用样式 */
 .container.upload-container {
     max-width: 820px;
