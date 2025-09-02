@@ -5,9 +5,6 @@
 {% block content %}
 <div class="story-page">
 
-    <!-- 背景图（虚化效果 + 覆盖全局渐变） -->
-    <div class="story-bg"></div>
-
     <div class="story-header">
         <h1>📖 Xia's Story Collection</h1>
     </div>
@@ -17,7 +14,6 @@
         {% for story in stories %}
         <div class="timeline-item {% if loop.index % 2 == 0 %}right{% else %}left{% endif %}">
             <div class="timeline-icon">
-                <!-- 卡通小女孩图标（Cloudinary 路径） -->
                 <img src="https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756788123/girl-icon_x8bqyd.png" alt="girl-icon">
             </div>
             <div class="timeline-content">
@@ -57,14 +53,14 @@
 </div>
 
 <style>
-/* ===== 背景 ===== */
-.story-page { position: relative; padding-bottom: 60px; z-index: 0; }
-.story-bg {
+/* ===== 背景（不遮挡导航栏） ===== */
+body.story-page::before {
+    content: "";
     position: fixed;
     inset: 0;
     background: url("https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756400863/pexels-arts-1124960_itvbiw.jpg") no-repeat center center fixed;
     background-size: cover;
-    filter: blur(8px) brightness(0.8); /* 模糊 + 降低亮度 */
+    filter: blur(8px) brightness(0.8);
     z-index: -2;
     pointer-events: none;
 }
@@ -73,13 +69,13 @@
 .story-header { max-width:1100px; margin:22px auto; display:flex; justify-content:center; align-items:center; }
 .story-header h1 {
   margin: 0;
-  font-size: 26px;
-  color: #fff;  /* 白色字体 */
+  font-size: 28px;
+  color: #fff;
   text-shadow: 
     -1px -1px 0 #000,  
      1px -1px 0 #000,  
     -1px  1px 0 #000,  
-     1px  1px 0 #000;  /* 黑色细边 */
+     1px  1px 0 #000;
 }
 
 /* 时间轴主线 */
@@ -87,7 +83,7 @@
     position: relative;
     max-width: 1000px;
     margin: 0 auto;
-    padding: 40px 0;
+    padding: 20px 0;
 }
 .timeline::before {
     content: '';
@@ -95,16 +91,10 @@
     top: 0;
     bottom: 0;
     left: 50%;
-    width: 6px;
-    background: repeating-linear-gradient(
-        180deg,
-        #6a82fb,
-        #6a82fb 12px,
-        #fc5c7d 12px,
-        #fc5c7d 24px
-    );
+    width: 4px;
+    background: linear-gradient(180deg, #6a82fb, #fc5c7d, #6a82fb);
     transform: translateX(-50%);
-    border-radius: 3px;
+    border-radius: 2px;
 }
 
 /* 时间轴项 */
@@ -112,58 +102,74 @@
     position: relative;
     width: 50%;
     padding: 10px 20px;
+    margin: 20px 0; /* 缩短上下间距 */
     box-sizing: border-box;
 }
 .timeline-item.left { left: 0; text-align: right; }
 .timeline-item.right { left: 50%; text-align: left; }
 
-/* 节点图标（卡通小女孩） */
+/* 中心轴延伸小线条 */
+.timeline-item.left::before,
+.timeline-item.right::before {
+    content: "";
+    position: absolute;
+    top: 28px;
+    width: 24px;
+    height: 2px;
+    background: #6a82fb;
+}
+.timeline-item.left::before { right: -24px; }
+.timeline-item.right::before { left: -24px; }
+
+/* 节点图标 */
 .timeline-icon {
-    position: relative;  /* 改为相对内容定位，不会挡住图片 */
     display: flex;
     justify-content: center;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 .timeline-icon img {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 6px rgba(0,0,0,0.3);
+    background: #fff;
 }
 
 /* 内容卡片 */
 .timeline-content {
     background: rgba(255,255,255,0.95);
-    padding: 16px 20px;
+    padding: 14px 18px;
     border-radius: 12px;
-    box-shadow: 0 4px 18px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.1);
     display: inline-block;
-    max-width: 480px;
+    max-width: 440px;
 }
-.timeline-item.left .timeline-content { margin-right: 40px; }
-.timeline-item.right .timeline-content { margin-left: 40px; }
+.timeline-item.left .timeline-content { margin-right: 30px; }
+.timeline-item.right .timeline-content { margin-left: 30px; }
 
 /* 图片稍大 */
 .story-images {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 10px;
+    gap: 10px;
+    margin-bottom: 8px;
 }
 .story-images a {
-    width: 160px;
-    height: 160px;
+    width: 150px;
+    height: 150px;
     display: inline-block;
     overflow: hidden;
     border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     transition: transform 0.2s ease;
 }
 .story-images a:hover { transform: scale(1.05); }
 .story-images img { width: 100%; height: 100%; object-fit: cover; }
 
 /* 文字内容 */
-.story-card-content p { margin:0; font-size:16px; line-height:1.6; color:#222; }
-.story-meta { display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:13px; color:#555; }
+.story-card-content p { margin:0; font-size:15px; line-height:1.5; color:#222; }
+.story-meta { display:flex; justify-content:space-between; align-items:center; margin-top:6px; font-size:12px; color:#555; }
 .story-actions a, .story-actions button { font-size:12px; margin-left:6px; }
 
 /* 响应式 */
@@ -171,13 +177,17 @@
     .timeline-item, .timeline-item.right, .timeline-item.left {
         width: 100%;
         text-align: left;
-        padding: 0 20px;
+        padding: 0 16px;
     }
     .timeline-item.left .timeline-content,
     .timeline-item.right .timeline-content {
-        margin: 0 0 20px 0;
+        margin: 0 0 16px 0;
     }
-    .timeline-icon { justify-content: flex-start; }
+    .timeline::before { left: 20px; }
+    .timeline-item.left::before, .timeline-item.right::before {
+        display: none;
+    }
+    .timeline-icon { justify-content: flex-start; margin-left: 4px; }
 }
 </style>
 {% endblock %}
