@@ -185,16 +185,19 @@ document.getElementById('setCoverBtn')?.addEventListener('click', () => {
   const publicId = selected.value;
   const albumName = "{{ album_name }}";
 
-  fetch(`/set_cover/${albumName}/${publicId}`, {
+  fetch(`/set_cover/${encodeURIComponent(albumName)}/${encodeURIComponent(publicId)}`, {
     method: "POST"
-  }).then(res => {
-    if (res.ok) {
-      alert("Cover set successfully!");
-      location.reload();
-    } else {
-      alert("Failed to set cover.");
-    }
-  });
+  }).then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert("Cover set successfully!");
+        location.reload();
+      } else {
+        alert("Failed to set cover: " + (data.error || "Unknown error"));
+      }
+    }).catch(err => {
+      alert("Failed to set cover: " + err);
+    });
 });
 </script>
 {% endblock %}
