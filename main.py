@@ -123,6 +123,13 @@ if not os.path.exists('instance'):
 with app.app_context():
     db.create_all()
 
+class AlbumCover(db.Model):
+    __tablename__ = "album_covers"
+
+    id = db.Column(db.Integer, primary_key=True)
+    album_name = db.Column(db.String(255), nullable=False, unique=True)
+    cover_public_id = db.Column(db.String(255), nullable=False)
+
 # --------------------------
 # 首页和静态页面
 # --------------------------
@@ -225,6 +232,22 @@ def view_album(album_name):
                                logged_in=logged_in)
     except Exception as e:
         return f"Error loading album: {str(e)}"
+
+@app.route("/set_cover/<album_name>/<public_id>", methods=["POST"])
+def set_cover(album_name, public_id):
+    if not session.get("logged_in"):
+        return "Unauthorized", 403
+
+    # 查询是否已有封面
+    cover = AlbumCover.query.filter_by(album_name=album_name).first()
+    if cover:
+        cover.cover_public_id = public_id
+    else:
+        cover = AlbumCover(album_name=album_name, cover_public_id=public_id)
+        db.session.add(cover)
+
+    db.session.commit()
+    return redirect(url_for("view_album", album_name=album_name))
 
 # --------------------------
 # 删除图片（仅登录）
