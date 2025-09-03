@@ -135,15 +135,16 @@ body.album-page::before {
   <h1>{{ album_name }} Album</h1>
 
   {% if logged_in %}
-  <!-- 删除和设为封面表单 -->
-  <form id="albumForm" method="POST">
+  <!-- 删除图片表单 -->
+  <form id="deleteForm" method="POST" action="{{ url_for('delete_images') }}"
+        onsubmit="return confirm('Are you sure to delete selected images?');">
   {% endif %}
 
   {% set row_size = 10 %}
   {% for i in range(0, images|length, row_size) %}
     <div class="album-row">
       {% for img in images[i:i+row_size] %}
-      <div class="album-item">
+      <div class="album-item" data-public-id="{{ img.public_id }}">
         {% if logged_in %}
           <input type="checkbox" name="public_ids" value="{{ img.public_id }}">
         {% endif %}
@@ -158,14 +159,8 @@ body.album-page::before {
   {% if logged_in %}
     <input type="hidden" name="album_name" value="{{ album_name }}">
     <div class="action-buttons">
-      <button type="submit" formaction="{{ url_for('delete_images') }}" class="delete-btn"
-              onclick="return confirm('Are you sure to delete selected images?');">
-        Delete Selected Images
-      </button>
-      <button type="submit" formaction="{{ url_for('set_cover') }}" class="cover-btn"
-              onclick="return confirm('Set selected image as cover?');">
-        Set as Cover
-      </button>
+      <button type="submit" class="delete-btn">Delete Selected Images</button>
+      <button type="button" id="setCoverBtn" class="cover-btn">Set as Cover</button>
     </div>
   </form>
   {% endif %}
@@ -179,5 +174,28 @@ const lightbox = GLightbox({
   keyboardNavigation: true,
   closeOnOutsideClick: true
 });
+
+// === 设置封面逻辑 ===
+document.getElementById('setCoverBtn')?.addEventListener('click', () => {
+  const selected = document.querySelector('input[name="public_ids"]:checked');
+  if (!selected) {
+    alert("Please select one image to set as cover.");
+    return;
+  }
+  const publicId = selected.value;
+  const albumName = "{{ album_name }}";
+
+  fetch(`/set_cover/${albumName}/${publicId}`, {
+    method: "POST"
+  }).then(res => {
+    if (res.ok) {
+      alert("Cover set successfully!");
+      location.reload();
+    } else {
+      alert("Failed to set cover.");
+    }
+  });
+});
 </script>
 {% endblock %}
+
