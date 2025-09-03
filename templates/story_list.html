@@ -167,20 +167,21 @@ document.addEventListener("DOMContentLoaded", () => {
     padding: 16px 20px;
     border-radius: 12px;
     box-shadow: 0 4px 18px rgba(0,0,0,0.1);
-    display: inline-block;
+    display: block;           /* 改成 block，而不是 inline-block */
     max-width: 480px;
+    margin-left: 0;           /* 靠左对齐 */
 }
+
 .timeline-item.left .timeline-content { margin-right: 40px; }
 .timeline-item.right .timeline-content { margin-left: 40px; }
 
 /* 图片稍大 */
 .timeline-content .story-images {
-  display: flex;
-  flex-wrap: nowrap;    /* 横排 */
-  gap: 12px;
-  margin-bottom: 10px;
-  width: max-content;   /* 关键！宽度只等于子元素的宽度 */
-  max-width: 100%;      /* 防止溢出 */
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 10px;
+    justify-content: flex-start;
 }
     
 .story-images a {
