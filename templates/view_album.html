@@ -7,12 +7,9 @@
 <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
 
 <style>
+/* === 保留你原来的样式 === */
 html, body { height: 100%; margin: 0; padding: 0; }
-
-/* 移除渐变背景，完全交给虚化背景 */
 html, body { background: none !important; }
-
-/* ========== 全屏虚化背景 ========== */
 body.album-page::before {
   content: "";
   position: fixed;
@@ -25,7 +22,6 @@ body.album-page::before {
   z-index: -2;
   pointer-events: none;
 }
-
 .album-bg-fallback {
   position: fixed;
   inset: 0;
@@ -36,33 +32,25 @@ body.album-page::before {
   z-index: -3;
   pointer-events: none;
 }
-
-/* ---------- 内容容器 ---------- */
 .album-content {
   position: relative;
   z-index: 5;
   width: 100%;
   padding: 40px 20px;
-  box-sizing: border-box;
-  min-height: 100vh; /* 避免高度不够时露出白底 */
+  min-height: 100vh;
 }
-
-/* 页面标题 */
 .album-content h1 {
   text-align: center;
   font-size: 1.8rem;
-  color: #000; /* 黑色主文字 */
-  font-weight: 900; /* 超粗体 */
-  text-shadow: 
-    -1px -1px 0 #fff,
-     1px -1px 0 #fff,
-    -1px  1px 0 #fff,
-     1px  1px 0 #fff,
-     0  2px 5px rgba(0,0,0,0.5); /* 柔和外阴影 */
+  color: #000;
+  font-weight: 900;
+  text-shadow: -1px -1px 0 #fff,
+               1px -1px 0 #fff,
+              -1px  1px 0 #fff,
+               1px  1px 0 #fff,
+               0  2px 5px rgba(0,0,0,0.5);
   margin-bottom: 36px;
 }
-
-/* ---------- 横向滚动行 ---------- */
 .album-row {
   display: flex;
   gap: 20px;
@@ -73,8 +61,6 @@ body.album-page::before {
   margin-bottom: 36px;
   justify-content: start;
 }
-
-/* 滚动条渐变美化 */
 .album-row::-webkit-scrollbar { height: 12px; }
 .album-row::-webkit-scrollbar-track {
   background: rgba(255,255,255,0.05);
@@ -87,12 +73,10 @@ body.album-page::before {
 .album-row::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(90deg, #ffd700, #000000, #434343);
 }
-
-/* ---------- 单张图片 ---------- */
 .album-item {
   flex: 0 0 auto;
-  width: 260px;   /* 再调大 */
-  height: 200px;  /* 再调大 */
+  width: 260px;
+  height: 200px;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 6px 18px rgba(0,0,0,0.15);
@@ -101,20 +85,17 @@ body.album-page::before {
   background: rgba(255,255,255,0.05);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
-
 .album-item:hover {
   transform: scale(1.06);
   box-shadow: 0 12px 28px rgba(0,0,0,0.2);
 }
-
 .album-item img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
-
-/* 管理员 checkbox */
+/* checkbox */
 .album-item input[type="checkbox"] {
   position: absolute;
   top: 12px;
@@ -124,11 +105,28 @@ body.album-page::before {
   height: 20px;
   accent-color: #007bff;
 }
-
-/* 响应式调整 */
-@media (max-width: 1024px) { .album-item { width: 260px; height: 200px; } }
-@media (max-width: 768px)  { .album-item { width: 200px; height: 150px; } }
-@media (max-width: 480px)  { .album-item { width: 140px; height: 110px; } }
+/* 按钮区域 */
+.action-buttons {
+  text-align: right;
+  margin: 20px 18px 40px 18px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.action-buttons button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
+.delete-btn {
+  background: #d9534f;
+  color: #fff;
+}
+.cover-btn {
+  background: #007bff;
+  color: #fff;
+}
 </style>
 
 <div class="album-bg-fallback" aria-hidden="true"></div>
@@ -137,7 +135,8 @@ body.album-page::before {
   <h1>{{ album_name }} Album</h1>
 
   {% if logged_in %}
-  <form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
+  <!-- 删除和设为封面表单 -->
+  <form id="albumForm" method="POST">
   {% endif %}
 
   {% set row_size = 10 %}
@@ -158,11 +157,17 @@ body.album-page::before {
 
   {% if logged_in %}
     <input type="hidden" name="album_name" value="{{ album_name }}">
-    <div style="text-align: right; margin: 20px 18px 40px 18px;">
-      <button type="submit" style="padding: 8px 14px; border-radius:6px; background:#d9534f; color:#fff; border:none;">
+    <div class="action-buttons">
+      <button type="submit" formaction="{{ url_for('delete_images') }}" class="delete-btn"
+              onclick="return confirm('Are you sure to delete selected images?');">
         Delete Selected Images
       </button>
+      <button type="submit" formaction="{{ url_for('set_cover') }}" class="cover-btn"
+              onclick="return confirm('Set selected image as cover?');">
+        Set as Cover
+      </button>
     </div>
+  </form>
   {% endif %}
 </div>
 
