@@ -202,6 +202,15 @@ html, body {
 .about-socials a:hover {
   color: #000;
 }
+.about-motto {
+    font-family: 'Dancing Script', cursive; /* 手写感字体，来自 Google Fonts */
+    font-size: 22px;
+    text-align: center;
+    margin-top: 30px;
+    color: #444;
+    font-style: italic;
+    letter-spacing: 1px;
+}
 
 /* 移动端适配 */
 @media (max-width: 768px) {
