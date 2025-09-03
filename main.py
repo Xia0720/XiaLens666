@@ -233,21 +233,25 @@ def view_album(album_name):
     except Exception as e:
         return f"Error loading album: {str(e)}"
 
-@app.route("/set_cover/<album_name>/<public_id>", methods=["POST"])
+@app.route("/set_cover/<album_name>/<path:public_id>", methods=["POST"])
 def set_cover(album_name, public_id):
     if not session.get("logged_in"):
-        return "Unauthorized", 403
+        return jsonify(success=False, error="Unauthorized"), 403
 
-    # 查询是否已有封面
-    cover = AlbumCover.query.filter_by(album_name=album_name).first()
-    if cover:
-        cover.cover_public_id = public_id
-    else:
-        cover = AlbumCover(album_name=album_name, cover_public_id=public_id)
-        db.session.add(cover)
+    try:
+        # 查找该相册是否已有封面
+        cover = AlbumCover.query.filter_by(album_name=album_name).first()
+        if cover:
+            cover.cover_public_id = public_id
+        else:
+            cover = AlbumCover(album_name=album_name, cover_public_id=public_id)
+            db.session.add(cover)
 
-    db.session.commit()
-    return redirect(url_for("view_album", album_name=album_name))
+        db.session.commit()
+        return jsonify(success=True)
+    except Exception as e:
+        db.session.rollback()
+        return jsonify(success=False, error=str(e)), 500
 
 # --------------------------
 # 删除图片（仅登录）
