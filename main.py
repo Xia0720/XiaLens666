@@ -12,6 +12,7 @@ from PIL import Image, ExifTags
 import io
 import time
 from cloudinary.utils import api_sign_request
+from sqlalchemy.pool import NullPool
 
 
 app = Flask(__name__)
@@ -38,13 +39,14 @@ if database_url:
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///stories.db"
 
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# 使用 NullPool 避免 Supabase max clients 问题
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    "pool_size": 2,
-    "max_overflow": 0,
-    "pool_timeout": 30,
-    "pool_recycle": 1800,
-    "pool_pre_ping": True
+    "poolclass": NullPool
 }
+
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
