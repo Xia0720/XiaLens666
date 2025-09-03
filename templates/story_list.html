@@ -174,12 +174,13 @@ document.addEventListener("DOMContentLoaded", () => {
 .timeline-item.right .timeline-content { margin-left: 40px; }
 
 /* 图片稍大 */
-.story-images {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 10px;
-    justify-content: flex-start; /* 永远左对齐 */
+.timeline-content .story-images {
+  display: flex;
+  flex-wrap: nowrap;    /* 横排 */
+  gap: 12px;
+  margin-bottom: 10px;
+  width: max-content;   /* 关键！宽度只等于子元素的宽度 */
+  max-width: 100%;      /* 防止溢出 */
 }
     
 .story-images a {
