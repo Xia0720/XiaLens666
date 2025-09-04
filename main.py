@@ -104,43 +104,45 @@ def sync_all_to_db():
     created_covers = 0
     created_photos = 0
 
-    for name in sorted(album_names):
-        # 1️⃣ Album
-        album = Album.query.filter_by(name=name).first()
-        if not album:
-            album = Album(name=name)
-            db.session.add(album)
-            db.session.flush()
-            created_albums += 1
+for name in sorted(album_names):
+    # 1️⃣ Album
+    album = Album.query.filter_by(name=name).first()
+    if not album:
+        album = Album(name=name)
+        db.session.add(album)
+        db.session.flush()
+        created_albums += 1
 
-        # 2️⃣ AlbumCover
-        try:
-            cover_entry = AlbumCover.query.filter_by(album_id=album.id).first()
-            if not cover_entry:
-                prefix = f"{main}/{name}" if main else name
-                r = cloudinary.api.resources(type="upload", prefix=prefix, max_results=1)
-                if r.get('resources'):
-                    pid = r['resources'][0]['public_id']
-                    cover_entry = AlbumCover(album=album, cover_public_id=pid)
-                    db.session.add(cover_entry)
-                    created_covers += 1
-        except Exception:
-            pass
+    # 2️⃣ AlbumCover
+    try:
+        prefix = f"{main}/{name}" if main else name
+        print("Fetching cover for album:", name, "prefix:", prefix)  # ✅ 打印
+        r = cloudinary.api.resources(type="upload", prefix=prefix, max_results=1)
+        print("Cover API result:", r)  # ✅ 打印
+        if r.get('resources'):
+            pid = r['resources'][0]['public_id']
+            cover_entry = AlbumCover(album=album, cover_public_id=pid)
+            db.session.add(cover_entry)
+            created_covers += 1
+    except Exception as e:
+        print("Cover fetch error:", e)
 
-        # 3️⃣ Photo
-        try:
-            prefix = f"{main}/{name}" if main else name
-            r = cloudinary.api.resources(type="upload", prefix=prefix, max_results=500)
-            for res in r.get('resources', []):
-                url = res.get('secure_url')
-                if url:
-                    existing = Photo.query.filter_by(album_id=album.id, url=url).first()
-                    if not existing:
-                        p = Photo(album=album, url=url)
-                        db.session.add(p)
-                        created_photos += 1
-        except Exception:
-            pass
+    # 3️⃣ Photo
+    try:
+        prefix = f"{main}/{name}" if main else name
+        print("Fetching photos for album:", name, "prefix:", prefix)  # ✅ 打印
+        r = cloudinary.api.resources(type="upload", prefix=prefix, max_results=500)
+        print("Photos API result count:", len(r.get('resources', [])))  # ✅ 打印
+        for res in r.get('resources', []):
+            url = res.get('secure_url')
+            if url:
+                existing = Photo.query.filter_by(album_id=album.id, url=url).first()
+                if not existing:
+                    p = Photo(album=album, url=url)
+                    db.session.add(p)
+                    created_photos += 1
+    except Exception as e:
+        print("Photos fetch error:", e)
 
     db.session.commit()
     return {
