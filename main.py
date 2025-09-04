@@ -127,7 +127,7 @@ def sync_all_to_db():
             r = cloudinary.api.resources(type="upload", prefix=prefix, max_results=1)
             if r.get('resources'):
                 pid = r['resources'][0]['public_id']
-                cover_entry = AlbumCover(album_id=album.id, cover_public_id=pid)
+                cover_entry = AlbumCover(album=album, cover_public_id=pid)
                 db.session.add(cover_entry)
                 created_covers += 1
     except Exception:
