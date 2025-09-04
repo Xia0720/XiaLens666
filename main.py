@@ -142,94 +142,38 @@ def about():
 # --------------------------
 # 相册列表
 # --------------------------
-@app.route("/album")
+@app.route("/albums")
 def albums():
-    try:
-        albums = []
-        main = (MAIN_ALBUM_FOLDER or "").strip('/')
-
-        if main:
-            # 列出主文件夹下的资源，然后从 public_id 中提取第二级目录名作为子相册名
-            resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
-            album_names_set = set()
-            for res in resources.get('resources', []):
-                parts = res.get('public_id', '').split('/')
-                # public_id 形如 "albums/<album_name>/xxx.jpg"
-                if len(parts) >= 2:
-                    album_names_set.add(parts[1])
-
-            # 为每个子相册取一张封面（取第一个资源）
-            for album_name in sorted(album_names_set):
-                r = cloudinary.api.resources(type="upload", prefix=f"{main}/{album_name}", max_results=1)
-                cover_url = r.get('resources')[0].get('secure_url') if r.get('resources') else ""
-                albums.append({'name': album_name, 'cover': cover_url})
+    albums = Album.query.all()
+    album_data = []
+    for album in albums:
+        cover_entry = AlbumCover.query.filter_by(album_id=album.id).first()
+        if cover_entry:
+            cover_url, _ = cloudinary.utils.cloudinary_url(cover_entry.cover_public_id)
         else:
-            # 兼容老逻辑：列出根目录下的文件夹（不包含 private）
-            folders = cloudinary.api.root_folders()
-            for folder in folders.get('folders', []):
-                folder_name = folder.get('name')
-                if folder_name == "private":
-                    continue
-                resources = cloudinary.api.resources(type="upload", prefix=folder_name, max_results=1)
-                cover_url = resources.get('resources')[0].get('secure_url') if resources.get('resources') else ""
-                albums.append({'name': folder_name, 'cover': cover_url})
+            cover_url = None
+        album.cover = cover_url  # ✅ 动态添加 cover 字段
+        album_data.append(album)
 
-        return render_template("album.html", albums=albums)
-    except Exception as e:
-        return f"Error fetching albums: {str(e)}"
+    return render_template("album.html", albums=album_data)
 
 # --------------------------
 # Album 内容页
 # --------------------------
-@app.route("/album/<album_name>", methods=["GET", "POST"])
+@app.route("/album/<album_name>")
 def view_album(album_name):
-    try:
-        # 从数据库找到对应的 Album
-        album = Album.query.filter_by(name=album_name).first_or_404()
+    album = Album.query.filter_by(name=album_name).first()
+    if not album:
+        return "Album not found", 404
 
-        main = (MAIN_ALBUM_FOLDER or "").strip('/')
-        prefix = f"{main}/{album_name}" if main else album_name
+    images = cloudinary.api.resources(
+        type="upload",
+        prefix=f"{MAIN_ALBUM_FOLDER}/{album_name}",
+        max_results=500
+    )["resources"]
 
-        resources = cloudinary.api.resources(
-            type="upload",
-            prefix=prefix,
-            max_results=500,
-            context=True,
-            direction="asc"
-        )
-        res_list = resources.get("resources", [])
+    return render_template("view_album.html", album=album, album_name=album.name, images=images)
 
-        def parse_iso(s):
-            if not s: 
-                return None
-            try:
-                return datetime.fromisoformat(s.replace('Z', '+00:00'))
-            except Exception:
-                return None
-
-        def sort_key(r):
-            ctx = (r.get('context') or {}).get('custom') or {}
-            t = parse_iso(ctx.get('taken_at'))
-            if t: 
-                return t
-            return parse_iso(r.get('created_at')) or datetime.now(timezone.utc)
-
-        res_list.sort(key=sort_key)
-
-        images = [
-            {"public_id": r["public_id"], "secure_url": r["secure_url"]}
-            for r in res_list
-        ]
-
-        logged_in = session.get("logged_in", False)
-        return render_template(
-            "view_album.html",
-            album=album,              # ✅ 把 Album 对象传进去
-            images=images,
-            logged_in=logged_in
-        )
-    except Exception as e:
-        return f"Error loading album: {str(e)}"
 
 @app.route("/set_cover/<int:album_id>/<path:public_id>", methods=["POST"])
 def set_cover(album_id, public_id):
