@@ -664,5 +664,3 @@ def save_photo():
 if __name__ == "__main__":
     app.run(debug=True)
 
-__all__ = ["app", "sync_albums_to_db"]
-
