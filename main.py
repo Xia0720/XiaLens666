@@ -124,13 +124,6 @@ if not os.path.exists('instance'):
 with app.app_context():
     db.create_all()
 
-
-class AlbumCover(db.Model):
-    __tablename__ = 'album_cover'  # 注意：不要有空格
-    id = db.Column(db.Integer, primary_key=True)
-    album_name = db.Column(db.String(255), unique=True, nullable=False)
-    cover_public_id = db.Column(db.String(255), nullable=False)
-
 # --------------------------
 # 首页和静态页面
 # --------------------------
