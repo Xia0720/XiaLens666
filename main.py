@@ -83,12 +83,6 @@ def fix_image_orientation(file):
     return img
 
 def sync_all_to_db():
-    """
-    同步 Cloudinary 中的相册、封面以及所有图片到数据库。
-    1. Album 表：存储相册名
-    2. AlbumCover 表：存储相册封面 public_id
-    3. Photo 表：存储相册每张图片 URL
-    """
     main = (MAIN_ALBUM_FOLDER or "").strip('/')
     album_names = set()
 
@@ -116,22 +110,22 @@ def sync_all_to_db():
         if not album:
             album = Album(name=name)
             db.session.add(album)
-            db.session.flush()  # 确保 album.id 可用
+            db.session.flush()
             created_albums += 1
 
-    # 2️⃣ AlbumCover
-    try:
-        cover_entry = AlbumCover.query.filter_by(album_id=album.id).first()
-        if not cover_entry:
-            prefix = f"{main}/{name}" if main else name
-            r = cloudinary.api.resources(type="upload", prefix=prefix, max_results=1)
-            if r.get('resources'):
-                pid = r['resources'][0]['public_id']
-                cover_entry = AlbumCover(album=album, cover_public_id=pid)
-                db.session.add(cover_entry)
-                created_covers += 1
-    except Exception:
-        pass
+        # 2️⃣ AlbumCover
+        try:
+            cover_entry = AlbumCover.query.filter_by(album_id=album.id).first()
+            if not cover_entry:
+                prefix = f"{main}/{name}" if main else name
+                r = cloudinary.api.resources(type="upload", prefix=prefix, max_results=1)
+                if r.get('resources'):
+                    pid = r['resources'][0]['public_id']
+                    cover_entry = AlbumCover(album=album, cover_public_id=pid)
+                    db.session.add(cover_entry)
+                    created_covers += 1
+        except Exception:
+            pass
 
         # 3️⃣ Photo
         try:
@@ -142,7 +136,7 @@ def sync_all_to_db():
                 if url:
                     existing = Photo.query.filter_by(album_id=album.id, url=url).first()
                     if not existing:
-                        p = Photo(album=album, url=url) 
+                        p = Photo(album=album, url=url)
                         db.session.add(p)
                         created_photos += 1
         except Exception:
@@ -154,6 +148,7 @@ def sync_all_to_db():
         "created_covers": created_covers,
         "created_photos": created_photos
     }
+
 # --------------------------
 # 登录保护装饰器
 # --------------------------
