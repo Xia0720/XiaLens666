@@ -140,9 +140,9 @@ def sync_all_to_db():
             for res in r.get('resources', []):
                 url = res.get('secure_url')
                 if url:
-                    existing = Photo.query.filter_by(album=name, url=url).first()
+                    existing = Photo.query.filter_by(album_id=album.id, url=url).first()
                     if not existing:
-                        p = Photo(album=name, url=url)
+                        p = Photo(album_id=album.id, url=url)
                         db.session.add(p)
                         created_photos += 1
         except Exception:
