@@ -104,53 +104,54 @@ def sync_all_to_db():
     created_covers = 0
     created_photos = 0
 
-for name in sorted(album_names):
-    # 1️⃣ Album
-    album = Album.query.filter_by(name=name).first()
-    if not album:
-        album = Album(name=name)
-        db.session.add(album)
-        db.session.flush()
-        created_albums += 1
+    for name in sorted(album_names):
+        # 1️⃣ Album
+        album = Album.query.filter_by(name=name).first()
+        if not album:
+            album = Album(name=name)
+            db.session.add(album)
+            db.session.flush()
+            created_albums += 1
 
-    # 2️⃣ AlbumCover
-    try:
-        prefix = f"{main}/{name}" if main else name
-        print("Fetching cover for album:", name, "prefix:", prefix)  # ✅ 打印
-        r = cloudinary.api.resources(type="upload", prefix=prefix, max_results=1)
-        print("Cover API result:", r)  # ✅ 打印
-        if r.get('resources'):
-            pid = r['resources'][0]['public_id']
-            cover_entry = AlbumCover(album=album, cover_public_id=pid)
-            db.session.add(cover_entry)
-            created_covers += 1
-    except Exception as e:
-        print("Cover fetch error:", e)
+        # 2️⃣ AlbumCover
+        try:
+            prefix = f"{main}/{name}" if main else name
+            print("Fetching cover for album:", name, "prefix:", prefix)
+            r = cloudinary.api.resources(type="upload", prefix=prefix, max_results=1)
+            print("Cover API result:", r)
+            if r.get('resources'):
+                pid = r['resources'][0]['public_id']
+                cover_entry = AlbumCover(album=album, cover_public_id=pid)
+                db.session.add(cover_entry)
+                created_covers += 1
+        except Exception as e:
+            print("Cover fetch error:", e)
 
-    # 3️⃣ Photo
-    try:
-        prefix = f"{main}/{name}" if main else name
-        print("Fetching photos for album:", name, "prefix:", prefix)  # ✅ 打印
-        r = cloudinary.api.resources(type="upload", prefix=prefix, max_results=500)
-        print("Photos API result count:", len(r.get('resources', [])))  # ✅ 打印
-        for res in r.get('resources', []):
-            url = res.get('secure_url')
-            if url:
-                existing = Photo.query.filter_by(album_id=album.id, url=url).first()
-                if not existing:
-                    p = Photo(album=album, url=url)
-                    db.session.add(p)
-                    created_photos += 1
-    except Exception as e:
-        print("Photos fetch error:", e)
+        # 3️⃣ Photo
+        try:
+            prefix = f"{main}/{name}" if main else name
+            print("Fetching photos for album:", name, "prefix:", prefix)
+            r = cloudinary.api.resources(type="upload", prefix=prefix, max_results=500)
+            print("Photos API result count:", len(r.get('resources', [])))
+            for res in r.get('resources', []):
+                url = res.get('secure_url')
+                if url:
+                    existing = Photo.query.filter_by(album_id=album.id, url=url).first()
+                    if not existing:
+                        p = Photo(album=album, url=url)
+                        db.session.add(p)
+                        created_photos += 1
+        except Exception as e:
+            print("Photos fetch error:", e)
 
+    # ✅ db.commit() 和 return 必须在 for 循环外
     db.session.commit()
     return {
         "created_albums": created_albums,
         "created_covers": created_covers,
         "created_photos": created_photos
     }
-
+    
 # --------------------------
 # 登录保护装饰器
 # --------------------------
