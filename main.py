@@ -235,18 +235,18 @@ def view_album(album_name):
     except Exception as e:
         return f"Error loading album: {str(e)}"
 
-@app.route("/set_cover/<album_name>/<path:public_id>", methods=["POST"])
-def set_cover(album_name, public_id):
+@app.route("/set_cover/<int:album_id>/<path:public_id>", methods=["POST"])
+def set_cover(album_id, public_id):
     if not session.get("logged_in"):
         return jsonify(success=False, error="Unauthorized"), 403
 
     try:
         # 查找该相册是否已有封面
-        cover = AlbumCover.query.filter_by(album_name=album_name).first()
+        cover = AlbumCover.query.filter_by(album_id=album_id).first()
         if cover:
             cover.cover_public_id = public_id
         else:
-            cover = AlbumCover(album_name=album_name, cover_public_id=public_id)
+            cover = AlbumCover(album_id=album_id, cover_public_id=public_id)
             db.session.add(cover)
 
         db.session.commit()
