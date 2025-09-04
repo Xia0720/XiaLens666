@@ -13,7 +13,6 @@ import io
 import time
 from cloudinary.utils import api_sign_request
 from sqlalchemy.pool import NullPool
-
 from models import db, Album, AlbumCover   # ✅ 注意这里
 
 app = Flask(__name__)
@@ -665,3 +664,6 @@ def save_photo():
 # --------------------------
 if __name__ == "__main__":
     app.run(debug=True)
+
+__all__ = ["app", "sync_albums_to_db"]
+
