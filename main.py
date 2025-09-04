@@ -82,47 +82,6 @@ def fix_image_orientation(file):
 
     return img
 
-# --------------------------
-# 登录保护装饰器
-# --------------------------
-def login_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if not session.get("logged_in"):
-            return redirect(url_for("login", next=request.path))
-        return f(*args, **kwargs)
-    return decorated
-
-
-# 新增 Photo 数据模型
-# --------------------------
-class Photo(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    album = db.Column(db.String(128), nullable=False)
-    url = db.Column(db.String(512), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-# --------------------------
-# 数据模型
-# --------------------------
-class Story(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    text = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    images = db.relationship("StoryImage", backref="story", cascade="all, delete-orphan")
-
-class StoryImage(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    image_url = db.Column(db.String(500), nullable=False)
-    story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
-
-# 确保 instance 文件夹存在
-if not os.path.exists('instance'):
-    os.makedirs('instance')
-
-# 自动创建表
-with app.app_context():
-    db.create_all()
-
 def sync_albums_to_db():
     """
     从 Cloudinary 读取相册名，写入 Album 表；若 AlbumCover 不存在则用该相册第一张图设为默认封面。
@@ -171,6 +130,46 @@ def sync_albums_to_db():
 
     db.session.commit()
     return {"created_albums": created, "created_covers": updated_cover}
+# --------------------------
+# 登录保护装饰器
+# --------------------------
+def login_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("logged_in"):
+            return redirect(url_for("login", next=request.path))
+        return f(*args, **kwargs)
+    return decorated
+
+
+# 新增 Photo 数据模型
+# --------------------------
+class Photo(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    album = db.Column(db.String(128), nullable=False)
+    url = db.Column(db.String(512), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+# --------------------------
+# 数据模型
+# --------------------------
+class Story(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    images = db.relationship("StoryImage", backref="story", cascade="all, delete-orphan")
+
+class StoryImage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    image_url = db.Column(db.String(500), nullable=False)
+    story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
+
+# 确保 instance 文件夹存在
+if not os.path.exists('instance'):
+    os.makedirs('instance')
+
+# 自动创建表
+with app.app_context():
+    db.create_all()
 
 # --------------------------
 # 首页和静态页面
