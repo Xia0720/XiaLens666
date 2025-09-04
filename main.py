@@ -192,10 +192,12 @@ def albums():
 @app.route("/album/<album_name>", methods=["GET", "POST"])
 def view_album(album_name):
     try:
+        # 从数据库找到对应的 Album
+        album = Album.query.filter_by(name=album_name).first_or_404()
+
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
         prefix = f"{main}/{album_name}" if main else album_name
 
-        # ✅ 要求返回 context；direction 仅作为兜底
         resources = cloudinary.api.resources(
             type="upload",
             prefix=prefix,
@@ -206,32 +208,34 @@ def view_album(album_name):
         res_list = resources.get("resources", [])
 
         def parse_iso(s):
-            if not s: return None
+            if not s: 
+                return None
             try:
-                # Cloudinary 多为 "YYYY-MM-DDTHH:MM:SSZ"
                 return datetime.fromisoformat(s.replace('Z', '+00:00'))
             except Exception:
                 return None
 
         def sort_key(r):
-            # 1) 优先用我们写入的 context.taken_at
             ctx = (r.get('context') or {}).get('custom') or {}
             t = parse_iso(ctx.get('taken_at'))
-            if t: return t
-            # 2) 兜底用资源的 created_at（上传时间）
+            if t: 
+                return t
             return parse_iso(r.get('created_at')) or datetime.now(timezone.utc)
 
-        # ✅ 按拍摄时间升序
         res_list.sort(key=sort_key)
 
-        images = [{"public_id": r["public_id"], "secure_url": r["secure_url"]}
-                  for r in res_list]
+        images = [
+            {"public_id": r["public_id"], "secure_url": r["secure_url"]}
+            for r in res_list
+        ]
 
         logged_in = session.get("logged_in", False)
-        return render_template("view_album.html",
-                               album_name=album_name,
-                               images=images,
-                               logged_in=logged_in)
+        return render_template(
+            "view_album.html",
+            album=album,              # ✅ 把 Album 对象传进去
+            images=images,
+            logged_in=logged_in
+        )
     except Exception as e:
         return f"Error loading album: {str(e)}"
 
