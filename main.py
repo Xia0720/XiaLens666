@@ -152,7 +152,8 @@ def albums():
             cover_url, _ = cloudinary.utils.cloudinary_url(cover_entry.cover_public_id)
         else:
             cover_url = None
-        album.cover = cover_url  # ✅ 动态添加 cover 字段
+        # ✅ 给 album 临时挂一个属性，不会触发 SQLAlchemy
+        setattr(album, "cover_url", cover_url)
         album_data.append(album)
 
     return render_template("album.html", albums=album_data)
