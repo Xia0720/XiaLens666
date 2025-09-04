@@ -12,10 +12,11 @@ class AlbumCover(db.Model):
     __tablename__ = 'album_cover'
     id = db.Column(db.Integer, primary_key=True)
     album_id = db.Column(db.Integer, db.ForeignKey('album.id'))
-    # 其他字段
+    cover_public_id = db.Column(db.String(255))  # ✅ 缺这个
 
 class Photo(db.Model):
     __tablename__ = 'photo'
     id = db.Column(db.Integer, primary_key=True)
     album_id = db.Column(db.Integer, db.ForeignKey('album.id'))
-    # 其他字段
+    url = db.Column(db.String(500))  # ✅ 缺这个
+
