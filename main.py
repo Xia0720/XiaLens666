@@ -242,15 +242,23 @@ def albums():
 @app.route("/album/<album_name>")
 def view_album(album_name):
     try:
-        # 从数据库获取该相册的图片
+        # 从数据库获取该相册
+        album = Album.query.filter_by(name=album_name).first()
         photos = Photo.query.filter_by(album=album_name).order_by(Photo.id).all()
-        images = []
-        for p in photos:
-            images.append({'url': p.url, 'id': p.id})
+
+        images = [{"url": p.url, "id": p.id} for p in photos]
         logged_in = session.get("logged_in", False)
-        return render_template("view_album.html", album_name=album_name, images=images, logged_in=logged_in)
+
+        return render_template(
+            "view_album.html",
+            album_name=album_name,
+            album=album,       # ✅ 传入 album
+            images=images,
+            logged_in=logged_in
+        )
     except Exception as e:
         return f"Error loading album: {str(e)}"
+
 
 @app.route("/set_cover/<int:album_id>/<path:public_id>", methods=["POST"])
 def set_cover(album_id, public_id):
