@@ -171,7 +171,7 @@
                   {% else %} item--min {% endif %}">
         <a href="{{ url_for('view_album', album_name=album.name) }}">
           {% if album.cover %}
-            <img src="{{ album.cover }}" alt="{{ album.name }}">
+            <img src="{{ album.cover_url or '/static/default_cover.jpg' }}" alt="cover">
           {% else %}
             <div class="album-cover placeholder"><span>No cover</span></div>
           {% endif %}
