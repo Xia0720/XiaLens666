@@ -13,6 +13,7 @@ import io
 import time
 from cloudinary.utils import api_sign_request
 from sqlalchemy.pool import NullPool
+from models import Album, AlbumCover
 
 
 app = Flask(__name__)
@@ -129,8 +130,15 @@ class AlbumCover(db.Model):
     __tablename__ = "album_covers"
 
     id = db.Column(db.Integer, primary_key=True)
-    album_name = db.Column(db.String(255), nullable=False, unique=True)
+    album_id = db.Column(db.Integer, db.ForeignKey("album.id"), nullable=False, unique=True)
     cover_public_id = db.Column(db.String(255), nullable=False)
+    album = db.relationship("Album", backref=db.backref("cover", uselist=False))
+
+class Album(db.Model):
+    __tablename__ = "album"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False, unique=True)
 
 # --------------------------
 # 首页和静态页面
