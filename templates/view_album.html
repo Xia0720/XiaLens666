@@ -157,7 +157,7 @@ body.album-page::before {
   {% endfor %}
 
   {% if logged_in %}
-    <input type="hidden" name="album_name" value="{{ album_name }}">
+    <input type="hidden" id="albumId" value="{{ album.id }}">
     <div class="action-buttons">
       <button type="submit" class="delete-btn">Delete Selected Images</button>
       <button type="button" id="setCoverBtn" class="cover-btn">Set as Cover</button>
@@ -183,9 +183,9 @@ document.getElementById('setCoverBtn')?.addEventListener('click', () => {
     return;
   }
   const publicId = selected.value;
-  const albumName = "{{ album_name }}";
+  const albumId = document.getElementById("albumId").value;
 
-  fetch(`/set_cover/${encodeURIComponent(albumName)}/${encodeURIComponent(publicId)}`, {
+  fetch(`/set_cover/${albumId}/${encodeURIComponent(publicId)}`, {
     method: "POST"
   }).then(res => res.json())
     .then(data => {
