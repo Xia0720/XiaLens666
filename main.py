@@ -37,7 +37,7 @@ database_url = os.getenv("DATABASE_URL")
 if database_url:
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///stories.db"
+    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///instance/stories.db"
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
