@@ -122,14 +122,13 @@ def sync_all_to_db():
         # 2️⃣ AlbumCover
         cover_entry = AlbumCover.query.filter_by(album_id=album.id).first()
         if not cover_entry:
-            try:
-                prefix = f"{main}/{name}" if main else name
-                r = cloudinary.api.resources(type="upload", prefix=prefix, max_results=1)
-                if r.get('resources'):
-                    pid = r['resources'][0]['public_id']
-                    cover_entry = AlbumCover(album=album, cover_public_id=pid)  # 使用 album 对象
-                    db.session.add(cover_entry)
-                    created_covers += 1
+            prefix = f"{main}/{name}" if main else name
+            r = cloudinary.api.resources(type="upload", prefix=prefix, max_results=1)
+            if r.get('resources'):
+                pid = r['resources'][0]['public_id']
+                cover_entry = AlbumCover(album=album, cover_public_id=pid)  # ⚡使用 album 对象
+                db.session.add(cover_entry)
+                created_covers += 1
             except Exception:
                 pass
 
