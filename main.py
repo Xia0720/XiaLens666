@@ -48,7 +48,6 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 db.init_app(app)
 migrate = Migrate(app, db)
 
-
 # 保证请求结束后释放 session
 @app.teardown_appcontext
 def shutdown_session(exception=None):
@@ -169,11 +168,19 @@ def login_required(f):
 
 # 新增 Photo 数据模型
 # --------------------------
+class Album(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), nullable=False)
+
+class AlbumCover(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    album_id = db.Column(db.Integer, db.ForeignKey("album.id"), nullable=False)
+    cover_public_id = db.Column(db.String(512), nullable=False)
+
 class Photo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     album = db.Column(db.String(128), nullable=False)
     url = db.Column(db.String(512), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 # --------------------------
 # 数据模型
 # --------------------------
