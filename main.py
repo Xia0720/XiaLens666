@@ -124,13 +124,6 @@ if not os.path.exists('instance'):
 with app.app_context():
     db.create_all()
 
-class AlbumCover(db.Model):
-    __tablename__ = "album_covers"
-
-    id = db.Column(db.Integer, primary_key=True)
-    album_id = db.Column(db.Integer, db.ForeignKey("album.id"), nullable=False, unique=True)
-    cover_public_id = db.Column(db.String(255), nullable=False)
-    album = db.relationship("Album", backref=db.backref("cover", uselist=False))
 
 class Album(db.Model):
     __tablename__ = "album"
