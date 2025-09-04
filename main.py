@@ -13,7 +13,7 @@ import io
 import time
 from cloudinary.utils import api_sign_request
 from sqlalchemy.pool import NullPool
-from models import db, Album, AlbumCover   # ✅ 注意这里
+from models import db, Album, AlbumCover, Photo   # ✅ 注意这里
 from cloudinary.utils import cloudinary_url
 
 app = Flask(__name__)
@@ -165,28 +165,6 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
-
-# 新增 Photo 数据模型
-# --------------------------
-class Album(db.Model):
-    __tablename__ = "album"
-    __table_args__ = {'extend_existing': True}  # ✅ 这一行可以避免重复定义错误
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(128), nullable=False)
-
-class AlbumCover(db.Model):
-    __tablename__ = "album_cover"
-    __table_args__ = {'extend_existing': True}
-    id = db.Column(db.Integer, primary_key=True)
-    album_id = db.Column(db.Integer, db.ForeignKey("album.id"), nullable=False)
-    cover_public_id = db.Column(db.String(512), nullable=False)
-
-class Photo(db.Model):
-    __tablename__ = "photo"
-    __table_args__ = {'extend_existing': True}
-    id = db.Column(db.Integer, primary_key=True)
-    album = db.Column(db.String(128), nullable=False)
-    url = db.Column(db.String(512), nullable=False)
 # --------------------------
 # 数据模型
 # --------------------------
