@@ -13,8 +13,8 @@ import io
 import time
 from cloudinary.utils import api_sign_request
 from sqlalchemy.pool import NullPool
-from models import Album, AlbumCover
 
+from models import db, Album, AlbumCover   # ✅ 注意这里
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
@@ -28,28 +28,26 @@ cloudinary.config(
     api_secret=os.getenv('CLOUDINARY_API_SECRET', '9o-PlPBRQzQPfuVCQfaGrUV3_IE')
 )
 
-# main.py（靠近 cloudinary.config(...) 的地方）
-MAIN_ALBUM_FOLDER = os.getenv("MAIN_ALBUM_FOLDER", "albums")  # 若不想主文件夹，设置为空字符串 ""
+MAIN_ALBUM_FOLDER = os.getenv("MAIN_ALBUM_FOLDER", "albums")
 
 # --------------------------
 # 数据库配置
 # --------------------------
-database_url = os.getenv("DATABASE_URL")  # Render / Supabase
+database_url = os.getenv("DATABASE_URL")
 if database_url:
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///stories.db"
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# 使用 NullPool 避免 Supabase max clients 问题
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "poolclass": NullPool
 }
 
-db = SQLAlchemy(app)
+# ✅ 绑定 db 和 app
+db.init_app(app)
 migrate = Migrate(app, db)
+
 
 # 保证请求结束后释放 session
 @app.teardown_appcontext
