@@ -142,6 +142,8 @@ async function uploadToCloudinary(file, folder) {
   fd.append("file", file);
   fd.append("upload_preset", UPLOAD_PRESET);
   if (folder) fd.append("folder", folder);
+  // ✅ 保持文件名（去掉扩展名）作为 public_id
+  fd.append("public_id", file.name.split('.').slice(0, -1).join('.'));
   // ✅ 把拍摄时间写入 context（可自定义更多键）
   fd.append("context", `taken_at=${takenAt}`);
 
