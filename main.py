@@ -164,10 +164,8 @@ def albums():
             public_id = res.get('public_id', '')
             parts = public_id.split('/')
             # 只处理 albums/<album_name>/<文件>
-            if len(parts) >= 3 and parts[0] == main:
+            if len(parts) >= 2
                 album_names_set.add(parts[1])
-            else:
-                print("DEBUG: 忽略文件 =", public_id)
 
         # 获取每个相册的封面
         for album_name in sorted(album_names_set):
