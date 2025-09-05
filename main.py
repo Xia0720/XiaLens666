@@ -140,6 +140,17 @@ def about():
 # --------------------------
 # 相册列表
 # --------------------------
+@app.route("/debug_albums")
+def debug_albums():
+    try:
+        resources = cloudinary.api.resources(type="upload", max_results=500)
+        output = []
+        for res in resources.get('resources', []):
+            output.append(res.get('public_id'))
+        return "<br>".join(output)
+    except Exception as e:
+        return f"Error fetching debug resources: {str(e)}"
+
 @app.route("/album")
 def albums():
     try:
