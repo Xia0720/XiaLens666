@@ -145,12 +145,16 @@ def albums():
     try:
         albums = []
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
+        print("DEBUG: MAIN_ALBUM_FOLDER =", MAIN_ALBUM_FOLDER)
+        print("DEBUG: main =", main)
 
         if main:
             # 列出主文件夹下的资源，然后从 public_id 中提取第二级目录名作为子相册名
             resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
+            print("DEBUG: Found resources count =", len(resources.get('resources', [])))
             album_names_set = set()
             for res in resources.get('resources', []):
+                print("DEBUG: public_id =", res.get('public_id'))
                 parts = res.get('public_id', '').split('/')
                 # public_id 形如 "albums/<album_name>/xxx.jpg"
                 if len(parts) >= 2:
