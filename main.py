@@ -162,18 +162,19 @@ def albums():
                 public_id = res.get('public_id', '')
                 parts = public_id.split('/')
                 if len(parts) >= 3 and parts[0] == main:
-                    print("DEBUG: 相册候选 =", parts[1])
                     album_names_set.add(parts[1])
+                else:
+                    print("DEBUG: 忽略伪相册/直接文件 =", public_id)
 
             for album_name in sorted(album_names_set):
-                if album_name.lower() == "albums":   # 🚫 忽略伪相册
-                    continue
                 r = cloudinary.api.resources(
                     type="upload",
                     prefix=f"{main}/{album_name}/",   # ✅ 注意斜杠
                     max_results=1
                 )
-                cover_url = r['resources'][0]['secure_url'] if r.get('resources') else "https://res.cloudinary.com/demo/image/upload/sample.jpg"
+                if not r.get('resources'):  # 没有图片则跳过
+                    continue
+                cover_url = r['resources'][0]['secure_url']
                 albums.append({'name': album_name, 'cover': cover_url})
 
         # ===== 情况2：根目录相册模式（兼容旧相册） =====
