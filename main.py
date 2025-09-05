@@ -195,10 +195,24 @@ def view_album(album_name):
     try:
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
         prefix = f"{main}/{album_name}" if main else album_name
-        resources = cloudinary.api.resources(type="upload", prefix=prefix, max_results=500)
-        images = [{"public_id": img["public_id"], "secure_url": img["secure_url"]} for img in resources.get("resources", [])]
+
+        resources = cloudinary.api.resources(
+            type="upload",
+            prefix=prefix,
+            max_results=500
+        )
+
+        images = [
+            {"public_id": img["public_id"], "secure_url": img["secure_url"]}
+            for img in resources.get("resources", [])
+        ]
+
+        # ✅ 按 public_id 排序，保证显示顺序和上传文件名顺序一致
+        images = sorted(images, key=lambda x: x['public_id'])
+
         logged_in = session.get("logged_in", False)
         return render_template("view_album.html", album_name=album_name, images=images, logged_in=logged_in)
+
     except Exception as e:
         return f"Error loading album: {str(e)}"
 
