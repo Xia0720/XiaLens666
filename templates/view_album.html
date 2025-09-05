@@ -7,9 +7,12 @@
 <script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
 
 <style>
-/* === 保留你原来的样式 === */
 html, body { height: 100%; margin: 0; padding: 0; }
+
+/* 移除渐变背景，完全交给虚化背景 */
 html, body { background: none !important; }
+
+/* ========== 全屏虚化背景 ========== */
 body.album-page::before {
   content: "";
   position: fixed;
@@ -22,6 +25,7 @@ body.album-page::before {
   z-index: -2;
   pointer-events: none;
 }
+
 .album-bg-fallback {
   position: fixed;
   inset: 0;
@@ -32,25 +36,33 @@ body.album-page::before {
   z-index: -3;
   pointer-events: none;
 }
+
+/* ---------- 内容容器 ---------- */
 .album-content {
   position: relative;
   z-index: 5;
   width: 100%;
   padding: 40px 20px;
-  min-height: 100vh;
+  box-sizing: border-box;
+  min-height: 100vh; /* 避免高度不够时露出白底 */
 }
+
+/* 页面标题 */
 .album-content h1 {
   text-align: center;
   font-size: 1.8rem;
-  color: #000;
-  font-weight: 900;
-  text-shadow: -1px -1px 0 #fff,
-               1px -1px 0 #fff,
-              -1px  1px 0 #fff,
-               1px  1px 0 #fff,
-               0  2px 5px rgba(0,0,0,0.5);
+  color: #000; /* 黑色主文字 */
+  font-weight: 900; /* 超粗体 */
+  text-shadow: 
+    -1px -1px 0 #fff,
+     1px -1px 0 #fff,
+    -1px  1px 0 #fff,
+     1px  1px 0 #fff,
+     0  2px 5px rgba(0,0,0,0.5); /* 柔和外阴影 */
   margin-bottom: 36px;
 }
+
+/* ---------- 横向滚动行 ---------- */
 .album-row {
   display: flex;
   gap: 20px;
@@ -61,6 +73,8 @@ body.album-page::before {
   margin-bottom: 36px;
   justify-content: start;
 }
+
+/* 滚动条渐变美化 */
 .album-row::-webkit-scrollbar { height: 12px; }
 .album-row::-webkit-scrollbar-track {
   background: rgba(255,255,255,0.05);
@@ -73,10 +87,12 @@ body.album-page::before {
 .album-row::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(90deg, #ffd700, #000000, #434343);
 }
+
+/* ---------- 单张图片 ---------- */
 .album-item {
   flex: 0 0 auto;
-  width: 260px;
-  height: 200px;
+  width: 260px;   /* 再调大 */
+  height: 200px;  /* 再调大 */
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 6px 18px rgba(0,0,0,0.15);
@@ -85,17 +101,20 @@ body.album-page::before {
   background: rgba(255,255,255,0.05);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
+
 .album-item:hover {
   transform: scale(1.06);
   box-shadow: 0 12px 28px rgba(0,0,0,0.2);
 }
+
 .album-item img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
-/* checkbox */
+
+/* 管理员 checkbox */
 .album-item input[type="checkbox"] {
   position: absolute;
   top: 12px;
@@ -105,28 +124,11 @@ body.album-page::before {
   height: 20px;
   accent-color: #007bff;
 }
-/* 按钮区域 */
-.action-buttons {
-  text-align: right;
-  margin: 20px 18px 40px 18px;
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-}
-.action-buttons button {
-  padding: 8px 14px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-}
-.delete-btn {
-  background: #d9534f;
-  color: #fff;
-}
-.cover-btn {
-  background: #007bff;
-  color: #fff;
-}
+
+/* 响应式调整 */
+@media (max-width: 1024px) { .album-item { width: 260px; height: 200px; } }
+@media (max-width: 768px)  { .album-item { width: 200px; height: 150px; } }
+@media (max-width: 480px)  { .album-item { width: 140px; height: 110px; } }
 </style>
 
 <div class="album-bg-fallback" aria-hidden="true"></div>
@@ -135,16 +137,14 @@ body.album-page::before {
   <h1>{{ album_name }} Album</h1>
 
   {% if logged_in %}
-  <!-- 删除图片表单 -->
-  <form id="deleteForm" method="POST" action="{{ url_for('delete_images') }}"
-        onsubmit="return confirm('Are you sure to delete selected images?');">
+  <form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
   {% endif %}
 
   {% set row_size = 10 %}
   {% for i in range(0, images|length, row_size) %}
     <div class="album-row">
       {% for img in images[i:i+row_size] %}
-      <div class="album-item" data-public-id="{{ img.public_id }}">
+      <div class="album-item">
         {% if logged_in %}
           <input type="checkbox" name="public_ids" value="{{ img.public_id }}">
         {% endif %}
@@ -157,12 +157,12 @@ body.album-page::before {
   {% endfor %}
 
   {% if logged_in %}
-    <input type="hidden" id="albumId" value="{{ album.id }}">
-    <div class="action-buttons">
-      <button type="submit" class="delete-btn">Delete Selected Images</button>
-      <button type="button" id="setCoverBtn" class="cover-btn">Set as Cover</button>
+    <input type="hidden" name="album_name" value="{{ album_name }}">
+    <div style="text-align: right; margin: 20px 18px 40px 18px;">
+      <button type="submit" style="padding: 8px 14px; border-radius:6px; background:#d9534f; color:#fff; border:none;">
+        Delete Selected Images
+      </button>
     </div>
-  </form>
   {% endif %}
 </div>
 
@@ -174,31 +174,5 @@ const lightbox = GLightbox({
   keyboardNavigation: true,
   closeOnOutsideClick: true
 });
-
-// === 设置封面逻辑 ===
-document.getElementById('setCoverBtn')?.addEventListener('click', () => {
-  const selected = document.querySelector('input[name="public_ids"]:checked');
-  if (!selected) {
-    alert("Please select one image to set as cover.");
-    return;
-  }
-  const publicId = selected.value;
-  const albumId = document.getElementById("albumId").value;
-
-  fetch(`/set_cover/${albumId}/${encodeURIComponent(publicId)}`, {
-    method: "POST"
-  }).then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        alert("Cover set successfully!");
-        location.reload();
-      } else {
-        alert("Failed to set cover: " + (data.error || "Unknown error"));
-      }
-    }).catch(err => {
-      alert("Failed to set cover: " + err);
-    });
-});
 </script>
 {% endblock %}
-
