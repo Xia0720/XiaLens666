@@ -12,6 +12,7 @@ from PIL import Image, ExifTags
 import io
 import time
 from cloudinary.utils import api_sign_request
+from sqlalchemy.pool import NullPool
 
 
 app = Flask(__name__)
