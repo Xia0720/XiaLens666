@@ -143,64 +143,48 @@ def about():
 @app.route("/album")
 def albums():
     try:
-        albums = []
+        albums_list = []
+
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
         print("DEBUG: MAIN_ALBUM_FOLDER =", MAIN_ALBUM_FOLDER)
         print("DEBUG: main =", main)
 
-        album_names_set = set()
-
-        # ===== 主目录模式 =====
         if main:
-            resources = cloudinary.api.resources(
-                type="upload",
-                prefix=f"{main}/",
-                max_results=500
-            )
-            print("DEBUG: Found resources in MAIN =", len(resources.get('resources', [])))
-
-            for res in resources.get('resources', []):
-                public_id = res.get('public_id', '')
-                parts = public_id.split('/')
-                # 只取 albums/<子相册>/<文件>
-                if len(parts) >= 3 and parts[0] == main:
-                    album_names_set.add(parts[1])
-                else:
-                    print("DEBUG: 忽略非相册文件 =", public_id)
-
-            for album_name in sorted(album_names_set):
+            # 获取主目录下的所有文件夹
+            folders = cloudinary.api.sub_folders(main).get('folders', [])
+            for folder in folders:
+                album_name = folder['name']
+                # 获取该子文件夹的第一张图片作为封面
                 r = cloudinary.api.resources(
                     type="upload",
                     prefix=f"{main}/{album_name}/",
                     max_results=1
                 )
-                # 没有图片的相册跳过
                 if not r.get('resources'):
                     continue
                 cover_url = r['resources'][0]['secure_url']
-                albums.append({'name': album_name, 'cover': cover_url})
+                albums_list.append({'name': album_name, 'cover': cover_url})
 
-        # ===== 根目录相册模式（兼容旧相册） =====
-        folders = cloudinary.api.root_folders()
-        for folder in folders.get('folders', []):
-            folder_name = folder.get('name')
+        # 兼容根目录相册
+        root_folders = cloudinary.api.root_folders().get('folders', [])
+        for folder in root_folders:
+            folder_name = folder['name']
             if folder_name == "private":
                 continue
-            # 如果主目录模式已经抓到，就跳过
-            if folder_name in album_names_set:
+            # 如果已经在主目录模式中抓过，就跳过
+            if main and any(a['name'] == folder_name for a in albums_list):
                 continue
-
-            resources = cloudinary.api.resources(
+            r = cloudinary.api.resources(
                 type="upload",
                 prefix=f"{folder_name}/",
                 max_results=1
             )
-            if not resources.get('resources'):
+            if not r.get('resources'):
                 continue
-            cover_url = resources['resources'][0]['secure_url']
-            albums.append({'name': folder_name, 'cover': cover_url})
+            cover_url = r['resources'][0]['secure_url']
+            albums_list.append({'name': folder_name, 'cover': cover_url})
 
-        return render_template("album.html", albums=albums)
+        return render_template("album.html", albums=albums_list)
 
     except Exception as e:
         print("ERROR in /album:", str(e))
