@@ -162,6 +162,7 @@ def albums():
                 public_id = res.get('public_id', '')
                 parts = public_id.split('/')
                 if len(parts) >= 3 and parts[0] == main:
+                    print("DEBUG: 相册候选 =", parts[1])
                     album_names_set.add(parts[1])
 
             for album_name in sorted(album_names_set):
