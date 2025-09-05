@@ -166,6 +166,8 @@ def albums():
                     album_names_set.add(parts[1])
 
             for album_name in sorted(album_names_set):
+                if album_name.lower() == "albums":   # 🚫 忽略伪相册
+                    continue
                 r = cloudinary.api.resources(
                     type="upload",
                     prefix=f"{main}/{album_name}/",   # ✅ 注意斜杠
