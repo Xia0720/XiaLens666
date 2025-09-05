@@ -6,15 +6,13 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 from functools import wraps
 from PIL import Image, ExifTags
 import io
 import time
 from cloudinary.utils import api_sign_request
-from sqlalchemy.pool import NullPool
-from models import db, Album, AlbumCover, Photo   # ✅ 注意这里
-from cloudinary.utils import cloudinary_url
+
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
@@ -28,24 +26,24 @@ cloudinary.config(
     api_secret=os.getenv('CLOUDINARY_API_SECRET', '9o-PlPBRQzQPfuVCQfaGrUV3_IE')
 )
 
-MAIN_ALBUM_FOLDER = os.getenv("MAIN_ALBUM_FOLDER", "albums")
+# main.py（靠近 cloudinary.config(...) 的地方）
+MAIN_ALBUM_FOLDER = os.getenv("MAIN_ALBUM_FOLDER", "albums")  # 若不想主文件夹，设置为空字符串 ""
 
 # --------------------------
 # 数据库配置
 # --------------------------
-database_url = os.getenv("DATABASE_URL")
+database_url = os.getenv("DATABASE_URL")  # Render / Supabase
 if database_url:
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///instance/stories.db"
+    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///stories.db"
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "poolclass": NullPool
 }
 
-# ✅ 绑定 db 和 app
-db.init_app(app)
+db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 # 保证请求结束后释放 session
@@ -82,76 +80,6 @@ def fix_image_orientation(file):
 
     return img
 
-def sync_all_to_db():
-    main = (MAIN_ALBUM_FOLDER or "").strip('/')
-    album_names = set()
-
-    # 获取所有相册名
-    if main:
-        resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
-        for res in resources.get('resources', []):
-            parts = res.get('public_id', '').split('/')
-            if len(parts) >= 2:
-                album_names.add(parts[1])
-    else:
-        folders = cloudinary.api.root_folders()
-        for folder in folders.get('folders', []):
-            name = folder.get('name')
-            if name and name != "private":
-                album_names.add(name)
-
-    created_albums = 0
-    created_covers = 0
-    created_photos = 0
-
-    for name in sorted(album_names):
-        # 1️⃣ Album
-        album = Album.query.filter_by(name=name).first()
-        if not album:
-            album = Album(name=name)
-            db.session.add(album)
-            db.session.flush()
-            created_albums += 1
-
-        # 2️⃣ AlbumCover
-        try:
-            prefix = f"{main}/{name}" if main else name
-            print("Fetching cover for album:", name, "prefix:", prefix)
-            r = cloudinary.api.resources(type="upload", prefix=prefix, max_results=1)
-            print("Cover API result:", r)
-            if r.get('resources'):
-                pid = r['resources'][0]['public_id']
-                cover_entry = AlbumCover(album_id=album.id, cover_public_id=pid)
-                db.session.add(cover_entry)
-                created_covers += 1
-        except Exception as e:
-            print("Cover fetch error:", e)
-
-        # 3️⃣ Photo
-        try:
-            prefix = f"{main}/{name}" if main else name
-            print("Fetching photos for album:", name, "prefix:", prefix)
-            r = cloudinary.api.resources(type="upload", prefix=prefix, max_results=500)
-            print("Photos API result count:", len(r.get('resources', [])))
-            for res in r.get('resources', []):
-                url = res.get('secure_url')
-                if url:
-                    existing = Photo.query.filter_by(album_id=album.id, url=url).first()
-                    if not existing:
-                        p = Photo(album_id=album.id, url=url)
-                        db.session.add(p)
-                        created_photos += 1
-        except Exception as e:
-            print("Photos fetch error:", e)
-
-    # ✅ db.commit() 和 return 必须在 for 循环外
-    db.session.commit()
-    return {
-        "created_albums": created_albums,
-        "created_covers": created_covers,
-        "created_photos": created_photos
-    }
-    
 # --------------------------
 # 登录保护装饰器
 # --------------------------
@@ -163,6 +91,14 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
+
+# 新增 Photo 数据模型
+# --------------------------
+class Photo(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    album = db.Column(db.String(128), nullable=False)
+    url = db.Column(db.String(512), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 # --------------------------
 # 数据模型
 # --------------------------
@@ -203,81 +139,56 @@ def about():
 # --------------------------
 # 相册列表
 # --------------------------
-# --------------------------
-# Albums 列表（使用 DB 优先，未初始化 DB 时回退到 Cloudinary）
-# --------------------------
-@app.route("/albums")
+@app.route("/album")
 def albums():
     try:
-        albums_list = []
-        # 从数据库获取所有相册
-        all_albums = Album.query.order_by(Album.id).all()
-        for alb in all_albums:
-            # 获取对应封面
-            cover = AlbumCover.query.filter_by(album_id=alb.id).first()
-            if cover:
-                # 生成封面 URL
-                cover_url, _ = cloudinary_url(cover.cover_public_id)
-            else:
-                cover_url = ""  # 没有封面就留空
-            albums_list.append({'name': alb.name, 'cover': cover_url})
-        return render_template("album.html", albums=albums_list)
+        albums = []
+        main = (MAIN_ALBUM_FOLDER or "").strip('/')
+
+        if main:
+            # 列出主文件夹下的资源，然后从 public_id 中提取第二级目录名作为子相册名
+            resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
+            album_names_set = set()
+            for res in resources.get('resources', []):
+                parts = res.get('public_id', '').split('/')
+                # public_id 形如 "albums/<album_name>/xxx.jpg"
+                if len(parts) >= 2:
+                    album_names_set.add(parts[1])
+
+            # 为每个子相册取一张封面（取第一个资源）
+            for album_name in sorted(album_names_set):
+                r = cloudinary.api.resources(type="upload", prefix=f"{main}/{album_name}", max_results=1)
+                cover_url = r.get('resources')[0].get('secure_url') if r.get('resources') else ""
+                albums.append({'name': album_name, 'cover': cover_url})
+        else:
+            # 兼容老逻辑：列出根目录下的文件夹（不包含 private）
+            folders = cloudinary.api.root_folders()
+            for folder in folders.get('folders', []):
+                folder_name = folder.get('name')
+                if folder_name == "private":
+                    continue
+                resources = cloudinary.api.resources(type="upload", prefix=folder_name, max_results=1)
+                cover_url = resources.get('resources')[0].get('secure_url') if resources.get('resources') else ""
+                albums.append({'name': folder_name, 'cover': cover_url})
+
+        return render_template("album.html", albums=albums)
     except Exception as e:
         return f"Error fetching albums: {str(e)}"
 
 # --------------------------
-# 查看相册内容
+# Album 内容页
 # --------------------------
-@app.route("/album/<album_name>")
+@app.route("/album/<album_name>", methods=["GET", "POST"])
 def view_album(album_name):
     try:
-        # 从数据库获取该相册
-        album = Album.query.filter_by(name=album_name).first()
-        photos = Photo.query.filter_by(album=album_name).order_by(Photo.id).all()
-
-        images = [{"url": p.url, "id": p.id} for p in photos]
+        main = (MAIN_ALBUM_FOLDER or "").strip('/')
+        prefix = f"{main}/{album_name}" if main else album_name
+        resources = cloudinary.api.resources(type="upload", prefix=prefix, max_results=500)
+        images = [{"public_id": img["public_id"], "secure_url": img["secure_url"]} for img in resources.get("resources", [])]
         logged_in = session.get("logged_in", False)
-
-        return render_template(
-            "view_album.html",
-            album_name=album_name,
-            album=album,       # ✅ 传入 album
-            images=images,
-            logged_in=logged_in
-        )
+        return render_template("view_album.html", album_name=album_name, images=images, logged_in=logged_in)
     except Exception as e:
         return f"Error loading album: {str(e)}"
-
-
-@app.route("/set_cover/<int:album_id>/<path:public_id>", methods=["POST"])
-def set_cover(album_id, public_id):
-    if not session.get("logged_in"):
-        return jsonify(success=False, error="Unauthorized"), 403
-
-    try:
-        cover = AlbumCover.query.filter_by(album_id=album_id).first()
-        if cover:
-            cover.cover_public_id = public_id
-        else:
-            cover = AlbumCover(album_id=album_id, cover_public_id=public_id)
-            db.session.add(cover)
-
-        db.session.commit()
-        return jsonify(success=True)
-    except Exception as e:
-        db.session.rollback()
-        return jsonify(success=False, error=str(e)), 500
-
-@app.route("/admin/sync_albums", methods=["POST", "GET"])
-@login_required
-def admin_sync_albums():
-    try:
-        res = sync_albums_to_db()
-        flash(f"Synced albums: created {res['created_albums']} albums, created {res['created_covers']} covers.")
-        return redirect(url_for('albums'))
-    except Exception as e:
-        flash(f"Sync failed: {str(e)}", "error")
-        return redirect(url_for('albums'))
 
 # --------------------------
 # 删除图片（仅登录）
@@ -607,4 +518,3 @@ def save_photo():
 # --------------------------
 if __name__ == "__main__":
     app.run(debug=True)
-
