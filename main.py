@@ -150,21 +150,35 @@ def albums():
 
         if main:
             # 列出主文件夹下的资源，然后从 public_id 中提取第二级目录名作为子相册名
-            resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
+            resources = cloudinary.api.resources(
+                type="upload",
+                prefix=f"{main}/",   # 确保有斜杠
+                max_results=500
+            )
             print("DEBUG: Found resources count =", len(resources.get('resources', [])))
             album_names_set = set()
             for res in resources.get('resources', []):
-                print("DEBUG: public_id =", res.get('public_id'))
-                parts = res.get('public_id', '').split('/')
+                public_id = res.get('public_id', '')
+                print("DEBUG: public_id =", public_id)
+                parts = public_id.split('/')
                 # public_id 形如 "albums/<album_name>/xxx.jpg"
                 if len(parts) >= 2:
                     album_names_set.add(parts[1])
 
-            # 为每个子相册取一张封面（取第一个资源）
+            # 为每个子相册取一张封面（取第一张资源，不存在就用默认）
             for album_name in sorted(album_names_set):
-                r = cloudinary.api.resources(type="upload", prefix=f"{main}/{album_name}", max_results=1)
-                cover_url = r.get('resources')[0].get('secure_url') if r.get('resources') else ""
+                r = cloudinary.api.resources(
+                    type="upload",
+                    prefix=f"{main}/{album_name}/",   # ✅ 注意这里加了斜杠
+                    max_results=1
+                )
+                if r.get('resources'):
+                    cover_url = r['resources'][0]['secure_url']
+                else:
+                    cover_url = "https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg"  # 默认封面
+                print(f"DEBUG: album={album_name}, cover_url={cover_url}")
                 albums.append({'name': album_name, 'cover': cover_url})
+
         else:
             # 兼容老逻辑：列出根目录下的文件夹（不包含 private）
             folders = cloudinary.api.root_folders()
@@ -172,14 +186,22 @@ def albums():
                 folder_name = folder.get('name')
                 if folder_name == "private":
                     continue
-                resources = cloudinary.api.resources(type="upload", prefix=folder_name, max_results=1)
-                cover_url = resources.get('resources')[0].get('secure_url') if resources.get('resources') else ""
+                resources = cloudinary.api.resources(
+                    type="upload",
+                    prefix=f"{folder_name}/",   # ✅ 同样加斜杠
+                    max_results=1
+                )
+                if resources.get('resources'):
+                    cover_url = resources['resources'][0]['secure_url']
+                else:
+                    cover_url = "https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg"
+                print(f"DEBUG: root album={folder_name}, cover_url={cover_url}")
                 albums.append({'name': folder_name, 'cover': cover_url})
 
         return render_template("album.html", albums=albums)
     except Exception as e:
+        print("ERROR in /album:", str(e))
         return f"Error fetching albums: {str(e)}"
-
 # --------------------------
 # Album 内容页
 # --------------------------
