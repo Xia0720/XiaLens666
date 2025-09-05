@@ -164,8 +164,9 @@ def albums():
             public_id = res.get('public_id', '')
             parts = public_id.split('/')
             # 只处理 albums/<album_name>/<文件>
-            if len(parts) >= 2
-                album_names_set.add(parts[1])
+            if len(parts) >= 3 and parts[0] == main:
+                album_name = parts[1].replace("%20", " ")  # 处理空格
+                album_names_set.add(album_name)
 
         # 获取每个相册的封面
         for album_name in sorted(album_names_set):
