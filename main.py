@@ -320,54 +320,102 @@ def upload():
         album_name = request.form["album"]
         files = request.files.getlist("file")
 
-        MAX_SIZE = 10 * 1024 * 1024  # 10MB 限制
-        COMPRESS_MAX_DIM = (3000, 3000)  # 压缩最大边长
-        COMPRESS_QUALITY = 90           # JPEG 质量
+        MAX_SIZE = 10 * 1024 * 1024        # 10MB 阈值
+        COMPRESS_MAX_DIM = (3000, 3000)    # 轻量压缩最大边长
+        QUALITY_STEPS = [90, 80, 70, 60]   # 逐步尝试的 quality
 
         for file in files:
-            if file and file.filename:
+            if not (file and file.filename):
+                continue
+
+            try:
+                # 先尝试从流中获取大小（多数情况下可行）
                 try:
-                    file.seek(0, io.SEEK_END)
-                    file_size = file.tell()
-                    file.seek(0)
+                    file.stream.seek(0, io.SEEK_END)
+                    size = file.stream.tell()
+                    file.stream.seek(0)
+                except Exception:
+                    # 回退：将整个内容读到内存（兼容不支持 seek 的流）
+                    data = file.read()
+                    size = len(data)
+                    # 把 file.stream 用 BytesIO 替换，后续操作使用它
+                    file.stream = io.BytesIO(data)
 
-                    if file_size <= MAX_SIZE:
-                        # ✅ 小于 10MB，原样上传
-                        cloudinary.uploader.upload(
-                            file,
-                            folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
-                        )
-                        print(f"原样上传: {file.filename} ({file_size/1024/1024:.2f} MB)")
-                    else:
-                        # ❌ 超过 10MB，进行压缩
-                        img = Image.open(file.stream)
-                        img = img.convert("RGB")
+                # 若小于等于阈值，原样上传（不触碰图像像素/质量）
+                if size <= MAX_SIZE:
+                    cloudinary.uploader.upload(
+                        file,
+                        folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
+                    )
+                    print(f"[UPLOAD] 原样上传: {file.filename} ({size/1024/1024:.2f} MB)")
+                    continue
 
-                        output_io = io.BytesIO()
-                        img.thumbnail(COMPRESS_MAX_DIM, Image.Resampling.LANCZOS)
-                        img.save(output_io, format="JPEG", quality=COMPRESS_QUALITY, optimize=True)
-                        output_io.seek(0)
+                # 否则：需要压缩处理（轻量压缩）
+                # 确保从头读取图像
+                try:
+                    file.stream.seek(0)
+                except Exception:
+                    pass
 
-                        cloudinary.uploader.upload(
-                            output_io,
-                            folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
-                        )
-                        print(f"压缩上传: {file.filename} (>10MB)")
+                img = Image.open(file.stream)
+                img = img.convert("RGB")  # 统一为 RGB (避免 PNG/HEIC 的问题)
 
-                except Exception as e:
-                    print(f"❌ 上传失败 {file.filename}: {e}")
+                # 先按最大维度缩放一次（保持纵横比）
+                img.thumbnail(COMPRESS_MAX_DIM, Image.Resampling.LANCZOS)
+
+                final_buf = None
+                used_quality = None
+
+                # 先按不同 quality 尝试（不改变尺寸）
+                for q in QUALITY_STEPS:
+                    buf = io.BytesIO()
+                    img.save(buf, format="JPEG", quality=q, optimize=True)
+                    if buf.getbuffer().nbytes <= MAX_SIZE:
+                        final_buf = buf
+                        used_quality = q
+                        break
+
+                # 如果仅靠降低 quality 还不够，再逐步缩小尺寸并重试 quality 列表
+                if final_buf is None:
+                    width, height = img.size
+                    scale = 0.9
+                    # 最低尺寸保护，避免无限缩小到很小
+                    while width > 400 and height > 400 and final_buf is None:
+                        width = int(width * scale)
+                        height = int(height * scale)
+                        tmp = img.resize((width, height), Image.Resampling.LANCZOS)
+                        for q in QUALITY_STEPS:
+                            buf = io.BytesIO()
+                            tmp.save(buf, format="JPEG", quality=q, optimize=True)
+                            if buf.getbuffer().nbytes <= MAX_SIZE:
+                                final_buf = buf
+                                used_quality = q
+                                break
+                        # 继续下一轮缩小
+                        scale *= 0.9
+
+                if final_buf is None:
+                    # 无法压到 10MB：记录并跳过该文件（可按需要改为报错/提示前端）
+                    print(f"[UPLOAD FAILED] 无法将 {file.filename} 压缩到 <=10MB，已跳过")
+                    continue
+
+                final_buf.seek(0)
+                cloudinary.uploader.upload(
+                    final_buf,
+                    folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
+                )
+                print(f"[UPLOAD] 压缩上传: {file.filename} (quality={used_quality}, size={final_buf.getbuffer().nbytes/1024/1024:.2f} MB)")
+
+            except Exception as e:
+                print(f"[ERROR] 上传 {getattr(file, 'filename', 'unknown')} 出错: {e}")
 
         return redirect(url_for("albums"))
 
-    # ========== GET 请求：渲染上传页面 ==========
+    # ========== GET 请求：原样保留你原先的“记住相册”逻辑 ==========
     album_names = []
     main = (MAIN_ALBUM_FOLDER or "").strip('/')
     if main:
-        resources = cloudinary.api.resources(
-            type="upload",
-            prefix=f"{main}/",
-            max_results=500
-        )
+        resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
         album_names_set = set()
         for res in resources.get('resources', []):
             parts = res.get('public_id', '').split('/')
