@@ -30,9 +30,6 @@ cloudinary.config(
 # main.py（靠近 cloudinary.config(...) 的地方）
 MAIN_ALBUM_FOLDER = os.getenv("MAIN_ALBUM_FOLDER", "albums")  # 若不想主文件夹，设置为空字符串 ""
 
-# 允许大文件通过 Flask（比如 50MB）
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  
-
 # --------------------------
 # 数据库配置
 # --------------------------
