@@ -314,55 +314,102 @@ def delete_story(story_id):
 # --------------------------
 # 上传图片到 Cloudinary album（仅登录）
 # --------------------------
+from PIL import Image
+import io
+import cloudinary.uploader
+
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     if request.method == "POST":
-        album_name = request.form.get("album")
+        album_name = request.form["album"]
         files = request.files.getlist("file")
 
-        if not album_name:
-            flash("请先选择或输入相册名", "error")
-            return redirect(url_for("upload"))
+        MAX_SIZE = 10 * 1024 * 1024  # Cloudinary 免费计划单文件限制 10MB
+        COMPRESS_MAX_DIM = (4000, 4000)  # 初始缩放上限
+        QUALITY_STEPS = [90, 80, 70, 60, 50, 40, 30]  # 尝试的质量参数
 
         for file in files:
-            if file and file.filename:
-                try:
-                    filename = secure_filename(file.filename)  # 安全处理文件名
+            if not (file and file.filename):
+                continue
+
+            try:
+                # 先获取文件大小
+                file.stream.seek(0, io.SEEK_END)
+                size = file.stream.tell()
+                file.stream.seek(0)
+
+                if size <= MAX_SIZE:
+                    # ✅ 小于等于 10MB，原样上传
                     cloudinary.uploader.upload(
                         file,
-                        folder=f"{MAIN_ALBUM_FOLDER}/{album_name}",
-                        public_id=os.path.splitext(filename)[0]  # 保持原始文件名（去掉后缀）
+                        folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
                     )
-                except Exception as e:
-                    flash(f"文件 {file.filename} 上传失败：{str(e)}", "error")
+                    print(f"[UPLOAD] 原样上传: {file.filename} ({size/1024/1024:.2f} MB)")
+                    continue
 
-        flash("文件上传完成！", "success")
+                # ❌ 超过 10MB，进行循环压缩
+                img = Image.open(file.stream)
+                img = img.convert("RGB")
+
+                # 缩放到最大维度
+                img.thumbnail(COMPRESS_MAX_DIM, Image.Resampling.LANCZOS)
+
+                final_buf = None
+                used_quality = None
+
+                # 循环压缩直到 ≤ 10MB
+                for q in QUALITY_STEPS:
+                    buf = io.BytesIO()
+                    img.save(buf, format="JPEG", quality=q, optimize=True)
+                    size = buf.getbuffer().nbytes
+                    if size <= MAX_SIZE:
+                        final_buf = buf
+                        used_quality = q
+                        break
+
+                # 如果还没压到 10MB，就逐步缩小尺寸 + 再试质量
+                if final_buf is None:
+                    width, height = img.size
+                    while width > 800 and height > 800 and final_buf is None:
+                        width = int(width * 0.9)
+                        height = int(height * 0.9)
+                        img = img.resize((width, height), Image.Resampling.LANCZOS)
+                        for q in QUALITY_STEPS:
+                            buf = io.BytesIO()
+                            img.save(buf, format="JPEG", quality=q, optimize=True)
+                            size = buf.getbuffer().nbytes
+                            if size <= MAX_SIZE:
+                                final_buf = buf
+                                used_quality = q
+                                break
+
+                if final_buf is None:
+                    print(f"[UPLOAD FAILED] {file.filename} 无法压缩到 ≤10MB，跳过")
+                    continue
+
+                final_buf.seek(0)
+                cloudinary.uploader.upload(
+                    final_buf,
+                    folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
+                )
+                print(f"[UPLOAD] 压缩上传: {file.filename} (quality={used_quality}, size={final_buf.getbuffer().nbytes/1024/1024:.2f} MB)")
+
+            except Exception as e:
+                print(f"[ERROR] 上传 {file.filename} 出错: {e}")
+
         return redirect(url_for("albums"))
 
-    # -------------------------
-    # 获取已有相册名（支持分页）
-    # -------------------------
-    album_names = set()
+    # ========== GET 请求：相册选择 ==========
+    album_names = []
     main = (MAIN_ALBUM_FOLDER or "").strip('/')
     if main:
-        next_cursor = None
-        while True:
-            resources = cloudinary.api.resources(
-                type="upload",
-                prefix=f"{main}/",
-                max_results=500,
-                next_cursor=next_cursor
-            )
-            for res in resources.get('resources', []):
-                parts = res.get('public_id', '').split('/')
-                if len(parts) >= 2:
-                    album_names.add(parts[1])
-
-            next_cursor = resources.get("next_cursor")
-            if not next_cursor:
-                break
-
-    album_names = sorted(album_names)
+        resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
+        album_names_set = set()
+        for res in resources.get('resources', []):
+            parts = res.get('public_id', '').split('/')
+            if len(parts) >= 2:
+                album_names_set.add(parts[1])
+        album_names = sorted(album_names_set)
 
     return render_template(
         "upload.html",
