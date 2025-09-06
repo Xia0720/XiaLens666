@@ -8,7 +8,7 @@ import cloudinary.api
 import os
 from datetime import datetime
 from functools import wraps
-from PIL import Image, ExifTags
+from PIL import Image, ExifTags, UnidentifiedImageError
 import io
 import time
 from cloudinary.utils import api_sign_request
@@ -320,54 +320,136 @@ def delete_story(story_id):
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     MAX_SIZE = 10 * 1024 * 1024       # Cloudinary 单文件限制 10MB
-    COMPRESS_MAX_DIM = (3000, 3000)   # 压缩时最大边长
-    COMPRESS_QUALITY = 85             # 压缩质量
+    START_MAX_DIM = 3000              # 初始最大边长 (轻量)
+    MIN_DIM = 800                     # 最小保护尺寸，避免无限缩小
+    QUALITY_STEPS = [95, 90, 85, 80, 75, 70, 65, 60]  # 逐步尝试 quality
+
+    upload_errors = []   # 保存失败信息，最后显示给用户
 
     if request.method == "POST":
-        album_name = request.form["album"]
+        album_name = request.form.get("album", "").strip()
         files = request.files.getlist("file")
 
         for file in files:
             if not (file and file.filename):
                 continue
 
+            filename = getattr(file, "filename", "unknown")
             try:
-                # ---- 用 Pillow 统一读取图片 ----
-                file.stream.seek(0)
-                img = Image.open(file.stream).convert("RGB")
+                # 把上传内容读到 bytes（保证兼容不可 seek 的流）
+                file_bytes = file.read()
+                if not file_bytes:
+                    upload_errors.append(f"{filename}: 空文件或读取失败")
+                    continue
 
-                # 先尝试原样保存到内存，检查大小
-                buf = io.BytesIO()
-                img.save(buf, format="JPEG", quality=95, optimize=True)
-                size = buf.getbuffer().nbytes
+                orig_size = len(file_bytes)
+                print(f"[DEBUG] {filename} 上传到后端，原始大小 = {orig_size/1024/1024:.2f} MB")
 
-                if size <= MAX_SIZE:
-                    # ✅ 小于等于 10MB，直接上传
-                    buf.seek(0)
+                # 如果小于等于阈值，直接上传（原样）
+                if orig_size <= MAX_SIZE:
                     cloudinary.uploader.upload(
-                        buf,
+                        io.BytesIO(file_bytes),
                         folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
                     )
-                    print(f"[UPLOAD] 原样上传: {file.filename} ({size/1024/1024:.2f} MB)")
-                else:
-                    # ❌ 超过 10MB，压缩
-                    img.thumbnail(COMPRESS_MAX_DIM, Image.Resampling.LANCZOS)
+                    print(f"[UPLOAD] 原样上传: {filename} ({orig_size/1024/1024:.2f} MB)")
+                    continue
 
-                    final_buf = io.BytesIO()
-                    img.save(final_buf, format="JPEG", quality=COMPRESS_QUALITY, optimize=True)
-                    final_size = final_buf.getbuffer().nbytes
-                    final_buf.seek(0)
+                # 否则，尝试用 Pillow 打开并压缩
+                try:
+                    img = Image.open(io.BytesIO(file_bytes))
+                except UnidentifiedImageError:
+                    # 无法识别为图片：记录并跳过（也可以选择上传为 raw）
+                    upload_errors.append(f"{filename}: 无法识别为图片（格式可能不受支持）")
+                    print(f"[ERROR] {filename} 不是受支持的图片格式")
+                    continue
 
-                    cloudinary.uploader.upload(
-                        final_buf,
-                        folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
-                    )
-                    print(f"[UPLOAD] 压缩上传: {file.filename} ({final_size/1024/1024:.2f} MB)")
+                # 统一转为 RGB（避免 PNG/RGBA/HEIC 问题）
+                try:
+                    img = img.convert("RGB")
+                except Exception as e:
+                    print(f"[WARN] 转换为 RGB 失败: {e}. 尝试继续处理原图。")
+
+                # 先按初始最大维度缩一次（等比缩放）
+                if max(img.size) > START_MAX_DIM:
+                    img.thumbnail((START_MAX_DIM, START_MAX_DIM), Image.Resampling.LANCZOS)
+
+                final_buf = None
+                used_quality = None
+                cur_img = img
+
+                # 先尝试不同 quality 不变尺寸
+                for q in QUALITY_STEPS:
+                    buf = io.BytesIO()
+                    cur_img.save(buf, format="JPEG", quality=q, optimize=True)
+                    size = buf.getbuffer().nbytes
+                    print(f"[TRY] {filename} q={q} size={size/1024/1024:.2f} MB")
+                    if size <= MAX_SIZE:
+                        final_buf = buf
+                        used_quality = q
+                        break
+
+                # 如果质量下降后仍然太大，逐步缩小尺寸并重试 quality 列表
+                if final_buf is None:
+                    width, height = cur_img.size
+                    scale = 0.9
+                    while (width > MIN_DIM and height > MIN_DIM) and final_buf is None:
+                        width = int(width * scale)
+                        height = int(height * scale)
+                        tmp = cur_img.resize((width, height), Image.Resampling.LANCZOS)
+                        print(f"[RESIZE] {filename} 尝试尺寸 {width}x{height}")
+                        for q in QUALITY_STEPS:
+                            buf = io.BytesIO()
+                            tmp.save(buf, format="JPEG", quality=q, optimize=True)
+                            size = buf.getbuffer().nbytes
+                            print(f"[TRY] {filename} size after resize q={q}: {size/1024/1024:.2f} MB")
+                            if size <= MAX_SIZE:
+                                final_buf = buf
+                                used_quality = q
+                                break
+                        # 缩小比例继续累乘（进一步缩小）
+                        scale *= 0.9
+
+                # 如果仍然没有得到合格的 buf，说明已经缩小/降质到极限但仍大
+                if final_buf is None:
+                    # 作为最后手段，再以最低 quality 保存一次并上传（强制上传）
+                    try:
+                        buf = io.BytesIO()
+                        cur_img.save(buf, format="JPEG", quality=50, optimize=True)
+                        buf_size = buf.getbuffer().nbytes
+                        buf.seek(0)
+                        if buf_size <= (MAX_SIZE * 1.5):  # 如果还是极大，可能 Cloudinary 也会拒绝，但这里尝试一次
+                            cloudinary.uploader.upload(buf, folder=f"{MAIN_ALBUM_FOLDER}/{album_name}")
+                            print(f"[FORCE UPLOAD] {filename} 以 low-quality 上传 ({buf_size/1024/1024:.2f} MB)")
+                        else:
+                            upload_errors.append(f"{filename}: 无法压缩到可接受大小，跳过（最终 {buf_size/1024/1024:.2f} MB）")
+                            print(f"[SKIP] {filename} 仍然过大，已跳过")
+                        continue
+                    except Exception as e:
+                        upload_errors.append(f"{filename}: 最终强制上传失败 ({e})")
+                        print(f"[ERROR] {filename} 最终强制上传失败: {e}")
+                        continue
+
+                # 有合格 final_buf，上传
+                final_buf.seek(0)
+                cloudinary.uploader.upload(
+                    final_buf,
+                    folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
+                )
+                print(f"[UPLOAD] 压缩上传: {filename} (quality={used_quality}, size={final_buf.getbuffer().nbytes/1024/1024:.2f} MB)")
 
             except Exception as e:
-                print(f"[ERROR] 上传 {getattr(file, 'filename', 'unknown')} 出错: {e}")
+                # 捕获任意异常，记录后继续下一个文件
+                upload_errors.append(f"{filename}: 出错 ({e})")
+                print(f"[ERROR] 上传 {filename} 时出现异常: {e}")
 
-        return redirect(url_for("albums"))
+        # 上传循环结束，把错误用 flash 呈现给前端（upload.html 中需要显示 flash）
+        if upload_errors:
+            for msg in upload_errors:
+                flash(msg, "warning")
+        else:
+            flash("上传完成", "success")
+
+        return redirect(url_for("upload"))  # 上传完回到上传页，你也可以改成 redirect(url_for('albums'))
 
     # ========== GET 请求：获取所有相册 ==========
     album_names = []
