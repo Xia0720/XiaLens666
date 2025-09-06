@@ -30,6 +30,9 @@ cloudinary.config(
 # main.py（靠近 cloudinary.config(...) 的地方）
 MAIN_ALBUM_FOLDER = os.getenv("MAIN_ALBUM_FOLDER", "albums")  # 若不想主文件夹，设置为空字符串 ""
 
+# 允许大文件通过 Flask（比如 50MB）
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  
+
 # --------------------------
 # 数据库配置
 # --------------------------
@@ -320,28 +323,21 @@ def upload():
         album_name = request.form["album"]
         files = request.files.getlist("file")
 
-        MAX_SIZE = 10 * 1024 * 1024        # 10MB 阈值
-        COMPRESS_MAX_DIM = (3000, 3000)    # 轻量压缩最大边长
-        QUALITY_STEPS = [90, 80, 70, 60]   # 逐步尝试的 quality
+        MAX_SIZE = 10 * 1024 * 1024        # Cloudinary 阈值
+        COMPRESS_MAX_DIM = (3000, 3000)    # 压缩最大边长
+        QUALITY_STEPS = [90, 80, 70, 60]   # 逐步尝试 quality
 
         for file in files:
             if not (file and file.filename):
                 continue
 
             try:
-                # 先尝试从流中获取大小（多数情况下可行）
-                try:
-                    file.stream.seek(0, io.SEEK_END)
-                    size = file.stream.tell()
-                    file.stream.seek(0)
-                except Exception:
-                    # 回退：将整个内容读到内存（兼容不支持 seek 的流）
-                    data = file.read()
-                    size = len(data)
-                    # 把 file.stream 用 BytesIO 替换，后续操作使用它
-                    file.stream = io.BytesIO(data)
+                # 获取文件大小
+                file.stream.seek(0, io.SEEK_END)
+                size = file.stream.tell()
+                file.stream.seek(0)
 
-                # 若小于等于阈值，原样上传（不触碰图像像素/质量）
+                # ✅ 小于等于 10MB：原样上传
                 if size <= MAX_SIZE:
                     cloudinary.uploader.upload(
                         file,
@@ -350,53 +346,20 @@ def upload():
                     print(f"[UPLOAD] 原样上传: {file.filename} ({size/1024/1024:.2f} MB)")
                     continue
 
-                # 否则：需要压缩处理（轻量压缩）
-                # 确保从头读取图像
-                try:
-                    file.stream.seek(0)
-                except Exception:
-                    pass
-
-                img = Image.open(file.stream)
-                img = img.convert("RGB")  # 统一为 RGB (避免 PNG/HEIC 的问题)
-
-                # 先按最大维度缩放一次（保持纵横比）
+                # ❌ 超过 10MB：压缩
+                img = Image.open(file.stream).convert("RGB")
                 img.thumbnail(COMPRESS_MAX_DIM, Image.Resampling.LANCZOS)
 
                 final_buf = None
-                used_quality = None
-
-                # 先按不同 quality 尝试（不改变尺寸）
                 for q in QUALITY_STEPS:
                     buf = io.BytesIO()
                     img.save(buf, format="JPEG", quality=q, optimize=True)
                     if buf.getbuffer().nbytes <= MAX_SIZE:
                         final_buf = buf
-                        used_quality = q
                         break
 
-                # 如果仅靠降低 quality 还不够，再逐步缩小尺寸并重试 quality 列表
                 if final_buf is None:
-                    width, height = img.size
-                    scale = 0.9
-                    # 最低尺寸保护，避免无限缩小到很小
-                    while width > 400 and height > 400 and final_buf is None:
-                        width = int(width * scale)
-                        height = int(height * scale)
-                        tmp = img.resize((width, height), Image.Resampling.LANCZOS)
-                        for q in QUALITY_STEPS:
-                            buf = io.BytesIO()
-                            tmp.save(buf, format="JPEG", quality=q, optimize=True)
-                            if buf.getbuffer().nbytes <= MAX_SIZE:
-                                final_buf = buf
-                                used_quality = q
-                                break
-                        # 继续下一轮缩小
-                        scale *= 0.9
-
-                if final_buf is None:
-                    # 无法压到 10MB：记录并跳过该文件（可按需要改为报错/提示前端）
-                    print(f"[UPLOAD FAILED] 无法将 {file.filename} 压缩到 <=10MB，已跳过")
+                    print(f"[UPLOAD FAILED] 无法压缩 {file.filename} 到 <=10MB，已跳过")
                     continue
 
                 final_buf.seek(0)
@@ -404,31 +367,28 @@ def upload():
                     final_buf,
                     folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
                 )
-                print(f"[UPLOAD] 压缩上传: {file.filename} (quality={used_quality}, size={final_buf.getbuffer().nbytes/1024/1024:.2f} MB)")
+                print(f"[UPLOAD] 压缩上传: {file.filename} ({final_buf.getbuffer().nbytes/1024/1024:.2f} MB)")
 
             except Exception as e:
-                print(f"[ERROR] 上传 {getattr(file, 'filename', 'unknown')} 出错: {e}")
+                print(f"[ERROR] 上传 {file.filename} 出错: {e}")
 
         return redirect(url_for("albums"))
 
-    # ========== GET 请求：原样保留你原先的“记住相册”逻辑 ==========
+    # ========== GET 请求：获取所有相册 ==========
     album_names = []
     main = (MAIN_ALBUM_FOLDER or "").strip('/')
     if main:
-        resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
-        album_names_set = set()
-        for res in resources.get('resources', []):
-            parts = res.get('public_id', '').split('/')
-            if len(parts) >= 2:
-                album_names_set.add(parts[1])
-        album_names = sorted(album_names_set)
+        try:
+            subfolders = cloudinary.api.subfolders(main)
+            album_names = sorted([f["name"] for f in subfolders.get("folders", [])])
+        except Exception as e:
+            print(f"[ERROR] 获取相册失败: {e}")
 
     return render_template(
         "upload.html",
         album_names=album_names,
         MAIN_ALBUM_FOLDER=MAIN_ALBUM_FOLDER
     )
-
 # --------------------------
 # 私密空间上传（仅登录）
 # --------------------------
