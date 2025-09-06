@@ -320,20 +320,54 @@ def upload():
         album_name = request.form["album"]
         files = request.files.getlist("file")
 
+        MAX_SIZE = 10 * 1024 * 1024  # 10MB 限制
+        COMPRESS_MAX_DIM = (3000, 3000)  # 压缩最大边长
+        COMPRESS_QUALITY = 90           # JPEG 质量
+
         for file in files:
             if file and file.filename:
-                cloudinary.uploader.upload(
-                    file,
-                    folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
-                )
+                try:
+                    file.seek(0, io.SEEK_END)
+                    file_size = file.tell()
+                    file.seek(0)
+
+                    if file_size <= MAX_SIZE:
+                        # ✅ 小于 10MB，原样上传
+                        cloudinary.uploader.upload(
+                            file,
+                            folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
+                        )
+                        print(f"原样上传: {file.filename} ({file_size/1024/1024:.2f} MB)")
+                    else:
+                        # ❌ 超过 10MB，进行压缩
+                        img = Image.open(file.stream)
+                        img = img.convert("RGB")
+
+                        output_io = io.BytesIO()
+                        img.thumbnail(COMPRESS_MAX_DIM, Image.Resampling.LANCZOS)
+                        img.save(output_io, format="JPEG", quality=COMPRESS_QUALITY, optimize=True)
+                        output_io.seek(0)
+
+                        cloudinary.uploader.upload(
+                            output_io,
+                            folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
+                        )
+                        print(f"压缩上传: {file.filename} (>10MB)")
+
+                except Exception as e:
+                    print(f"❌ 上传失败 {file.filename}: {e}")
 
         return redirect(url_for("albums"))
 
-    # 获取已有相册名
+    # ========== GET 请求：渲染上传页面 ==========
     album_names = []
     main = (MAIN_ALBUM_FOLDER or "").strip('/')
     if main:
-        resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
+        resources = cloudinary.api.resources(
+            type="upload",
+            prefix=f"{main}/",
+            max_results=500
+        )
         album_names_set = set()
         for res in resources.get('resources', []):
             parts = res.get('public_id', '').split('/')
@@ -344,8 +378,9 @@ def upload():
     return render_template(
         "upload.html",
         album_names=album_names,
-        MAIN_ALBUM_FOLDER=MAIN_ALBUM_FOLDER   # 👈 一定要传这个
+        MAIN_ALBUM_FOLDER=MAIN_ALBUM_FOLDER
     )
+
 # --------------------------
 # 私密空间上传（仅登录）
 # --------------------------
