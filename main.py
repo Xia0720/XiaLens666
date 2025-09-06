@@ -544,6 +544,32 @@ def save_photo():
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route("/upload_debug", methods=["GET", "POST"])
+def upload_debug():
+    if request.method == "POST":
+        files = request.files.getlist("file")
+        results = []
+
+        for file in files:
+            if file and file.filename:
+                try:
+                    file.stream.seek(0, io.SEEK_END)
+                    size = file.stream.tell()
+                    file.stream.seek(0)
+                    results.append(f"{file.filename}: {size/1024/1024:.2f} MB (Flask 收到)")
+                except Exception as e:
+                    results.append(f"{file.filename}: ❌ 读取大小失败 ({e})")
+
+        return "<br>".join(results)
+
+    return '''
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" multiple>
+            <button type="submit">上传测试</button>
+        </form>
+    '''
+
 # --------------------------
 # 启动
 # --------------------------
