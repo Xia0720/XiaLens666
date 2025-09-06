@@ -145,48 +145,31 @@ def albums():
     try:
         albums_list = []
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
-        print("DEBUG: MAIN_ALBUM_FOLDER =", MAIN_ALBUM_FOLDER)
-
         if not main:
             return "MAIN_ALBUM_FOLDER 未设置"
 
-        # 获取 albums/ 下的所有资源
-        resources = cloudinary.api.resources(
-            type="upload",
-            prefix=f"{main}/",
-            max_results=500
-        )
-        print("DEBUG: Found resources =", len(resources.get('resources', [])))
+        # ✅ 获取一级子文件夹（真正的相册列表）
+        folders = cloudinary.api.subfolders(main)
+        album_names = [f["name"] for f in folders.get("folders", [])]
 
-        # 提取一级子文件夹名作为相册名
-        album_names_set = set()
-        for res in resources.get('resources', []):
-            public_id = res.get('public_id', '')
-            parts = public_id.split('/')
-            # 只处理 albums/<album_name>/<文件>
-            if len(parts) >= 3 and parts[0] == main:
-                album_name = parts[1].replace("%20", " ")  # 处理空格
-                album_names_set.add(album_name)
-
-        # 获取每个相册的封面
-        for album_name in sorted(album_names_set):
+        # ✅ 每个相册获取 1 张照片作为封面
+        for album_name in sorted(album_names):
             r = cloudinary.api.resources(
                 type="upload",
                 prefix=f"{main}/{album_name}/",
                 max_results=1
             )
             if not r.get('resources'):
-                print("DEBUG: 相册空 =", album_name)
                 continue
             cover_url = r['resources'][0]['secure_url']
             albums_list.append({'name': album_name, 'cover': cover_url})
-            print("DEBUG: 相册封面 =", album_name, cover_url)
 
         return render_template("album.html", albums=albums_list)
 
     except Exception as e:
         print("ERROR in /album:", str(e))
         return f"Error fetching albums: {str(e)}"
+
 # --------------------------
 # Album 内容页
 # --------------------------
