@@ -18,10 +18,6 @@ from sqlalchemy.pool import NullPool
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
 
-MAX_SIZE = 10 * 1024 * 1024        # 10MB 阈值
-COMPRESS_MAX_DIM = (3000, 3000)    # 压缩最大边长
-QUALITY_STEPS = [90, 80, 70, 60]   # 逐步尝试的 quality
-
 # --------------------------
 # Cloudinary 配置
 # --------------------------
@@ -321,86 +317,30 @@ def delete_story(story_id):
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     if request.method == "POST":
-        album_name = request.form["album"]
-        files = request.files.getlist("file")
+        # 前端传过来的相册名（new 或已有）
+        album_name = request.form.get("album") or request.form.get("new_album")
+        files = request.files.getlist("photo")  # 注意前端 input name="photo"
+
+        uploaded_urls = []
 
         for file in files:
-            if not (file and file.filename):
-                continue
-
-            try:
-                # 获取文件大小
+            if file and file.filename:
                 try:
-                    file.stream.seek(0, io.SEEK_END)
-                    size = file.stream.tell()
-                    file.stream.seek(0)
-                except Exception:
-                    # 兼容无法 seek 的流
-                    data = file.read()
-                    size = len(data)
-                    file.stream = io.BytesIO(data)
-
-                if size <= MAX_SIZE:
-                    # 小于 10MB，原样上传
-                    cloudinary.uploader.upload(
+                    # 原样上传前端已压缩或原文件
+                    folder_path = f"{MAIN_ALBUM_FOLDER}/{album_name}" if MAIN_ALBUM_FOLDER else album_name
+                    result = cloudinary.uploader.upload(
                         file,
-                        folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
+                        folder=folder_path,
+                        public_id=file.filename.rsplit('.', 1)[0]  # 保留文件名去掉扩展名
                     )
-                    print(f"[UPLOAD] 原样上传: {file.filename} ({size/1024/1024:.2f} MB)")
-                    continue
+                    uploaded_urls.append(result["secure_url"])
+                except Exception as e:
+                    print(f"❌ 上传失败 {file.filename}: {e}")
 
-                # 大于 10MB，需要压缩
-                file.stream.seek(0)
-                img = Image.open(file.stream)
-                img = img.convert("RGB")
-                img.thumbnail(COMPRESS_MAX_DIM, Image.Resampling.LANCZOS)
+        # 返回 JSON，供前端 savePhotoToDB 调用
+        return jsonify({"success": True, "urls": uploaded_urls})
 
-                final_buf = None
-                used_quality = None
-
-                # 先按 quality 尝试压缩
-                for q in QUALITY_STEPS:
-                    buf = io.BytesIO()
-                    img.save(buf, format="JPEG", quality=q, optimize=True)
-                    if buf.getbuffer().nbytes <= MAX_SIZE:
-                        final_buf = buf
-                        used_quality = q
-                        break
-
-                # 如果仅靠降低 quality 不够，再逐步缩小尺寸
-                if final_buf is None:
-                    width, height = img.size
-                    scale = 0.9
-                    while width > 400 and height > 400 and final_buf is None:
-                        width = int(width * scale)
-                        height = int(height * scale)
-                        tmp = img.resize((width, height), Image.Resampling.LANCZOS)
-                        for q in QUALITY_STEPS:
-                            buf = io.BytesIO()
-                            tmp.save(buf, format="JPEG", quality=q, optimize=True)
-                            if buf.getbuffer().nbytes <= MAX_SIZE:
-                                final_buf = buf
-                                used_quality = q
-                                break
-                        scale *= 0.9
-
-                if final_buf is None:
-                    print(f"[UPLOAD FAILED] {file.filename} 无法压缩到 ≤10MB，已跳过")
-                    continue
-
-                final_buf.seek(0)
-                cloudinary.uploader.upload(
-                    final_buf,
-                    folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
-                )
-                print(f"[UPLOAD] 压缩上传: {file.filename} (quality={used_quality}, size={final_buf.getbuffer().nbytes/1024/1024:.2f} MB)")
-
-            except Exception as e:
-                print(f"[ERROR] 上传 {file.filename} 出错: {e}")
-
-        return redirect(url_for("albums"))
-
-    # ========== GET 请求：渲染上传页面并记住所有相册 ==========
+    # GET 请求：渲染上传页面，获取所有已创建相册
     album_names = []
     main = (MAIN_ALBUM_FOLDER or "").strip('/')
     if main:
@@ -413,12 +353,13 @@ def upload():
                     album_names_set.add(parts[1])
             album_names = sorted(album_names_set)
         except Exception as e:
-            print(f"[ERROR] 获取相册失败: {e}")
+            print(f"⚠️ 获取相册失败: {e}")
 
     return render_template(
         "upload.html",
         album_names=album_names,
-        MAIN_ALBUM_FOLDER=MAIN_ALBUM_FOLDER
+        MAIN_ALBUM_FOLDER=MAIN_ALBUM_FOLDER,
+        last_album=""  # 可以根据需求保留最后上传相册名
     )
 # --------------------------
 # 私密空间上传（仅登录）
