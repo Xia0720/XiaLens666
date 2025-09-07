@@ -314,10 +314,6 @@ def delete_story(story_id):
 # --------------------------
 # 上传图片到 Cloudinary album（仅登录）
 # --------------------------
-from PIL import Image
-import io
-import cloudinary.uploader
-
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     if request.method == "POST":
