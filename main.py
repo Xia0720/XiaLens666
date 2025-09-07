@@ -13,7 +13,8 @@ import io
 import time
 from cloudinary.utils import api_sign_request
 from sqlalchemy.pool import NullPool
-
+import re
+from models import db, Photo
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
@@ -385,54 +386,42 @@ def upload():
 # --------------------------
 # 私密空间上传（仅登录）
 # --------------------------
-import re, uuid
-
 @app.route("/upload_private", methods=["POST"])
 @login_required
 def upload_private():
-    album_name = request.form.get("album")
-    if album_name == "new":
-        album_name = request.form.get("new_album", "").strip()
-        if not album_name:
-            flash("相册名不能为空", "error")
-            return redirect(url_for("private_space"))
-
+    album_name = request.form.get("album") or request.form.get("new_album")
     files = request.files.getlist("photo")
     uploaded_urls = []
 
     for file in files:
         if file and file.filename:
             try:
-                # 强制放到 private 目录下
+                # 清理文件名，生成合法 public_id
+                base_name = file.filename.rsplit('.', 1)[0]
+                safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', base_name).strip("_")
+
                 folder_path = f"private/{album_name}"
-
-                # 处理 public_id
-                filename = file.filename.rsplit('.', 1)[0]
-                filename = re.sub(r'\s+', '_', filename).strip()
-                if not filename:
-                    filename = str(uuid.uuid4())
-
                 result = cloudinary.uploader.upload(
                     file,
                     folder=folder_path,
-                    public_id=filename
+                    public_id=safe_name
                 )
                 uploaded_urls.append(result["secure_url"])
 
-                # ✅ 同时保存到数据库，标记为 private
+                # 逐条保存到数据库
                 new_photo = Photo(
                     album=album_name,
                     url=result["secure_url"],
-                    is_private=True
+                    is_private=True,
+                    created_at=datetime.utcnow()
                 )
                 db.session.add(new_photo)
+                db.session.commit()  # 避免 bulk insert 报错
 
             except Exception as e:
+                db.session.rollback()
                 print(f"❌ 上传失败 {file.filename}: {e}")
 
-    db.session.commit()
-
-    # ✅ 上传完回到 Private space 主页面
     return redirect(url_for("private_space"))
 # --------------------------
 # 登录/登出
