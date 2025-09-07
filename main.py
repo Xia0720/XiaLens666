@@ -385,12 +385,19 @@ def upload():
 # --------------------------
 # 私密空间上传（仅登录）
 # --------------------------
+import re, uuid
+
 @app.route("/upload_private", methods=["POST"])
 @login_required
 def upload_private():
-    album_name = request.form.get("album") or request.form.get("new_album")
-    files = request.files.getlist("photo")
+    album_name = request.form.get("album")
+    if album_name == "new":
+        album_name = request.form.get("new_album", "").strip()
+        if not album_name:
+            flash("相册名不能为空", "error")
+            return redirect(url_for("private_space"))
 
+    files = request.files.getlist("photo")
     uploaded_urls = []
 
     for file in files:
@@ -398,10 +405,17 @@ def upload_private():
             try:
                 # 强制放到 private 目录下
                 folder_path = f"private/{album_name}"
+
+                # 处理 public_id
+                filename = file.filename.rsplit('.', 1)[0]
+                filename = re.sub(r'\s+', '_', filename).strip()
+                if not filename:
+                    filename = str(uuid.uuid4())
+
                 result = cloudinary.uploader.upload(
                     file,
                     folder=folder_path,
-                    public_id=file.filename.rsplit('.', 1)[0]
+                    public_id=filename
                 )
                 uploaded_urls.append(result["secure_url"])
 
@@ -418,7 +432,7 @@ def upload_private():
 
     db.session.commit()
 
-    # 上传完回到 private space 主页面
+    # ✅ 上传完回到 Private space 主页面
     return redirect(url_for("private_space"))
 # --------------------------
 # 登录/登出
