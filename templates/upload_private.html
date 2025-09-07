@@ -1,40 +1,189 @@
 {% extends "base.html" %}
+{% block title %}Upload Private Photos{% endblock %}
 {% block content %}
 <h2>Upload Photos to Private-space</h2>
 
-<form method="POST" enctype="multipart/form-data">
-    <div>
-        <label for="albumSelect">选择相册</label><br>
-        <select name="album" id="albumSelect" onchange="toggleNewAlbumInput()">
-            {% for album in album_names %}
-                {% if last_album %}
-                    <option value="{{ album }}" {% if last_album == album %}selected{% endif %}>{{ album }}</option>
-                {% else %}
-                    <option value="{{ album }}">{{ album }}</option>
-                {% endif %}
-            {% endfor %}
-            <option value="new" {% if last_album not in album_names %}selected{% endif %}>+ 创建新相册</option>
-        </select>
-    </div>
+<form id="uploadForm" method="POST" enctype="multipart/form-data">
+  <div>
+    <label for="albumSelect">选择相册</label><br>
+    <select name="album" id="albumSelect" onchange="toggleNewAlbumInput()">
+      {% for album in album_names %}
+        {% if last_album %}
+          <option value="{{ album }}" {% if last_album == album %}selected{% endif %}>{{ album }}</option>
+        {% else %}
+          <option value="{{ album }}">{{ album }}</option>
+        {% endif %}
+      {% endfor %}
+      <option value="new" {% if last_album and last_album not in album_names %}selected{% endif %}>+ 创建新相册</option>
+    </select>
+  </div>
 
-    <div id="newAlbumDiv" style="display:{% if last_album not in album_names %}block{% else %}none{% endif %}; margin-top:10px;">
-        <label for="new_album">新相册名</label><br>
-        <input type="text" name="new_album" placeholder="输入新相册名" value="{% if last_album not in album_names %}{{ last_album }}{% endif %}">
-    </div>
-    <div style="margin-top:15px;">
-        <label for="photo">选择照片</label><br>
-        <input type="file" name="photo" id="photo" multiple required>
-    </div>
+  <div id="newAlbumDiv"
+       style="display:{% if last_album and last_album not in album_names %}block{% else %}none{% endif %}; margin-top:10px;">
+    <label for="new_album">新相册名</label><br>
+    <input type="text" name="new_album" id="newAlbumInput"
+           placeholder="输入新相册名"
+           value="{% if last_album and last_album not in album_names %}{{ last_album }}{% endif %}">
+  </div>
 
-    <button type="submit" style="margin-top:15px;">上传</button>
+  <div style="margin-top:15px;">
+    <label for="photo">选择照片</label><br>
+    <input type="file" name="photo" id="photo" multiple required>
+  </div>
+
+  <button id="submitBtn" type="submit" style="margin-top:15px;">上传</button>
 </form>
 
+<div id="uploadStatus" style="margin-top:15px; font-size:14px; color:#444;"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/exifreader@4/dist/exif-reader.min.js"></script>
 <script>
+const CLOUD_NAME    = "dpr0pl2tf";       // 你的 Cloudinary cloud name
+const UPLOAD_PRESET = "unsigned_preset"; // 你的 unsigned preset
+const MAIN_FOLDER   = "private";         // 固定到 private
+
 function toggleNewAlbumInput() {
-    var select = document.getElementById('albumSelect');
-    var newAlbumDiv = document.getElementById('newAlbumDiv');
-    newAlbumDiv.style.display = (select.value === 'new') ? 'block' : 'none';
+  const select = document.getElementById('albumSelect');
+  const newAlbumDiv = document.getElementById('newAlbumDiv');
+  newAlbumDiv.style.display = (select && select.value === 'new') ? 'block' : 'none';
+}
+document.addEventListener('DOMContentLoaded', toggleNewAlbumInput);
+
+document.getElementById('uploadForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
+
+  const albumSelect = document.getElementById('albumSelect');
+  const newAlbumInput = document.getElementById('newAlbumInput');
+  const files = document.getElementById('photo').files;
+  const statusDiv = document.getElementById('uploadStatus');
+  const submitBtn = document.getElementById('submitBtn');
+
+  let album = (albumSelect.value === 'new') ? (newAlbumInput.value || "").trim() : albumSelect.value;
+  if (!album) { alert("请填写相册名！"); return; }
+  if (!files || files.length === 0) { alert("请选择照片！"); return; }
+
+  const folderPath = MAIN_FOLDER ? `${MAIN_FOLDER}/${album}` : album;
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = "正在上传...";
+  statusDiv.innerHTML = "";
+
+  const maxAttempts = 3;
+
+  for (const file of Array.from(files)) {
+    const item = document.createElement('div');
+    item.textContent = `${file.name} - 准备上传...`;
+    statusDiv.appendChild(item);
+
+    try {
+      const url = await uploadWithRetries(file, folderPath, maxAttempts, item);
+      await savePhotoToDB(album, url);
+      item.textContent = `${file.name} ✅ 上传并保存成功`;
+      item.style.color = "green";
+    } catch (err) {
+      console.error(err);
+      item.textContent = `${file.name} ❌ 上传失败：${err && err.message ? err.message : err}`;
+      item.style.color = "red";
+    }
+  }
+
+  submitBtn.disabled = false;
+  submitBtn.textContent = "上传";
+});
+
+async function getTakenAtISO(file) {
+  try {
+    const buf = await file.arrayBuffer();
+    const tags = ExifReader.load(buf, {expanded: true});
+    const dt = (tags.exif && (tags.exif.DateTimeOriginal || tags.exif.CreateDate))
+               ? (tags.exif.DateTimeOriginal.description || tags.exif.CreateDate.description)
+               : null;
+    if (dt) {
+      const iso = dt.replace(/^(\d{4}):(\d{2}):(\d{2})\s+/, '$1-$2-$3T') + 'Z';
+      return iso;
+    }
+  } catch(e) {}
+  try { return new Date(file.lastModified).toISOString(); } catch(e) { return new Date().toISOString(); }
+}
+
+async function uploadWithRetries(file, folder, maxAttempts, statusItem) {
+  let attempt = 0;
+  while (attempt < maxAttempts) {
+    attempt++;
+    try {
+      statusItem.textContent = `${file.name} - 上传中（第 ${attempt} 次）...`;
+      const url = await uploadToCloudinary(file, folder);
+      return url;
+    } catch (err) {
+      console.warn(`上传第 ${attempt} 次失败`, err);
+      if (attempt >= maxAttempts) throw err;
+      await new Promise(r => setTimeout(r, 500 * attempt));
+    }
+  }
+}
+
+async function uploadToCloudinary(file, folder) {
+  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+  let uploadFile = file;
+
+  // 压缩大文件
+  if (file.size > MAX_SIZE) {
+    const img = await createImageBitmap(file);
+    const canvas = document.createElement("canvas");
+    let width = img.width;
+    let height = img.height;
+
+    const maxDim = 3000;
+    if (width > height && width > maxDim) {
+      height = Math.round(height * maxDim / width);
+      width = maxDim;
+    } else if (height > width && height > maxDim) {
+      width = Math.round(width * maxDim / height);
+      height = maxDim;
+    } else if (width === height && width > maxDim) {
+      width = maxDim;
+      height = maxDim;
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0, width, height);
+
+    uploadFile = await new Promise(resolve => 
+      canvas.toBlob(resolve, "image/jpeg", 0.9)
+    );
+  }
+
+  const takenAt = await getTakenAtISO(file);
+  const apiUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
+  const fd = new FormData();
+  fd.append("file", uploadFile);
+  fd.append("upload_preset", UPLOAD_PRESET);
+  if (folder) fd.append("folder", folder);
+  fd.append("public_id", file.name.split('.').slice(0, -1).join('.'));
+  fd.append("context", `taken_at=${takenAt}`);
+
+  const res = await fetch(apiUrl, { method: "POST", body: fd });
+  const data = await res.json();
+  if (!res.ok) {
+    const msg = (data && data.error && data.error.message) ? data.error.message : JSON.stringify(data);
+    throw new Error(msg);
+  }
+  return data.secure_url;
+}
+
+async function savePhotoToDB(album, url) {
+  const res = await fetch("/save_photo", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ album: album, url: url, private: true })
+  });
+  const data = await res.json();
+  if (!res.ok || data.success === false) {
+    throw new Error(data.error || "保存到数据库失败");
+  }
+  return data;
 }
 </script>
 {% endblock %}
-
