@@ -571,7 +571,7 @@ def private_space():
         print(f"⚠️ 获取私密相册失败: {e}")
         album_names = []
 
-    return render_template("private_space.html", album_names=album_names, last_album=session.get("last_private_album", ""))
+    return render_template("private_album.html", album_names=album_names, last_album=session.get("last_private_album", ""))
 
 @app.route("/private_space/<album_name>", methods=["GET", "POST"])
 @login_required
