@@ -41,9 +41,8 @@
     <div class="album-item">
       <a href="{{ url_for('view_private_album', album_name=album) }}">
         <div class="album-cover">
-          {% set cover = cloudinary.api.resources(type='upload', prefix='private/' ~ album, max_results=1).resources[0].secure_url if cloudinary.api.resources(type='upload', prefix='private/' ~ album, max_results=1).resources else '' %}
-          {% if cover %}
-            <img src="{{ cover }}" alt="{{ album }}">
+          {% if album_covers.get(album) %}
+            <img src="{{ album_covers[album] }}" alt="{{ album }}">
           {% else %}
             <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#eee;color:#666;">No Photo</div>
           {% endif %}
