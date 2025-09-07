@@ -531,6 +531,7 @@ def test_db():
 @login_required
 def private_space():
     album_names_set = set()
+    album_covers = {}  # 存放每个相册的封面 URL
     try:
         next_cursor = None
         while True:
@@ -543,7 +544,11 @@ def private_space():
             for res in resources.get('resources', []):
                 parts = res.get('public_id', '').split('/')
                 if len(parts) >= 2:
-                    album_names_set.add(parts[1])
+                    album = parts[1]
+                    album_names_set.add(album)
+                    # 如果还没存封面，就存第一张
+                    if album not in album_covers:
+                        album_covers[album] = res.get("secure_url")
             next_cursor = resources.get('next_cursor')
             if not next_cursor:
                 break
@@ -551,8 +556,14 @@ def private_space():
     except Exception as e:
         print(f"⚠️ 获取私密相册失败: {e}")
         album_names = []
+        album_covers = {}
 
-    return render_template("private_album.html", album_names=album_names, last_album=session.get("last_private_album", ""))
+    return render_template(
+        "private_album.html",
+        album_names=album_names,
+        album_covers=album_covers,
+        last_album=session.get("last_private_album", "")
+    )
 
 @app.route("/private_space/<album_name>", methods=["GET", "POST"])
 @login_required
