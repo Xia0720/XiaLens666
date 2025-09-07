@@ -549,21 +549,29 @@ def test_db():
 @app.route("/private_space")
 @login_required
 def private_space():
+    album_names_set = set()
     try:
-        resources = cloudinary.api.resources(type="upload", prefix="private", max_results=500)
-        albums_set = set()
-        for res in resources['resources']:
-            parts = res['public_id'].split('/')
-            if len(parts) >= 2:
-                albums_set.add(parts[1])
-        albums = []
-        for album_name in albums_set:
-            album_resources = cloudinary.api.resources(type="upload", prefix=f"private/{album_name}", max_results=1)
-            cover_url = album_resources['resources'][0]['secure_url'] if album_resources['resources'] else ""
-            albums.append({'name': album_name, 'cover': cover_url})
-        return render_template("private_album.html", albums=albums)
+        next_cursor = None
+        while True:
+            resources = cloudinary.api.resources(
+                type="upload",
+                prefix="private/",
+                max_results=500,
+                next_cursor=next_cursor
+            )
+            for res in resources.get('resources', []):
+                parts = res.get('public_id', '').split('/')
+                if len(parts) >= 2:
+                    album_names_set.add(parts[1])
+            next_cursor = resources.get('next_cursor')
+            if not next_cursor:
+                break
+        album_names = sorted(album_names_set)
     except Exception as e:
-        return f"Error fetching private albums: {str(e)}"
+        print(f"⚠️ 获取私密相册失败: {e}")
+        album_names = []
+
+    return render_template("private_space.html", album_names=album_names, last_album=session.get("last_private_album", ""))
 
 @app.route("/private_space/<album_name>", methods=["GET", "POST"])
 @login_required
