@@ -11,32 +11,31 @@
   </summary>
 
   <!-- 上传表单（提交到后端 upload_private 路由） -->
-  <form method="POST" enctype="multipart/form-data" action="{{ url_for('upload_private') }}" style="margin-top:12px;">
-      <div style="margin-bottom:10px;">
-          <label for="albumSelect">选择相册</label><br>
-          <select name="album" id="albumSelect" style="min-width:260px;">
-              {% if album_names is defined and album_names %}
-                  {% for album in album_names %}
-                      <option value="{{ album }}">{{ album }}</option>
-                  {% endfor %}
-              {% endif %}
-              <option value="new">+ 创建新相册</option>
-          </select>
-      </div>
+<form method="POST" enctype="multipart/form-data" action="{{ url_for('upload_private') }}" style="margin-top:12px;">
+    <div style="margin-bottom:10px;">
+        <label for="albumSelect">选择相册</label><br>
+        <select name="album" id="albumSelect" style="min-width:260px;">
+            {% if album_names is defined and album_names %}
+                {% for album in album_names %}
+                    <option value="{{ album }}">{{ album }}</option>
+                {% endfor %}
+            {% endif %}
+            <option value="new">+ 创建新相册</option>
+        </select>
+    </div>
 
-      <!-- 默认隐藏，用 hidden 避免被外部 CSS 干扰 -->
-      <div id="newAlbumDiv" hidden style="margin-top:10px;">
-          <label for="new_album">新相册名</label><br>
-          <input type="text" id="new_album" name="new_album" placeholder="输入新相册名" style="min-width:260px;">
-      </div>
+    <div id="newAlbumDiv" hidden style="margin-top:10px;">
+        <label for="new_album">新相册名</label><br>
+        <input type="text" id="new_album" name="new_album" placeholder="输入新相册名" style="min-width:260px;">
+    </div>
 
-      <div style="margin-top:15px;">
-          <label for="photo">选择照片</label><br>
-          <input type="file" name="photo" id="photo" multiple required>
-      </div>
+    <div style="margin-top:15px;">
+        <label for="photo">选择照片</label><br>
+        <input type="file" name="photo" id="photo" multiple required>
+    </div>
 
-      <button type="submit" style="margin-top:15px;">上传</button>
-  </form>
+    <button type="submit" style="margin-top:15px;">上传</button>
+</form>
 </details>
 
 <!-- 相册列表 -->
