@@ -317,8 +317,9 @@ def delete_story(story_id):
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     if request.method == "POST":
+        # 前端传过来的相册名（已有或新建）
         album_name = request.form.get("album") or request.form.get("new_album")
-        files = request.files.getlist("photo")
+        files = request.files.getlist("photo")  # input name="photo"
 
         uploaded_urls = []
 
@@ -329,29 +330,34 @@ def upload():
                     result = cloudinary.uploader.upload(
                         file,
                         folder=folder_path,
-                        public_id=file.filename.rsplit('.', 1)[0]
+                        public_id=file.filename.rsplit('.', 1)[0]  # 保留文件名去掉扩展名
                     )
                     uploaded_urls.append(result["secure_url"])
                 except Exception as e:
                     print(f"❌ 上传失败 {file.filename}: {e}")
 
-        return jsonify({"success": True, "urls": uploaded_urls})
+        # 返回 JSON，前端可获取 last_album
+        return jsonify({"success": True, "urls": uploaded_urls, "last_album": album_name})
 
-    # GET 请求：获取所有相册
+    # GET 请求：获取所有已有相册（一级文件夹）
     album_names = []
     main = (MAIN_ALBUM_FOLDER or "").strip('/')
     try:
-        # 获取主文件夹下的一级子文件夹
-        folders = cloudinary.api.folders(path=main) if main else cloudinary.api.folders()
-        album_names = [f['name'] for f in folders.get('folders', [])]
+        resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
+        album_names_set = set()
+        for res in resources.get('resources', []):
+            parts = res.get('public_id', '').split('/')
+            if len(parts) >= 2:
+                album_names_set.add(parts[1])
+        album_names = sorted(album_names_set)
     except Exception as e:
         print(f"⚠️ 获取相册失败: {e}")
 
     return render_template(
         "upload.html",
-        album_names=sorted(album_names),
+        album_names=album_names,
         MAIN_ALBUM_FOLDER=MAIN_ALBUM_FOLDER,
-        last_album=""
+        last_album=""  # 可在前端用来默认选中最近上传的相册
     )
 
 # --------------------------
