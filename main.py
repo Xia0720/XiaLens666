@@ -317,50 +317,43 @@ def delete_story(story_id):
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     if request.method == "POST":
-        # 前端传过来的相册名（new 或已有）
         album_name = request.form.get("album") or request.form.get("new_album")
-        files = request.files.getlist("photo")  # 注意前端 input name="photo"
+        files = request.files.getlist("photo")
 
         uploaded_urls = []
 
         for file in files:
             if file and file.filename:
                 try:
-                    # 原样上传前端已压缩或原文件
                     folder_path = f"{MAIN_ALBUM_FOLDER}/{album_name}" if MAIN_ALBUM_FOLDER else album_name
                     result = cloudinary.uploader.upload(
                         file,
                         folder=folder_path,
-                        public_id=file.filename.rsplit('.', 1)[0]  # 保留文件名去掉扩展名
+                        public_id=file.filename.rsplit('.', 1)[0]
                     )
                     uploaded_urls.append(result["secure_url"])
                 except Exception as e:
                     print(f"❌ 上传失败 {file.filename}: {e}")
 
-        # 返回 JSON，供前端 savePhotoToDB 调用
         return jsonify({"success": True, "urls": uploaded_urls})
 
-    # GET 请求：渲染上传页面，获取所有已创建相册
+    # GET 请求：获取所有相册
     album_names = []
     main = (MAIN_ALBUM_FOLDER or "").strip('/')
-    if main:
-        try:
-            resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
-            album_names_set = set()
-            for res in resources.get('resources', []):
-                parts = res.get('public_id', '').split('/')
-                if len(parts) >= 2:
-                    album_names_set.add(parts[1])
-            album_names = sorted(album_names_set)
-        except Exception as e:
-            print(f"⚠️ 获取相册失败: {e}")
+    try:
+        # 获取主文件夹下的一级子文件夹
+        folders = cloudinary.api.folders(path=main) if main else cloudinary.api.folders()
+        album_names = [f['name'] for f in folders.get('folders', [])]
+    except Exception as e:
+        print(f"⚠️ 获取相册失败: {e}")
 
     return render_template(
         "upload.html",
-        album_names=album_names,
+        album_names=sorted(album_names),
         MAIN_ALBUM_FOLDER=MAIN_ALBUM_FOLDER,
-        last_album=""  # 可以根据需求保留最后上传相册名
+        last_album=""
     )
+
 # --------------------------
 # 私密空间上传（仅登录）
 # --------------------------
