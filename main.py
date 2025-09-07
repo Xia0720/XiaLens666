@@ -396,7 +396,7 @@ def upload_private():
     for file in files:
         if file and file.filename:
             try:
-                # 上传到 private 文件夹
+                # 强制放到 private 目录下
                 folder_path = f"private/{album_name}"
                 result = cloudinary.uploader.upload(
                     file,
@@ -405,7 +405,7 @@ def upload_private():
                 )
                 uploaded_urls.append(result["secure_url"])
 
-                # 同步写入数据库
+                # ✅ 同时保存到数据库，标记为 private
                 new_photo = Photo(
                     album=album_name,
                     url=result["secure_url"],
@@ -418,9 +418,8 @@ def upload_private():
 
     db.session.commit()
 
-    # 上传完成后，回到 Private space 主页面
-    return redirect(url_for("private_albums"))
-
+    # 上传完回到 private space 主页面
+    return redirect(url_for("private_space"))
 # --------------------------
 # 登录/登出
 # --------------------------
