@@ -97,9 +97,10 @@ def login_required(f):
 # --------------------------
 class Photo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    album = db.Column(db.String(128), nullable=False)
-    url = db.Column(db.String(512), nullable=False)
+    album = db.Column(db.String(128), nullable=False)   # 保持原来 128
+    url = db.Column(db.String(512), nullable=False, unique=True)  # 保持原来 512，加 unique
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_private = db.Column(db.Boolean, default=False)   # 新增字段
 # --------------------------
 # 数据模型
 # --------------------------
@@ -387,48 +388,60 @@ def upload():
 @app.route("/upload_private", methods=["GET", "POST"])
 @login_required
 def upload_private():
+    if request.method == "POST":
+        album_name = request.form.get("album") or request.form.get("new_album")
+        files = request.files.getlist("photo")
+
+        uploaded_urls = []
+
+        for file in files:
+            if file and file.filename:
+                try:
+                    # 强制放到 private 目录下
+                    folder_path = f"private/{album_name}"
+                    result = cloudinary.uploader.upload(
+                        file,
+                        folder=folder_path,
+                        public_id=file.filename.rsplit('.', 1)[0]
+                    )
+                    uploaded_urls.append(result["secure_url"])
+                except Exception as e:
+                    print(f"❌ 上传失败 {file.filename}: {e}")
+
+        return jsonify({"success": True, "urls": uploaded_urls, "last_album": album_name})
+    # ===== GET 请求：获取 private 下的相册 =====
+    album_names_set = set()
     try:
-        resources = cloudinary.api.resources(type="upload", prefix="private", max_results=500)
-        album_names_set = set()
-        for res in resources['resources']:
-            parts = res['public_id'].split('/')
-            if len(parts) >= 2:
-                album_names_set.add(parts[1])
-        album_names = list(album_names_set)
-    except Exception:
+        next_cursor = None
+        while True:
+            resources = cloudinary.api.resources(
+                type="upload",
+                prefix="private/",
+                max_results=500,
+                next_cursor=next_cursor
+            )
+            for res in resources.get('resources', []):
+                public_id = res.get('public_id', '')
+                parts = public_id.split('/')
+                if len(parts) >= 2 and parts[0] == "private":
+                    album_names_set.add(parts[1])
+
+            next_cursor = resources.get('next_cursor')
+            if not next_cursor:
+                break
+
+        album_names = sorted(album_names_set)
+
+    except Exception as e:
+        print(f"⚠️ 获取 private 相册失败: {e}")
         album_names = []
 
-    if request.method == "POST":
-        photos = request.files.getlist("photo")
-        selected_album = request.form.get("album")
-        new_album = request.form.get("new_album", "").strip()
-
-        if not photos or all(p.filename == '' for p in photos):
-            return "No selected photo file", 400
-
-        folder = new_album if (selected_album == "new" and new_album) else selected_album
-        if not folder:
-            return "Folder name is required", 400
-
-        folder = f"private/{folder}"
-
-        try:
-            for photo in photos:
-                if photo and photo.filename != '':
-                    img = fix_image_orientation(photo)
-                    buffer = io.BytesIO()
-                    img.save(buffer, format="JPEG", quality=90, optimize=True)
-                    buffer.seek(0)
-                    cloudinary.uploader.upload(buffer, folder=folder, quality="auto", fetch_format="auto")
-
-            flash("Uploaded successfully.")
-            return redirect(url_for("upload_private", last_album=folder.split('/', 1)[1]))
-        except Exception as e:
-            return f"Error uploading file: {str(e)}"
-
-    # ✅ GET 请求时取出 last_album 传给模板
-    last_album = request.args.get("last_album", "")
-    return render_template("upload_private.html", album_names=album_names, last_album=last_album)
+    return render_template(
+        "upload_private.html",
+        album_names=album_names,
+        MAIN_ALBUM_FOLDER="private",
+        last_album=""
+    )
 
 # --------------------------
 # 登录/登出
@@ -541,14 +554,23 @@ def save_photo():
     data = request.get_json() or {}
     album = data.get("album")
     url = data.get("url")
+    is_private = bool(data.get("private"))  # 前端传 true / false
+
     if not album or not url:
         return jsonify({"success": False, "error": "缺少 album 或 url"}), 400
+
     try:
         # 防止重复保存
         exists = Photo.query.filter_by(url=url).first()
         if exists:
             return jsonify({"success": True, "message": "already_exists"})
-        new_photo = Photo(album=album, url=url, created_at=datetime.utcnow())
+
+        new_photo = Photo(
+            album=album,
+            url=url,
+            created_at=datetime.utcnow(),
+            is_private=is_private
+        )
         db.session.add(new_photo)
         db.session.commit()
         return jsonify({"success": True})
