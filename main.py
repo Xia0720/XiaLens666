@@ -316,79 +316,88 @@ def delete_story(story_id):
 # --------------------------
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
+    MAX_SIZE = 10 * 1024 * 1024   # Cloudinary 限制：10MB
+    COMPRESS_MAX_DIM = (3000, 3000)  # 压缩最大尺寸
+    QUALITY_STEPS = [90, 80, 70, 60] # 逐步尝试压缩质量
+
     if request.method == "POST":
         album_name = request.form["album"]
         files = request.files.getlist("file")
 
         for file in files:
-            if not file or not file.filename:
+            if not (file and file.filename):
                 continue
 
-            # 获取原始大小
-            file.seek(0, os.SEEK_END)
-            file_size = file.tell()
-            file.seek(0)
-            print(f"[DEBUG] 原始文件 {file.filename}, 大小={file_size/1024/1024:.2f}MB")
-
-            upload_file = file  # 默认上传原文件
-
-            # 如果超过 10MB，则尝试压缩
-            if file_size > 10 * 1024 * 1024:
-                try:
-                    img = Image.open(file)
-
-                    # 记录原始尺寸
-                    orig_w, orig_h = img.size
-                    print(f"[DEBUG] 原始分辨率: {orig_w}x{orig_h}")
-
-                    max_size = 3000
-                    if orig_w > max_size or orig_h > max_size:
-                        img.thumbnail((max_size, max_size))
-
-                    compressed_io = io.BytesIO()
-                    img.save(compressed_io, format="JPEG", quality=85, optimize=True)
-                    compressed_io.seek(0)
-
-                    compressed_size = len(compressed_io.getvalue())
-                    print(f"[DEBUG] 压缩后大小={compressed_size/1024/1024:.2f}MB")
-
-                    if compressed_size <= 10 * 1024 * 1024:
-                        upload_file = compressed_io
-                        flash(f"{file.filename} 已压缩至 {compressed_size/1024/1024:.2f}MB 并上传")
-                    else:
-                        flash(f"{file.filename} 压缩后仍然 >10MB，可能上传失败")
-                        print(f"[DEBUG] {file.filename} 压缩失败（仍大于10MB）")
-
-                except Exception as e:
-                    flash(f"{file.filename} 压缩出错：{str(e)}")
-                    print(f"[ERROR] 压缩 {file.filename} 失败: {e}")
-
-            # 上传到 Cloudinary
             try:
-                cloudinary.uploader.upload(
-                    upload_file,
-                    folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
-                )
-                print(f"[DEBUG] {file.filename} 上传成功")
+                # === 获取文件大小 ===
+                file.stream.seek(0, io.SEEK_END)
+                size = file.stream.tell()
+                file.stream.seek(0)
+
+                if size <= MAX_SIZE:
+                    # ✅ 小于等于 10MB → 原样上传
+                    cloudinary.uploader.upload(
+                        file,
+                        folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
+                    )
+                    print(f"[UPLOAD] 原样上传: {file.filename} ({size/1024/1024:.2f} MB)")
+                else:
+                    # ❌ 大于 10MB → 压缩
+                    img = Image.open(file.stream).convert("RGB")
+                    img.thumbnail(COMPRESS_MAX_DIM, Image.Resampling.LANCZOS)
+
+                    final_buf = None
+                    for q in QUALITY_STEPS:
+                        buf = io.BytesIO()
+                        img.save(buf, format="JPEG", quality=q, optimize=True)
+                        if buf.getbuffer().nbytes <= MAX_SIZE:
+                            final_buf = buf
+                            break
+
+                    if final_buf is None:
+                        print(f"[UPLOAD FAILED] {file.filename} 无法压缩到 <=10MB，跳过")
+                        continue
+
+                    final_buf.seek(0)
+                    cloudinary.uploader.upload(
+                        final_buf,
+                        folder=f"{MAIN_ALBUM_FOLDER}/{album_name}"
+                    )
+                    print(f"[UPLOAD] 压缩上传: {file.filename} ({final_buf.getbuffer().nbytes/1024/1024:.2f} MB)")
+
             except Exception as e:
-                flash(f"{file.filename} 上传失败: {str(e)}")
-                print(f"[ERROR] 上传 {file.filename} 失败: {e}")
+                print(f"[ERROR] 上传 {file.filename} 出错: {e}")
 
         return redirect(url_for("albums"))
 
-    # 获取已有相册名（保证显示完整）
-    album_names = []
+    # ========== GET：列出所有已创建过的相册 ==========
+    album_names_set = set()
     main = (MAIN_ALBUM_FOLDER or "").strip('/')
     if main:
-        folders = cloudinary.api.subfolders(main)
-        album_names = sorted([f["name"] for f in folders.get("folders", [])])
+        next_cursor = None
+        while True:
+            resources = cloudinary.api.resources(
+                type="upload",
+                prefix=f"{main}/",
+                max_results=500,
+                next_cursor=next_cursor
+            )
+            for res in resources.get('resources', []):
+                parts = res.get('public_id', '').split('/')
+                if len(parts) >= 2:
+                    album_names_set.add(parts[1])
+
+            next_cursor = resources.get("next_cursor")
+            if not next_cursor:
+                break
+
+    album_names = sorted(album_names_set)
 
     return render_template(
         "upload.html",
         album_names=album_names,
         MAIN_ALBUM_FOLDER=MAIN_ALBUM_FOLDER
     )
-
 # --------------------------
 # 私密空间上传（仅登录）
 # --------------------------
