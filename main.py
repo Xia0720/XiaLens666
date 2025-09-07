@@ -412,79 +412,68 @@ def upload_private():
             if not safe_name:
                 safe_name = str(uuid.uuid4())
 
-            # 读原始 bytes
             file.stream.seek(0)
             raw = file.read()
             upload_buffer = io.BytesIO(raw)
 
             mimetype = (file.mimetype or "").lower()
-            # 压缩大文件
+
+            # 大图压缩逻辑（支持 >10MB）
             if len(raw) > MAX_CLOUDINARY_SIZE and mimetype.startswith("image"):
+                img = Image.open(io.BytesIO(raw))
                 try:
-                    img = Image.open(io.BytesIO(raw))
-                    # 修正方向
-                    try:
-                        exif = img._getexif()
-                        if exif:
-                            orientation_key = next(
-                                (k for k, v in ExifTags.TAGS.items() if v == "Orientation"), None
-                            )
-                            if orientation_key:
-                                o = exif.get(orientation_key)
-                                if o == 3:
-                                    img = img.rotate(180, expand=True)
-                                elif o == 6:
-                                    img = img.rotate(270, expand=True)
-                                elif o == 8:
-                                    img = img.rotate(90, expand=True)
-                    except Exception:
-                        pass
+                    exif = img._getexif()
+                    if exif:
+                        orientation_key = next((k for k,v in ExifTags.TAGS.items() if v == "Orientation"), None)
+                        if orientation_key:
+                            o = exif.get(orientation_key)
+                            if o == 3:
+                                img = img.rotate(180, expand=True)
+                            elif o == 6:
+                                img = img.rotate(270, expand=True)
+                            elif o == 8:
+                                img = img.rotate(90, expand=True)
+                except:
+                    pass
 
-                    # 限制最大边
-                    max_dim = 3000
-                    w, h = img.size
-                    if max(w, h) > max_dim:
-                        if w >= h:
-                            new_w = max_dim
-                            new_h = int(h * max_dim / w)
-                        else:
-                            new_h = max_dim
-                            new_w = int(w * max_dim / h)
-                        img = img.resize((new_w, new_h), Image.LANCZOS)
+                max_dim = 3000
+                w, h = img.size
+                if max(w, h) > max_dim:
+                    if w >= h:
+                        new_w = max_dim
+                        new_h = int(h * max_dim / w)
+                    else:
+                        new_h = max_dim
+                        new_w = int(w * max_dim / h)
+                    img = img.resize((new_w, new_h), Image.LANCZOS)
 
-                    quality = 90
-                    out = io.BytesIO()
+                quality = 90
+                out = io.BytesIO()
+                img.convert("RGB").save(out, format="JPEG", quality=quality, optimize=True)
+                while out.tell() > MAX_CLOUDINARY_SIZE and quality > 30:
+                    quality -= 10
+                    out.seek(0); out.truncate(0)
                     img.convert("RGB").save(out, format="JPEG", quality=quality, optimize=True)
-                    while out.tell() > MAX_CLOUDINARY_SIZE and quality > 30:
-                        quality -= 10
-                        out.seek(0); out.truncate(0)
-                        img.convert("RGB").save(out, format="JPEG", quality=quality, optimize=True)
 
-                    while out.tell() > MAX_CLOUDINARY_SIZE:
-                        w, h = img.size
-                        img = img.resize((max(200, int(w * 0.8)), max(200, int(h * 0.8))), Image.LANCZOS)
-                        out.seek(0); out.truncate(0)
-                        img.convert("RGB").save(out, format="JPEG", quality=quality, optimize=True)
-                        if img.size[0] < 400 or img.size[1] < 400:
-                            break
+                while out.tell() > MAX_CLOUDINARY_SIZE:
+                    w, h = img.size
+                    img = img.resize((max(200, int(w * 0.8)), max(200, int(h * 0.8))), Image.LANCZOS)
+                    out.seek(0); out.truncate(0)
+                    img.convert("RGB").save(out, format="JPEG", quality=quality, optimize=True)
+                    if img.size[0] < 400 or img.size[1] < 400:
+                        break
 
-                    out.seek(0)
-                    upload_buffer = out
-                except Exception as e:
-                    return jsonify({"success": False, "error": f"压缩失败 {file.filename}: {e}"}), 500
+                out.seek(0)
+                upload_buffer = out
             elif len(raw) > MAX_CLOUDINARY_SIZE and not mimetype.startswith("image"):
                 return jsonify({"success": False, "error": f"文件 {file.filename} 太大且不是图片"}), 400
 
-            # 上传到 Cloudinary
+            # 上传
             folder_path = f"private/{album_name}"
             upload_buffer.seek(0)
-            result = cloudinary.uploader.upload(
-                upload_buffer,
-                folder=folder_path,
-                public_id=safe_name
-            )
+            result = cloudinary.uploader.upload(upload_buffer, folder=folder_path, public_id=safe_name)
 
-            # 保存到数据库
+            # 存数据库
             new_photo = Photo(
                 album=album_name,
                 url=result.get("secure_url"),
@@ -493,7 +482,6 @@ def upload_private():
             )
             db.session.add(new_photo)
             db.session.commit()
-
             uploaded_urls.append(result.get("secure_url"))
 
         except Exception as e:
@@ -501,7 +489,6 @@ def upload_private():
             return jsonify({"success": False, "error": f"上传失败 {file.filename}: {e}"}), 500
 
     return jsonify({"success": True, "urls": uploaded_urls, "album": album_name})
-
 # --------------------------
 # 登录/登出
 # --------------------------
