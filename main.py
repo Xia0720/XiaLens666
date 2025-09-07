@@ -317,9 +317,9 @@ def delete_story(story_id):
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     if request.method == "POST":
-        # 前端传过来的相册名（已有或新建）
+        # 前端传过来的相册名（new 或已有）
         album_name = request.form.get("album") or request.form.get("new_album")
-        files = request.files.getlist("photo")  # input name="photo"
+        files = request.files.getlist("photo")  # 注意 input name="photo"
 
         uploaded_urls = []
 
@@ -336,28 +336,49 @@ def upload():
                 except Exception as e:
                     print(f"❌ 上传失败 {file.filename}: {e}")
 
-        # 返回 JSON，前端可获取 last_album
-        return jsonify({"success": True, "urls": uploaded_urls, "last_album": album_name})
+        # 返回 JSON 给前端处理
+        return jsonify({"success": True, "urls": uploaded_urls})
 
-    # GET 请求：获取所有已有相册（一级文件夹）
-    album_names = []
-    main = (MAIN_ALBUM_FOLDER or "").strip('/')
+    # ========== GET 请求：获取所有已创建相册 ==========
+    album_names_set = set()
+    main_prefix = (MAIN_ALBUM_FOLDER or "").strip('/')
+
     try:
-        resources = cloudinary.api.resources(type="upload", prefix=f"{main}/", max_results=500)
-        album_names_set = set()
-        for res in resources.get('resources', []):
-            parts = res.get('public_id', '').split('/')
-            if len(parts) >= 2:
-                album_names_set.add(parts[1])
+        # 分页获取所有资源，防止 max_results 限制
+        next_cursor = None
+        while True:
+            resources = cloudinary.api.resources(
+                type="upload",
+                prefix=f"{main_prefix}/" if main_prefix else "",
+                max_results=500,
+                next_cursor=next_cursor
+            )
+            for res in resources.get('resources', []):
+                public_id = res.get('public_id', '')
+                parts = public_id.split('/')
+                if main_prefix:
+                    # 去掉主文件夹前缀
+                    if parts[0] == main_prefix and len(parts) >= 2:
+                        album_names_set.add(parts[1])
+                else:
+                    if len(parts) >= 1:
+                        album_names_set.add(parts[0])
+
+            next_cursor = resources.get('next_cursor')
+            if not next_cursor:
+                break
+
         album_names = sorted(album_names_set)
+
     except Exception as e:
         print(f"⚠️ 获取相册失败: {e}")
+        album_names = []
 
     return render_template(
         "upload.html",
         album_names=album_names,
         MAIN_ALBUM_FOLDER=MAIN_ALBUM_FOLDER,
-        last_album=""  # 可在前端用来默认选中最近上传的相册
+        last_album=""  # 可选：记录上次上传相册
     )
 
 # --------------------------
