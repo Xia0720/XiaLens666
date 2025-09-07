@@ -1,113 +1,92 @@
 {% extends "base.html" %}
-{% block title %}Private Albums{% endblock %}
+
+{% block title %}Private Album Space{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/glightbox/dist/css/glightbox.min.css">
-<script src="https://cdn.jsdelivr.net/npm/glightbox/dist/js/glightbox.min.js"></script>
+<h1 style="text-align:center; margin-top:20px;">Private Album Space</h1>
 
-<h1 style="text-align:center; margin-top:20px;">Private Space</h1>
-
-<!-- 上传表单 -->
-<div style="max-width: 600px; margin: 20px auto; padding: 15px; border: 1px solid #ccc; border-radius: 10px;">
-  <form id="uploadForm" method="POST" enctype="multipart/form-data" action="{{ url_for('upload_private') }}">
-    <div style="margin-bottom:10px;">
-      <label for="album">选择相册：</label>
-      <select name="album" id="album" style="width:200px;">
-        {% for alb in album_names %}
-          <option value="{{ alb }}" {% if alb==last_album %}selected{% endif %}>{{ alb }}</option>
-        {% endfor %}
-        <option value="new">新建相册</option>
-      </select>
-    </div>
-
-    <div style="margin-bottom:10px;">
-      <label for="new_album">新相册名（仅在选择新建时有效）</label>
-      <input type="text" name="new_album" id="new_album" style="width:200px;">
-    </div>
-
-    <div style="margin-bottom:10px;">
-      <label for="photo">选择照片</label>
-      <input type="file" name="photo" id="photo" multiple>
-    </div>
-
-    <button type="submit" style="padding: 6px 12px;">上传</button>
+<!-- 上传区域 -->
+<div style="max-width: 600px; margin: 20px auto; padding: 10px; border: 1px solid #ccc; border-radius: 8px;">
+  <form id="uploadForm">
+    <label>选择相册：</label>
+    <select name="album" id="albumSelect">
+      {% for album in album_names %}
+        <option value="{{ album }}" {% if album==last_album %}selected{% endif %}>{{ album }}</option>
+      {% endfor %}
+      <option value="new">新建相册</option>
+    </select>
+    <br><br>
+    <input type="text" name="new_album" id="newAlbum" placeholder="新相册名（仅选择新建时填写）">
+    <br><br>
+    <input type="file" name="photo" id="photoInput" multiple>
+    <br><br>
+    <button type="submit">上传照片</button>
   </form>
-
   <div id="uploadStatus" style="margin-top:10px;"></div>
 </div>
 
-<!-- 私密相册列表 -->
+<!-- 相册展示 -->
 <div class="album-grid">
-  {% for alb in album_names %}
+  {% for album in album_names %}
     <div class="album-item">
-      <a href="{{ url_for('view_private_album', album_name=alb) }}">
-        <img src="https://res.cloudinary.com/demo/image/upload/sample.jpg" alt="{{ alb }}"> <!-- 可改成真实封面 -->
-        <div class="album-name">{{ alb }}</div>
-      </a>
+      <a href="{{ url_for('view_private_album', album_name=album) }}">{{ album }}</a>
     </div>
   {% endfor %}
 </div>
 
 <style>
 .album-grid {
-  display:flex;
+  display: flex;
   flex-wrap: wrap;
-  gap:15px;
+  gap: 10px;
   justify-content: center;
   margin-top: 20px;
 }
 .album-item {
-  position: relative;
-  width: 200px;
-  height: 200px;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 1px solid #ccc;
-  text-align:center;
+  width: 150px;
+  height: 150px;
+  background: #f5f5f5;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 8px;
+  font-weight: bold;
+  text-align: center;
+  cursor: pointer;
 }
-.album-item img {
-  width:100%;
-  height:150px;
-  object-fit: cover;
-  display:block;
-}
-.album-name {
-  padding:5px;
-  font-weight:bold;
-  background: #f0f0f0;
+.album-item a {
+  text-decoration: none;
+  color: #333;
 }
 </style>
 
 <script>
-document.getElementById('uploadForm').addEventListener('submit', async function(e){
-    e.preventDefault();
-    const form = e.target;
-    const files = form.photo.files;
-    if(!files.length) { alert('请选择至少一张照片'); return; }
+const uploadForm = document.getElementById("uploadForm");
+const uploadStatus = document.getElementById("uploadStatus");
 
-    const album = form.album.value;
-    const new_album = form.new_album.value.trim();
-    const data = new FormData();
-    for(let f of files) data.append('photo', f);
-    data.append('album', album);
-    data.append('new_album', new_album);
+uploadForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-    const statusDiv = document.getElementById('uploadStatus');
-    statusDiv.innerHTML = '上传中...';
+  const formData = new FormData(uploadForm);
+  uploadStatus.textContent = "上传中...";
 
-    try {
-        const res = await fetch(form.action, { method:'POST', body:data });
-        if(res.ok){
-            statusDiv.innerHTML = '上传成功！刷新页面查看相册。';
-            setTimeout(()=>location.reload(), 1500);
-        } else {
-            const text = await res.text();
-            statusDiv.innerHTML = '上传失败: ' + text;
-        }
-    } catch(err){
-        statusDiv.innerHTML = '上传失败: ' + err;
+  try {
+    const res = await fetch("{{ url_for('upload_private') }}", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      uploadStatus.textContent = "上传成功！";
+      // 上传成功后刷新页面显示新相册
+      window.location.reload();
+    } else {
+      uploadStatus.textContent = "上传失败: " + data.error;
     }
+  } catch (err) {
+    uploadStatus.textContent = "请求出错: " + err;
+  }
 });
 </script>
-
 {% endblock %}
