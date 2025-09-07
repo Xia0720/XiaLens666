@@ -385,63 +385,41 @@ def upload():
 # --------------------------
 # 私密空间上传（仅登录）
 # --------------------------
-@app.route("/upload_private", methods=["GET", "POST"])
+@app.route("/upload_private", methods=["POST"])
 @login_required
 def upload_private():
-    if request.method == "POST":
-        album_name = request.form.get("album") or request.form.get("new_album")
-        files = request.files.getlist("photo")
+    album_name = request.form.get("album") or request.form.get("new_album")
+    files = request.files.getlist("photo")
 
-        uploaded_urls = []
+    uploaded_urls = []
 
-        for file in files:
-            if file and file.filename:
-                try:
-                    # 强制放到 private 目录下
-                    folder_path = f"private/{album_name}"
-                    result = cloudinary.uploader.upload(
-                        file,
-                        folder=folder_path,
-                        public_id=file.filename.rsplit('.', 1)[0]
-                    )
-                    uploaded_urls.append(result["secure_url"])
-                except Exception as e:
-                    print(f"❌ 上传失败 {file.filename}: {e}")
+    for file in files:
+        if file and file.filename:
+            try:
+                # 上传到 private 文件夹
+                folder_path = f"private/{album_name}"
+                result = cloudinary.uploader.upload(
+                    file,
+                    folder=folder_path,
+                    public_id=file.filename.rsplit('.', 1)[0]
+                )
+                uploaded_urls.append(result["secure_url"])
 
-        return jsonify({"success": True, "urls": uploaded_urls, "last_album": album_name})
-    # ===== GET 请求：获取 private 下的相册 =====
-    album_names_set = set()
-    try:
-        next_cursor = None
-        while True:
-            resources = cloudinary.api.resources(
-                type="upload",
-                prefix="private/",
-                max_results=500,
-                next_cursor=next_cursor
-            )
-            for res in resources.get('resources', []):
-                public_id = res.get('public_id', '')
-                parts = public_id.split('/')
-                if len(parts) >= 2 and parts[0] == "private":
-                    album_names_set.add(parts[1])
+                # 同步写入数据库
+                new_photo = Photo(
+                    album=album_name,
+                    url=result["secure_url"],
+                    is_private=True
+                )
+                db.session.add(new_photo)
 
-            next_cursor = resources.get('next_cursor')
-            if not next_cursor:
-                break
+            except Exception as e:
+                print(f"❌ 上传失败 {file.filename}: {e}")
 
-        album_names = sorted(album_names_set)
+    db.session.commit()
 
-    except Exception as e:
-        print(f"⚠️ 获取 private 相册失败: {e}")
-        album_names = []
-
-    return render_template(
-        "upload_private.html",
-        album_names=album_names,
-        MAIN_ALBUM_FOLDER="private",
-        last_album=""
-    )
+    # 上传完成后，回到 Private space 主页面
+    return redirect(url_for("private_albums"))
 
 # --------------------------
 # 登录/登出
