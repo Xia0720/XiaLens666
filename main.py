@@ -13,7 +13,7 @@ import io
 import time
 from cloudinary.utils import api_sign_request
 from sqlalchemy.pool import NullPool
-import re
+import re, uuid
 from models import db, Photo
 
 app = Flask(__name__)
@@ -30,6 +30,7 @@ cloudinary.config(
 
 # main.py（靠近 cloudinary.config(...) 的地方）
 MAIN_ALBUM_FOLDER = os.getenv("MAIN_ALBUM_FOLDER", "albums")  # 若不想主文件夹，设置为空字符串 ""
+MAX_CLOUDINARY_SIZE = 10 * 1024 * 1024  # 10MB
 
 # --------------------------
 # 数据库配置
@@ -389,39 +390,123 @@ def upload():
 @app.route("/upload_private", methods=["POST"])
 @login_required
 def upload_private():
-    album_name = request.form.get("album") or request.form.get("new_album")
+    # 取相册名，如果选择 new 则读取 new_album 并校验
+    album_name = request.form.get("album")
+    if album_name == "new":
+        album_name = (request.form.get("new_album") or "").strip()
+        if not album_name:
+            flash("相册名不能为空，请输入新相册名。", "error")
+            return redirect(url_for("private_space"))
+
     files = request.files.getlist("photo")
-    uploaded_urls = []
+    if not files or all(f.filename == '' for f in files):
+        flash("请选择至少一张照片。", "warning")
+        return redirect(url_for("private_space"))
 
     for file in files:
-        if file and file.filename:
-            try:
-                # 清理文件名，生成合法 public_id
-                base_name = file.filename.rsplit('.', 1)[0]
-                safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', base_name).strip("_")
+        if not file or file.filename == '':
+            continue
 
-                folder_path = f"private/{album_name}"
-                result = cloudinary.uploader.upload(
-                    file,
-                    folder=folder_path,
-                    public_id=safe_name
-                )
-                uploaded_urls.append(result["secure_url"])
+        try:
+            # 1) 处理并清理 public_id（不能有空格或特殊字符）
+            base_name = file.filename.rsplit('.', 1)[0]
+            safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', base_name).strip('_')
+            if not safe_name:
+                safe_name = str(uuid.uuid4())
 
-                # 逐条保存到数据库
-                new_photo = Photo(
-                    album=album_name,
-                    url=result["secure_url"],
-                    is_private=True,
-                    created_at=datetime.utcnow()
-                )
-                db.session.add(new_photo)
-                db.session.commit()  # 避免 bulk insert 报错
+            # 2) 读取原始 bytes
+            file.stream.seek(0)
+            raw = file.read()
+            upload_buffer = io.BytesIO(raw)
 
-            except Exception as e:
-                db.session.rollback()
-                print(f"❌ 上传失败 {file.filename}: {e}")
+            # 3) 如果超过 Cloudinary 限制并且是图片，则尝试用 Pillow 压缩/缩放
+            mimetype = (file.mimetype or "").lower()
+            if len(raw) > MAX_CLOUDINARY_SIZE and mimetype.startswith("image"):
+                try:
+                    img = Image.open(io.BytesIO(raw))
 
+                    # 修正方向（Exif）
+                    try:
+                        exif = img._getexif()
+                        if exif:
+                            orientation_key = next((k for k,v in ExifTags.TAGS.items() if v == "Orientation"), None)
+                            if orientation_key:
+                                o = exif.get(orientation_key)
+                                if o == 3:
+                                    img = img.rotate(180, expand=True)
+                                elif o == 6:
+                                    img = img.rotate(270, expand=True)
+                                elif o == 8:
+                                    img = img.rotate(90, expand=True)
+                    except Exception:
+                        pass
+
+                    # 先按最大边限制缩放（避免非常巨大的分辨率）
+                    max_dim = 3000
+                    w, h = img.size
+                    if max(w, h) > max_dim:
+                        if w >= h:
+                            new_w = max_dim
+                            new_h = int(h * max_dim / w)
+                        else:
+                            new_h = max_dim
+                            new_w = int(w * max_dim / h)
+                        img = img.resize((new_w, new_h), Image.LANCZOS)
+
+                    # 再按质量循环压缩，直到小于上传限制或降到较低质量为止
+                    quality = 90
+                    out = io.BytesIO()
+                    img.convert("RGB").save(out, format="JPEG", quality=quality, optimize=True)
+                    while out.tell() > MAX_CLOUDINARY_SIZE and quality > 30:
+                        quality -= 10
+                        out.seek(0); out.truncate(0)
+                        img.convert("RGB").save(out, format="JPEG", quality=quality, optimize=True)
+
+                    # 如果仍大，继续按比例缩小分辨率并保存
+                    while out.tell() > MAX_CLOUDINARY_SIZE:
+                        w, h = img.size
+                        img = img.resize((max(200, int(w * 0.8)), max(200, int(h * 0.8))), Image.LANCZOS)
+                        out.seek(0); out.truncate(0)
+                        img.convert("RGB").save(out, format="JPEG", quality=quality, optimize=True)
+                        if img.size[0] < 400 or img.size[1] < 400:
+                            break
+
+                    out.seek(0)
+                    upload_buffer = out  # 用压缩后的 buffer 上传
+                except Exception as e:
+                    flash(f"无法压缩图片 {file.filename}：{e}", "error")
+                    # 跳过这张图片（不阻断其余图片）
+                    continue
+            elif len(raw) > MAX_CLOUDINARY_SIZE and not mimetype.startswith("image"):
+                flash(f"文件 {file.filename} 太大且不是图片，无法上传（>10MB）。", "error")
+                continue
+
+            # 4) 上传到 Cloudinary
+            folder_path = f"private/{album_name}"
+            upload_buffer.seek(0)
+            result = cloudinary.uploader.upload(
+                upload_buffer,
+                folder=folder_path,
+                public_id=safe_name
+            )
+
+            # 5) 逐条保存到数据库（逐条 commit，避免 bulk insert 问题）
+            new_photo = Photo(
+                album=album_name,
+                url=result.get("secure_url"),
+                is_private=True,
+                created_at=datetime.utcnow()
+            )
+            db.session.add(new_photo)
+            db.session.commit()
+
+        except Exception as e:
+            db.session.rollback()
+            # 打日志并给用户友好提示
+            print(f"❌ 上传失败 {file.filename}: {e}")
+            flash(f"上传失败 {file.filename}: {e}", "error")
+
+    flash("上传完成（若有失败，请查看提示）。", "success")
     return redirect(url_for("private_space"))
 # --------------------------
 # 登录/登出
