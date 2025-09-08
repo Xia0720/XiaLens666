@@ -271,7 +271,7 @@ def upload_story():
 
         for file in files:
             if file and file.filename:
-                upload_result = cloudinary.uploader.upload(file)
+                upload_result = cloudinary.uploader.upload(file,folder="stories")
                 img_url = upload_result.get("secure_url")
                 if img_url:
                     db.session.add(StoryImage(image_url=img_url, story=new_story))
