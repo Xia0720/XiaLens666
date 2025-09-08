@@ -322,6 +322,7 @@ def edit_story(story_id):
 
         story.text = text.strip()
 
+        # 删除选中的旧图
         delete_image_ids = request.form.get("delete_images", "")
         if delete_image_ids:
             for img_id in delete_image_ids.split(","):
@@ -329,20 +330,38 @@ def edit_story(story_id):
                 if img:
                     db.session.delete(img)
 
+        # 上传新图
         files = request.files.getlist("story_images")
         for file in files:
             if file and file.filename:
-                upload_result = cloudinary.uploader.upload(file)
-                img_url = upload_result.get("secure_url")
-                if img_url:
-                    db.session.add(StoryImage(image_url=img_url, story=story))
+                try:
+                    # 检查文件大小
+                    file.stream.seek(0, 2)  # 移动到末尾
+                    size = file.stream.tell()
+                    file.stream.seek(0)  # 回到开头
+
+                    if size > 9.5 * 1024 * 1024:  # 大于9.5MB，压缩
+                        img = Image.open(file.stream)
+                        img = img.convert("RGB")
+                        buf = io.BytesIO()
+                        img.save(buf, format="JPEG", quality=85, optimize=True)
+                        buf.seek(0)
+                        upload_result = cloudinary.uploader.upload(buf, folder="stories")
+                    else:
+                        upload_result = cloudinary.uploader.upload(file, folder="stories")
+
+                    img_url = upload_result.get("secure_url")
+                    if img_url:
+                        db.session.add(StoryImage(image_url=img_url, story=story))
+                except Exception as e:
+                    print(f"⚠️ 编辑 Story 上传图片失败: {e}")
+                    flash(f"Image {file.filename} failed to upload", "error")
 
         db.session.commit()
         flash("Story updated", "success")
         return redirect(url_for("story_detail", story_id=story.id))
 
     return render_template("edit_story.html", story=story)
-
 # --------------------------
 # 删除 Story（仅登录）
 # --------------------------
