@@ -12,7 +12,7 @@
 <!-- 上传表单，默认隐藏 -->
 <div id="upload-area" style="display:none; max-width:600px; margin:0 auto; border:1px solid #ccc; padding:15px; border-radius:8px;">
   <form id="private-upload-form" enctype="multipart/form-data">
-    <label>选择相册：
+    <label>Select Album：
       <select name="album" id="album-select">
         {% for album in album_names %}
           <option value="{{ album }}" {% if album==last_album %}selected{% endif %}>{{ album }}</option>
@@ -22,7 +22,7 @@
     </label>
     <br><br>
     <div id="new-album-div" style="display:none;">
-      新相册名（仅在选择新建时有效）：
+      New Album Name (if creating new)：
       <input type="text" name="new_album" id="new-album-input" placeholder="New album name">
     </div>
     <br>
