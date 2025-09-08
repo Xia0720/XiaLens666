@@ -32,7 +32,7 @@
                 {% endif %}
                 <div class="story-card-content">
                     <a href="{{ url_for('story_detail', story_id=story.id) }}" class="story-link">
-                        <p>{{ story.text|truncate(120)|safe }}</p>
+                        <p>{{ story.text|truncate(60)|safe }}</p>
                     </a>
                     <div class="story-meta">
                         <span class="story-time" data-utc="{{ story.created_at.isoformat() }}Z"></span>
