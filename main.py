@@ -204,7 +204,6 @@ def view_album(album_name):
 # 删除图片（仅登录）
 # --------------------------
 @app.route("/delete_images", methods=["POST"])
-@login_required
 def delete_images():
     public_ids = request.form.getlist("public_ids")
     album_name = request.form.get("album_name")
