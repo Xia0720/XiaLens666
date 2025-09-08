@@ -6,7 +6,7 @@
 <div class="story-page">
 
     <!-- 背景图（虚化效果 + 覆盖全局渐变） -->
-    <div class="story-bg" style="background-image: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/w_100,f_auto,q_auto/v1756400863/pexels-arts-1124960_itvbiw.jpg');"></div>
+    <div class="story-bg"></div>
 
     <div class="story-header">
         <h1>📖 Xia's Story Collection</h1>
@@ -25,7 +25,10 @@
                 <div class="story-images">
                     {% for img in story.images %}
                         <a href="{{ img.image_url }}" target="_blank">
-                            <img src="{{ img.image_url }}">
+                            <img src="{{ img.image_url | replace('/upload/', '/upload/w_300,h_300,c_fill,f_auto,q_auto/') }}" 
+                                 alt="story-image"
+                                 loading="lazy"
+                            >
                         </a>
                     {% endfor %}
                 </div>
@@ -56,27 +59,21 @@
     
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    // 时间显示
     document.querySelectorAll(".story-time").forEach(el => {
         const utcStr = el.dataset.utc;
         if (!utcStr) return;
-        const localDate = new Date(utcStr);
-        el.textContent = localDate.toLocaleString([], {
-            year: 'numeric', month: '2-digit',
-            day: '2-digit', hour: '2-digit',
-            minute: '2-digit'
-        });
-    });
 
-    // 异步加载大图背景
-    const bg = document.querySelector('.story-bg');
-    const img = new Image();
-    img.src = 'https://res.cloudinary.com/dpr0pl2tf/image/upload/f_auto,q_auto,w_1920/v1756400863/pexels-arts-1124960_itvbiw.jpg';
-    img.onload = () => {
-        bg.style.backgroundImage = `url('${img.src}')`;
-    };
-});
-</script>
+         const localDate = new Date(utcStr);  // 转本地时间对象
+         el.textContent = localDate.toLocaleString([], {
+             year: 'numeric',
+             month: '2-digit',
+             day: '2-digit',
+             hour: '2-digit',
+             minute: '2-digit'
+         });
+      });
+   });
+  </script>
 </div>
 
 <style>
@@ -91,13 +88,11 @@ document.addEventListener("DOMContentLoaded", () => {
 .story-bg {
     position: fixed;
     inset: 0;
-    background: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/w_100,f_auto,q_auto/v1756400863/pexels-arts-1124960_itvbiw.jpg') no-repeat center center fixed;
+    background: url("https://res.cloudinary.com/dpr0pl2tf/image/upload/f_auto,q_auto,w_1920/v1756400863/pexels-arts-1124960_itvbiw.jpg") no-repeat center center fixed;
     background-size: cover;
     filter: blur(4px) brightness(0.85); /* 模糊 + 降低亮度 */
     z-index: -2;
     pointer-events: none;
-    /* 平滑渐变过渡 */
-    transition: background-image 0.5s ease-in-out;
 }
 
 /* 页面标题 */
