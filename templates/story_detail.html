@@ -39,8 +39,15 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- Lightbox2 CSS -->
-<link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css" rel="stylesheet">
-<!-- Lightbox2 JS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox.min.js"></script>
+<script>
+    // 确保 Lightbox2 已经加载
+    if (window.lightbox) {
+        lightbox.option({
+          'resizeDuration': 200,
+          'wrapAround': true,  // 左右切换
+          'fadeDuration': 200,
+          'imageFadeDuration': 200
+        });
+    }
+</script>
 {% endblock %}
