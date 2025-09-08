@@ -14,9 +14,8 @@
     {% if story.images %}
     <div class="story-images">
         {% for img in story.images %}
-            <a href="{{ img.image_url }}" data-lightbox="story-{{ story.id }}" data-title="{{ story.text|truncate(100)|safe }}">
-                <img src="{{ img.image_url | replace('/upload/', '/upload/w_400,h_400,c_fill,f_auto,q_auto/') }}" 
-                     alt="Story Image" loading="lazy">
+            <a href="{{ img.image_url }}" class="glightbox" data-gallery="story-{{ story.id }}" data-title="{{ story.text|truncate(100)|safe }}">
+                <img src="{{ img.image_url | replace('/upload/', '/upload/w_400,h_400,c_fill,f_auto,q_auto/') }}" alt="Story Image" loading="lazy">
             </a>
         {% endfor %}
     </div>
@@ -40,14 +39,10 @@
 
 {% block scripts %}
 <script>
-    // 确保 Lightbox2 已经加载
-    if (window.lightbox) {
-        lightbox.option({
-          'resizeDuration': 200,
-          'wrapAround': true,  // 左右切换
-          'fadeDuration': 200,
-          'imageFadeDuration': 200
-        });
-    }
+  const lightbox = GLightbox({
+    selector: '.glightbox',
+    loop: true,          // 可以循环浏览图片
+    touchNavigation: true,
+  });
 </script>
 {% endblock %}
