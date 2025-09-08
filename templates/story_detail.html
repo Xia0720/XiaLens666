@@ -10,6 +10,9 @@
         <a href="{{ url_for('story_list') }}" class="btn-back">← Back to story</a>
     </div>
 
+    <!-- 文字内容 -->
+    <p class="story-text">{{ story.text|safe }}</p>
+    
     <!-- 图片展示 -->
     {% if story.images %}
     <div class="story-images">
@@ -22,9 +25,6 @@
         {% endfor %}
     </div>
     {% endif %}
-
-    <!-- 文字内容 -->
-    <p class="story-text">{{ story.text|safe }}</p>
 
     <!-- 元信息和编辑删除按钮 -->
     <div class="story-meta">
