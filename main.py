@@ -222,8 +222,25 @@ def delete_images():
 # Story 列表
 # --------------------------
 @app.route("/story_list")
+@login_required
 def story_list():
     stories = Story.query.order_by(Story.created_at.desc()).all()
+
+    for story in stories:
+        for img in story.images:
+            # 如果 URL 是空或者不是 Cloudinary URL，就尝试修复
+            if not img.image_url or not img.image_url.startswith("https://res.cloudinary.com/dpr0pl2tf/"):
+                try:
+                    # 假设旧图片 filename 在数据库 image_url 中保存
+                    filename = img.image_url.split("/")[-1]  # 旧路径最后部分
+                    public_id = filename.rsplit(".", 1)[0]   # 去掉扩展名
+                    # 假设旧 Story 图片都在 Cloudinary 文件夹 story/
+                    new_url, _ = cloudinary.utils.cloudinary_url(f"story/{public_id}")
+                    img.image_url = new_url
+                except Exception as e:
+                    print(f"⚠️ 修复旧 Story 图片失败: {img.image_url} -> {e}")
+
+    # 仅渲染页面，不修改数据库
     return render_template("story_list.html", stories=stories, logged_in=session.get("logged_in", False))
 
 # --------------------------
