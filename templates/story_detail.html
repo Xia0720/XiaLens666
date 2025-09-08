@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Story Detail - XiaCapture{% endblock %}
+
 {% block content %}
 <div class="story-detail">
     <h1>Story Detail</h1>
+
     <div class="back-button">
         <a href="{{ url_for('story_list') }}" class="btn-back">← Back story</a>
     </div>
@@ -12,14 +14,14 @@
     {% if story.images %}
     <div class="story-images">
         {% for img in story.images %}
-            <!-- 移除 target="_blank"，加 data-lightbox 同组 -->
             <a href="{{ img.image_url }}" data-lightbox="story-{{ story.id }}" data-title="{{ story.text|truncate(100)|safe }}">
-                <img src="{{ img.image_url | replace('/upload/', '/upload/w_400,h_400,c_fill,f_auto,q_auto/') }}" alt="Story Image" loading="lazy">
+                <img src="{{ img.image_url | replace('/upload/', '/upload/w_400,h_400,c_fill,f_auto,q_auto/') }}" 
+                     alt="Story Image" loading="lazy">
             </a>
         {% endfor %}
     </div>
     {% else %}
-        <p>暂无图片</p>
+        <p style="text-align:center;">暂无图片</p>
     {% endif %}
 
     <div class="story-meta">
@@ -37,7 +39,8 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- 引入 Lightbox2 JS/CSS，确保在 body 底部 -->
+<!-- Lightbox2 CSS -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css" rel="stylesheet">
+<!-- Lightbox2 JS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox.min.js"></script>
 {% endblock %}
