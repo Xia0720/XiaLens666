@@ -150,19 +150,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
 /* 节点图标（卡通小女孩） */
 .timeline-icon {
-    position: relative;
+    position: relative;  /* 改为相对内容定位，不会挡住图片 */
     display: flex;
     justify-content: center;
-    align-items: center;   /* 垂直居中 */
-    width: 48px;           /* 固定宽度 */
-    height: 48px;          /* 固定高度 */
     margin-bottom: 10px;
 }
 .timeline-icon img {
-    width: 100%;          /* 填满父容器 */
-    height: 100%;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
-    object-fit: cover;    /* 保持比例，避免变形 */
 }
 
 /* 内容卡片 */
