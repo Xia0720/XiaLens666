@@ -271,10 +271,34 @@ def upload_story():
 
         for file in files:
             if file and file.filename:
-                upload_result = cloudinary.uploader.upload(file,folder="stories")
-                img_url = upload_result.get("secure_url")
-                if img_url:
-                    db.session.add(StoryImage(image_url=img_url, story=new_story))
+                try:
+                    # 压缩大文件 > 9.5MB
+                    file.stream.seek(0, 2)  # 移动到末尾
+                    size = file.stream.tell()
+                    file.stream.seek(0)
+
+                    if size > 9.5 * 1024 * 1024:  # 超过 9.5MB
+                        img = Image.open(file.stream)
+                        img = img.convert("RGB")
+                        buf = io.BytesIO()
+                        img.save(buf, format="JPEG", quality=85, optimize=True)
+                        buf.seek(0)
+                        upload_result = cloudinary.uploader.upload(
+                            buf,
+                            folder="stories"
+                        )
+                    else:
+                        upload_result = cloudinary.uploader.upload(
+                            file,
+                            folder="stories"
+                        )
+
+                    img_url = upload_result.get("secure_url")
+                    if img_url:
+                        db.session.add(StoryImage(image_url=img_url, story=new_story))
+                except Exception as e:
+                    print(f"⚠️ 上传故事图片失败: {e}")
+                    flash(f"One image failed to upload: {file.filename}", "error")
 
         db.session.commit()
         flash("Story uploaded successfully!", "success")
