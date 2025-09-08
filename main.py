@@ -221,7 +221,6 @@ def delete_images():
 # Story 列表
 # --------------------------
 @app.route("/story_list")
-@login_required
 def story_list():
     stories = Story.query.order_by(Story.created_at.desc()).all()
 
