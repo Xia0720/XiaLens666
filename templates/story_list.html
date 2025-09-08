@@ -91,11 +91,13 @@ document.addEventListener("DOMContentLoaded", () => {
 .story-bg {
     position: fixed;
     inset: 0;
-    background: url("https://res.cloudinary.com/dpr0pl2tf/image/upload/f_auto,q_auto,w_1920/v1756400863/pexels-arts-1124960_itvbiw.jpg") no-repeat center center fixed;
+    background: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/w_100,f_auto,q_auto/v1756400863/pexels-arts-1124960_itvbiw.jpg') no-repeat center center fixed;
     background-size: cover;
     filter: blur(4px) brightness(0.85); /* 模糊 + 降低亮度 */
     z-index: -2;
     pointer-events: none;
+    /* 平滑渐变过渡 */
+    transition: background-image 0.5s ease-in-out;
 }
 
 /* 页面标题 */
