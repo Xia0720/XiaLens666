@@ -13,8 +13,9 @@
     {% if story.images %}
         <div class="story-images">
             {% for img in story.images %}
-                <a href="{{ img.image_url }}" target="_blank" rel="noopener noreferrer">
-                    <img src="{{ img.image_url }}" alt="Story Image">
+                <!-- 给每个图片加上 data-lightbox="story-{{ story.id }}" -->
+                <a href="{{ img.image_url }}" data-lightbox="story-{{ story.id }}" data-title="{{ story.text|truncate(100)|safe }}">
+                    <img src="{{ img.image_url }}" alt="Story Image" loading="lazy">
                 </a>
             {% endfor %}
         </div>
@@ -34,4 +35,9 @@
         {% endif %}
     </div>
 </div>
+
+<!-- 引入 Lightbox2 JS -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox.min.js"></script>
+
 {% endblock %}
