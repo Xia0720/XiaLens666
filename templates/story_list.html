@@ -1,8 +1,8 @@
-{% extends "base.html" %}
-{% block title %}Story Collection - XiaCapture{% endblock %}
-{% block body_class %}story-page{% endblock %}
-
 {% block content %}
+
+<!-- ✅ 手机端缩放支持 -->
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.5, maximum-scale=3, user-scalable=yes">
+
 <div class="story-page">
 
     <!-- 背景图（虚化效果 + 覆盖全局渐变） -->
@@ -17,7 +17,6 @@
         {% for story in stories %}
         <div class="timeline-item {% if loop.index % 2 == 0 %}right{% else %}left{% endif %}">
             <div class="timeline-icon">
-                <!-- 卡通小女孩图标（Cloudinary 路径） -->
                 <img src="https://res.cloudinary.com/dpr0pl2tf/image/upload/w_48,h_48,c_fill/v1756788123/girl-icon_x8bqyd.png" alt="girl-icon">
             </div>
             <div class="timeline-content">
@@ -73,7 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
          });
       });
    });
-  </script>
+</script>
 </div>
 
 <style>
@@ -259,20 +258,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 .timeline-item.right::after {
     left: -40px;
-}
-    
-/* 响应式 */
-@media (max-width: 768px) {
-    .timeline-item, .timeline-item.right, .timeline-item.left {
-        width: 100%;
-        text-align: left;
-        padding: 0 20px;
-    }
-    .timeline-item.left .timeline-content,
-    .timeline-item.right .timeline-content {
-        margin: 0 0 20px 0;
-    }
-    .timeline-icon { justify-content: flex-start; }
 }
 </style>
 {% endblock %}
