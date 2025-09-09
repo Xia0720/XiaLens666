@@ -10,7 +10,7 @@
   html, body { height: 100%; margin: 0; padding: 0; }
   body.album-page { background: none !important; }
 
-  /* 全屏虚化背景 */
+  /* 全屏虚化背景（保持原样） */
   body.album-page::before {
     content: "";
     position: fixed;
@@ -48,7 +48,7 @@
     padding: 24px 30px;
   }
 
-  /* 页面标题 */
+  /* 页面标题（保留） */
   body.album-page .page-title {
     text-align: center;
     margin: 30px 0 20px;
@@ -59,15 +59,14 @@
     text-shadow: 0 2px 6px rgba(0,0,0,0.6);
   }
 
-  /* ===== 固定 12 列 Mosaic 网格（保留你原规则） ===== */
+  /* ===== 固定 12 列 Mosaic 网格（保留你的原规则） ===== */
   .album-grid {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
-    grid-auto-rows: 9.5vw;     /* 行高随屏幕宽度变化 */
+    grid-auto-rows: 9.5vw;
     grid-auto-flow: dense;
     gap: 14px;
 
-    /* 保持居中，最大宽度限制 */
     width: min(1680px, calc(100vw - 48px));
     margin: 0 auto;
   }
@@ -78,7 +77,7 @@
     border-radius: 12px;
     box-shadow: 0 6px 18px rgba(0,0,0,0.08);
     background: #f6f7f9;
-    transition: transform .35s ease, grid-column-start .25s ease;
+    transition: transform .35s ease, margin-top .2s ease;
   }
 
   .album-item img {
@@ -102,7 +101,7 @@
 
   .item--min { grid-column: span 3; grid-row: span 1; }
 
-  /* 相册名遮罩 */
+  /* 相册名遮罩（保留） */
   .album-info {
     position: absolute;
     left: 0; right: 0; bottom: 0;
@@ -121,32 +120,36 @@
   @media (max-width: 768px) { .album-info h2 { font-size: 0.75rem; } }
   @media (max-width: 480px) { .album-info h2 { font-size: 0.6rem; } }
 
-  /* ======================
-     左侧也有参差（关键部分）
-     说明：
-      - 仅对小尺寸 item（item--min / item--w2 / item--w3）做起始列偏移
-      - 排除页面最前面几个元素（避免顶部空白）
-      - 在小屏（<= 640px）上禁用偏移，保持稳定单/双列显示
-     如果你要调整“强度”或“频率”，修改下面的 nth-child 公式或 grid-column-start 值
-     ====================== */
+  /* ========== 新增：shift classes（制造参差效果） ========== */
+  /* 这些 margin-top 值较小，保证不会太破坏总体网格；可按需调整 */
+  .album-item.shift-0 { margin-top: 0; }
+  .album-item.shift-1 { margin-top: 10px; }
+  .album-item.shift-2 { margin-top: 20px; }
+  .album-item.shift-3 { margin-top: 6px; }
+  .album-item.shift-4 { margin-top: 16px; }
+  .album-item.shift-5 { margin-top: 28px; }
 
-  /* 只对非特写的小项应用偏移（从第 7 个之后开始） */
-  .album-grid > .album-item.item--min:not(:nth-child(-n+6)):nth-child(7n+2) { grid-column-start: 2; }
-  .album-grid > .album-item.item--min:not(:nth-child(-n+6)):nth-child(7n+5) { grid-column-start: 3; }
-
-  .album-grid > .album-item.item--w2:not(:nth-child(-n+6)):nth-child(9n+4) { grid-column-start: 2; }
-  .album-grid > .album-item.item--w3:not(:nth-child(-n+6)):nth-child(11n+7) { grid-column-start: 3; }
-
-  /* 轻微保护：如果某项已被显式设置为跨列（feature）则不要干扰（我们已通过 class 做此区分） */
-
-  /* 小屏上直接禁用偏移（避免破坏单列/双列） */
-  @media (max-width: 640px) {
-    .album-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 45vw; width: calc(100vw - 24px); }
-    .album-grid > .album-item.item--min,
-    .album-grid > .album-item.item--w2,
-    .album-grid > .album-item.item--w3 { grid-column-start: auto !important; }
+  /* 不要对特写 item 施加偏移（避免大的空白） */
+  .album-item.item--feature.shift-1,
+  .album-item.item--feature.shift-2,
+  .album-item.item--feature.shift-3,
+  .album-item.item--feature.shift-4,
+  .album-item.item--feature.shift-5 {
+    margin-top: 0 !important;
   }
 
+  /* 移动端禁用所有偏移（稳健回退） */
+  @media (max-width: 640px) {
+    .album-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 45vw; width: calc(100vw - 24px); }
+    .album-item.shift-0,
+    .album-item.shift-1,
+    .album-item.shift-2,
+    .album-item.shift-3,
+    .album-item.shift-4,
+    .album-item.shift-5 {
+      margin-top: 0 !important;
+    }
+  }
 </style>
 
 <script>
@@ -170,11 +173,16 @@
 
   <div class="album-grid">
     {% for album in albums %}
-      <div class="album-item
-                  {% if loop.index == 1 %} item--feature
-                  {% elif loop.index % 5 == 0 %} item--w3 item--h2
-                  {% elif loop.index % 3 == 0 %} item--w2
-                  {% else %} item--min {% endif %}">
+      {# 计算保留的 span class（保留你的既有逻辑） #}
+      {% set base_class = 'item--feature' if loop.index == 1 else ('item--w3 item--h2' if (loop.index % 5 == 0) else ('item--w2' if (loop.index % 3 == 0) else 'item--min')) %}
+
+      {# 计算 shift 值（用一个简单的可预测伪“随机”算法）。如果是 feature 则不偏移（shift=0） #}
+      {% set shift = ((loop.index * 37) % 6) %}
+      {% if base_class == 'item--feature' %}
+        {% set shift = 0 %}
+      {% endif %}
+
+      <div class="album-item {{ base_class }} shift-{{ shift }}">
         <a href="{{ url_for('view_album', album_name=album.name) }}">
           {% if album.cover %}
             <img src="{{ album.cover }}" alt="{{ album.name }}">
