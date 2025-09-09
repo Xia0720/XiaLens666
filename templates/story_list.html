@@ -3,8 +3,6 @@
 {% block body_class %}story-page{% endblock %}
 
 {% block content %}
-<!-- ✅ 允许手机缩放 -->
-<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.5, maximum-scale=3, user-scalable=yes">
 <div class="story-page">
 
     <!-- 背景图（虚化效果 + 覆盖全局渐变） -->
@@ -261,6 +259,41 @@ document.addEventListener("DOMContentLoaded", () => {
 
 .timeline-item.right::after {
     left: -40px;
+}
+    
+/* 响应式 */
+@media (max-width: 768px) {
+    .timeline-item,
+    .timeline-item.left,
+    .timeline-item.right {
+        width: 100% !important;       /* 占满全宽 */
+        left: 0 !important;           /* 清除左偏移 */
+        text-align: left;             /* 左对齐 */
+        margin: 0 0 20px 0;           /* 保证上下间距 */
+        padding: 0 12px;              /* 内边距可调 */
+    }
+
+    .timeline-item.left .timeline-content,
+    .timeline-item.right .timeline-content {
+        margin: 0 !important;         /* 清除左右 margin */
+    }
+
+    .timeline-icon {
+        justify-content: flex-start;  /* 图标靠左 */
+        margin-bottom: 6px;
+    }
+
+    .timeline::before {
+        left: 20px;                   /* 主线靠左显示，可微调 */
+        width: 6px;
+    }
+
+    .timeline-item.left::before,
+    .timeline-item.right::before,
+    .timeline-item.left::after,
+    .timeline-item.right::after {
+        display: none;                /* 手机上隐藏延伸线和圆点，防止挤压 */
+    }
 }
 </style>
 {% endblock %}
