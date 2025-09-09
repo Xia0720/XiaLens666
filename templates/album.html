@@ -111,6 +111,26 @@
     color: #fff;
     background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 100%);
   }
+
+  .album-info h2 {
+  margin: 0;
+  font-size: 1rem;   /* 默认大小（PC端合适） */
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* 在小屏手机上缩小 */
+@media (max-width: 768px) {
+  .album-info h2 {
+    font-size: 0.75rem;   /* 平板、手机上缩小一点 */
+  }
+}
+
+@media (max-width: 480px) {
+  .album-info h2 {
+    font-size: 0.6rem;    /* 超小屏手机再缩小 */
+  }
+}
 </style>
 
 <script>
