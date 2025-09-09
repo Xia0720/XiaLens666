@@ -294,6 +294,34 @@ document.addEventListener("DOMContentLoaded", () => {
     .timeline-item.right::after {
         display: none;                /* 手机上隐藏延伸线和圆点，防止挤压 */
     }
+
+    /* 故事卡片整体缩小 */
+    .timeline-content {
+        padding: 12px 14px;   /* 缩小内边距 */
+        max-width: 90%;       /* 让卡片不要占满全屏 */
+    }
+
+    /* 缩小标题 */
+    .story-header h1 {
+        font-size: 20px;      /* 从 26px 改小 */
+    }
+
+    /* 缩小故事文字 */
+    .story-card-content p {
+        font-size: 14px;
+        line-height: 1.4;
+    }
+
+    /* 缩小元信息 */
+    .story-meta {
+        font-size: 12px;
+    }
+
+    /* 缩小图片 */
+    .story-images a {
+        width: 120px;
+        height: 120px;
+    }
 }
 </style>
 {% endblock %}
