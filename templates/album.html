@@ -7,6 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.5, maximum-scale=3, user-scalable=yes">
 
 <style>
+  /* 基本保留你原来的样式（只在必要处微调） */
   html, body { height: 100%; margin: 0; padding: 0; }
   body.album-page { background: none !important; }
 
@@ -59,21 +60,20 @@
     text-shadow: 0 2px 6px rgba(0,0,0,0.6);
   }
 
-  /* ===== 固定 12 列 Mosaic 网格 + 左右 padding ===== */
+  /* ===== 固定 12 列 Mosaic 网格（box-sizing 改为 border-box） ===== */
   .album-grid {
+    box-sizing: border-box;                   /* 关键：padding 不会意外改变内容尺寸 */
     display: grid;
     grid-template-columns: repeat(12, 1fr);
-    grid-auto-rows: 9.5vw;     
+    grid-auto-rows: 9.5vw;
     grid-auto-flow: dense;
     gap: 14px;
 
-    /* 保持居中，最大宽度限制 */
+    /* 保持居中，最大宽度限制（减小左右内边距，避免横向滚动） */
     width: min(1680px, calc(100vw - 48px));
     margin: 0 auto;
-
-    /* ✅ 左右加 padding，让左边不再是直直一条线 */
-    padding-left: 40px;
-    padding-right: 40px;
+    padding-left: 20px;    /* 轻微内移，帮助视觉不紧贴左侧（可调） */
+    padding-right: 20px;
   }
 
   .album-item {
@@ -82,6 +82,9 @@
     border-radius: 12px;
     box-shadow: 0 6px 18px rgba(0,0,0,0.08);
     background: #f6f7f9;
+
+    /* 平滑动画，margin-top 变化更自然 */
+    transition: transform .35s ease, margin-top .35s ease;
   }
 
   .album-item img {
@@ -93,7 +96,7 @@
   }
   .album-item:hover img { transform: scale(1.03); }
 
-  /* 尺寸等级 */
+  /* ===== 尺寸等级（保留你原来设定） ===== */
   .item--w2 { grid-column: span 3; }
   .item--w3 { grid-column: span 4; }
   .item--h2 { grid-row: span 2; }
@@ -118,18 +121,32 @@
 
   .album-info h2 {
     margin: 0;
-    font-size: 1rem;   /* 默认大小（PC端合适） */
+    font-size: 1rem;
     font-weight: 600;
     line-height: 1.2;
   }
+  @media (max-width: 768px) { .album-info h2 { font-size: 0.75rem; } }
+  @media (max-width: 480px) { .album-info h2 { font-size: 0.6rem; } }
 
-  /* 在小屏手机上缩小字体 */
-  @media (max-width: 768px) {
-    .album-info h2 { font-size: 0.75rem; }
+  /* ===========================
+     这里是关键：给若干 item 做“垂直错位”（left-side 也会参差）
+     你可以微调百分比（2vw / 3vw / 4vw）来获得你想要的参差强度
+     =========================== */
+  .album-item:nth-child(6n+1) { margin-top: 3.2vw; }   /* 偶发下移 */
+  .album-item:nth-child(8n+2) { margin-top: 2.0vw; }   /* 较小下移 */
+  .album-item:nth-child(5n+4) { margin-top: 4.5vw; }   /* 偶尔更明显下移 */
+
+  /* 防止最顶部的若干项都被下移造成页面空白太多（可选） */
+  .album-item:nth-child(-n+5) { margin-top: 0; } /* 保证前 5 个不下移 */
+
+  /* 小屏上减少错位强度，避免重叠 */
+  @media (max-width: 640px) {
+    .album-item:nth-child(6n+1) { margin-top: 2.0vw; }
+    .album-item:nth-child(8n+2) { margin-top: 1.2vw; }
+    .album-item:nth-child(5n+4) { margin-top: 2.6vw; }
+    .album-item:nth-child(-n+5) { margin-top: 0; }
   }
-  @media (max-width: 480px) {
-    .album-info h2 { font-size: 0.6rem; }
-  }
+
 </style>
 
 <script>
@@ -171,4 +188,3 @@
   </div>
 </div>
 {% endblock %}
-
