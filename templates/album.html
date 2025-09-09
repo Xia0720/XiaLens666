@@ -59,17 +59,21 @@
     text-shadow: 0 2px 6px rgba(0,0,0,0.6);
   }
 
-  /* ===== 核心：固定 12 列 Mosaic 网格 ===== */
+  /* ===== 固定 12 列 Mosaic 网格 + 左右 padding ===== */
   .album-grid {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
-    grid-auto-rows: 9.5vw;     /* 行高随屏幕宽度变化 */
+    grid-auto-rows: 9.5vw;     
     grid-auto-flow: dense;
     gap: 14px;
 
     /* 保持居中，最大宽度限制 */
     width: min(1680px, calc(100vw - 48px));
     margin: 0 auto;
+
+    /* ✅ 左右加 padding，让左边不再是直直一条线 */
+    padding-left: 40px;
+    padding-right: 40px;
   }
 
   .album-item {
@@ -89,7 +93,7 @@
   }
   .album-item:hover img { transform: scale(1.03); }
 
-  /* ===== 尺寸等级 ===== */
+  /* 尺寸等级 */
   .item--w2 { grid-column: span 3; }
   .item--w3 { grid-column: span 4; }
   .item--h2 { grid-row: span 2; }
@@ -113,24 +117,19 @@
   }
 
   .album-info h2 {
-  margin: 0;
-  font-size: 1rem;   /* 默认大小（PC端合适） */
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-/* 在小屏手机上缩小 */
-@media (max-width: 768px) {
-  .album-info h2 {
-    font-size: 0.75rem;   /* 平板、手机上缩小一点 */
+    margin: 0;
+    font-size: 1rem;   /* 默认大小（PC端合适） */
+    font-weight: 600;
+    line-height: 1.2;
   }
-}
 
-@media (max-width: 480px) {
-  .album-info h2 {
-    font-size: 0.6rem;    /* 超小屏手机再缩小 */
+  /* 在小屏手机上缩小字体 */
+  @media (max-width: 768px) {
+    .album-info h2 { font-size: 0.75rem; }
   }
-}
+  @media (max-width: 480px) {
+    .album-info h2 { font-size: 0.6rem; }
+  }
 </style>
 
 <script>
@@ -172,3 +171,4 @@
   </div>
 </div>
 {% endblock %}
+
