@@ -322,7 +322,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     .timeline-icon {
-    margin-bottom: 6px;   /* 图标和内容之间的距离更紧凑 */
+    position: relative;
+    display: flex;
+    justify-content: center; /* 居中对齐 */
+    margin: 0 auto 10px auto; /* 左右自动，保持在中间 */
     }
     
     .timeline-icon img {
