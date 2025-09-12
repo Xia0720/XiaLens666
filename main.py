@@ -445,6 +445,9 @@ def upload():
 # --------------------------
 # 私密空间上传（仅登录）
 # --------------------------
+# --------------------------
+# 私密空间上传（严格私有化，仅登录）
+# --------------------------
 @app.route("/upload_private", methods=["POST"])
 @login_required
 def upload_private():
@@ -458,7 +461,7 @@ def upload_private():
     if not files or all(f.filename == '' for f in files):
         return jsonify({"success": False, "error": "请选择至少一张照片"}), 400
 
-    uploaded_urls = []
+    uploaded_ids = []
 
     for file in files:
         if not file or file.filename == '':
@@ -476,7 +479,7 @@ def upload_private():
 
             mimetype = (file.mimetype or "").lower()
 
-            # ---- 压缩大图逻辑 ----
+            # ---- 压缩逻辑 (保持你原来的逻辑) ----
             if len(raw) > MAX_CLOUDINARY_SIZE and mimetype.startswith("image"):
                 img = Image.open(io.BytesIO(raw))
                 try:
@@ -526,7 +529,7 @@ def upload_private():
             elif len(raw) > MAX_CLOUDINARY_SIZE and not mimetype.startswith("image"):
                 return jsonify({"success": False, "error": f"文件 {file.filename} 太大且不是图片"}), 400
 
-            # ---- 上传到 Cloudinary ----
+            # ---- 上传到 Cloudinary (严格私有化) ----
             folder_path = f"private/{re.sub(r'[^a-zA-Z0-9_-]', '_', album_name).strip('_')}"
             upload_buffer.seek(0)
             result = cloudinary.uploader.upload(
@@ -534,26 +537,26 @@ def upload_private():
                 folder=folder_path,
                 public_id=safe_name,
                 resource_type="image",
-                type="private",   # 🔑 设置为私有上传
+                access_mode="authenticated",  # 🔒 严格私有
                 overwrite=True
             )
 
-            # ---- 存数据库 ----
+            # ---- 存数据库 (只存 public_id，不存 url) ----
             new_photo = Photo(
                 album=album_name,
-                url=result.get("secure_url"),
+                url=result.get("public_id"),  # ⚠️ 只存 public_id
                 is_private=True,
                 created_at=datetime.utcnow()
             )
             db.session.add(new_photo)
             db.session.commit()
-            uploaded_urls.append(result.get("secure_url"))
+            uploaded_ids.append(result.get("public_id"))
 
         except Exception as e:
             db.session.rollback()
             return jsonify({"success": False, "error": f"上传失败 {file.filename}: {e}"}), 500
 
-    return jsonify({"success": True, "urls": uploaded_urls, "album": album_name})
+    return jsonify({"success": True, "public_ids": uploaded_ids, "album": album_name})
 
 # --------------------------
 # 登录/登出
