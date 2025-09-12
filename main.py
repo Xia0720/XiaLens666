@@ -43,7 +43,11 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    "poolclass": NullPool
+    "poolclass": QueuePool,
+    "pool_size": 5,           # 常驻连接数
+    "max_overflow": 10,       # 最大额外连接
+    "pool_timeout": 30,       # 等待连接超时（秒）
+    "pool_recycle": 1800      # 回收过期连接（秒），防止 server 断开
 }
 
 db = SQLAlchemy(app)
