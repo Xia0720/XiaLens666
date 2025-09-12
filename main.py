@@ -12,7 +12,7 @@ from PIL import Image, ExifTags, UnidentifiedImageError
 import io
 import time
 from cloudinary.utils import api_sign_request
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import NullPool, QueuePool
 import re, uuid
 from models import db, Photo
 
@@ -36,19 +36,25 @@ MAX_CLOUDINARY_SIZE = 10 * 1024 * 1024  # 10MB
 # 数据库配置
 # --------------------------
 database_url = os.getenv("DATABASE_URL")  # Render / Supabase
+
 if database_url:
+    # 生产环境：Postgres + QueuePool
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        "poolclass": QueuePool,
+        "pool_size": 5,           # 常驻连接数
+        "max_overflow": 10,       # 最大额外连接
+        "pool_timeout": 30,       # 等待连接超时（秒）
+        "pool_recycle": 1800      # 回收过期连接（秒），防止 server 断开
+    }
 else:
+    # 本地环境：SQLite + NullPool
     app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///stories.db"
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        "poolclass": NullPool
+    }
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    "poolclass": QueuePool,
-    "pool_size": 5,           # 常驻连接数
-    "max_overflow": 10,       # 最大额外连接
-    "pool_timeout": 30,       # 等待连接超时（秒）
-    "pool_recycle": 1800      # 回收过期连接（秒），防止 server 断开
-}
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
