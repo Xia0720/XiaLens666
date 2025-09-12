@@ -448,6 +448,9 @@ def upload():
 # --------------------------
 # 私密空间上传（严格私有化，仅登录）
 # --------------------------
+# --------------------------
+# 私密空间上传（方案 A：逻辑分区，不强制私有）
+# --------------------------
 @app.route("/upload_private", methods=["POST"])
 @login_required
 def upload_private():
@@ -461,7 +464,7 @@ def upload_private():
     if not files or all(f.filename == '' for f in files):
         return jsonify({"success": False, "error": "请选择至少一张照片"}), 400
 
-    uploaded_ids = []
+    uploaded_urls = []
 
     for file in files:
         if not file or file.filename == '':
@@ -529,7 +532,7 @@ def upload_private():
             elif len(raw) > MAX_CLOUDINARY_SIZE and not mimetype.startswith("image"):
                 return jsonify({"success": False, "error": f"文件 {file.filename} 太大且不是图片"}), 400
 
-            # ---- 上传到 Cloudinary (严格私有化) ----
+            # ---- 上传到 Cloudinary (方案 A：和公开一样，只是放 private/ 文件夹) ----
             folder_path = f"private/{re.sub(r'[^a-zA-Z0-9_-]', '_', album_name).strip('_')}"
             upload_buffer.seek(0)
             result = cloudinary.uploader.upload(
@@ -537,26 +540,25 @@ def upload_private():
                 folder=folder_path,
                 public_id=safe_name,
                 resource_type="image",
-                access_mode="authenticated",  # 🔒 严格私有
                 overwrite=True
             )
 
-            # ---- 存数据库 (只存 public_id，不存 url) ----
+            # ---- 存数据库 ----
             new_photo = Photo(
                 album=album_name,
-                url=result.get("public_id"),  # ⚠️ 只存 public_id
+                url=result.get("secure_url"),  # 这里可以直接存 secure_url
                 is_private=True,
                 created_at=datetime.utcnow()
             )
             db.session.add(new_photo)
             db.session.commit()
-            uploaded_ids.append(result.get("public_id"))
+            uploaded_urls.append(result.get("secure_url"))
 
         except Exception as e:
             db.session.rollback()
             return jsonify({"success": False, "error": f"上传失败 {file.filename}: {e}"}), 500
 
-    return jsonify({"success": True, "public_ids": uploaded_ids, "album": album_name})
+    return jsonify({"success": True, "urls": uploaded_urls, "album": album_name})
 
 # --------------------------
 # 登录/登出
