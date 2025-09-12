@@ -464,7 +464,7 @@ def upload_private():
         if not file or file.filename == '':
             continue
         try:
-            # 处理 public_id
+            # ---- public_id 安全处理 ----
             base_name = file.filename.rsplit('.', 1)[0]
             safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', base_name).strip('_')
             if not safe_name:
@@ -476,13 +476,13 @@ def upload_private():
 
             mimetype = (file.mimetype or "").lower()
 
-            # 大图压缩逻辑（支持 >10MB）
+            # ---- 压缩大图逻辑 ----
             if len(raw) > MAX_CLOUDINARY_SIZE and mimetype.startswith("image"):
                 img = Image.open(io.BytesIO(raw))
                 try:
                     exif = img._getexif()
                     if exif:
-                        orientation_key = next((k for k,v in ExifTags.TAGS.items() if v == "Orientation"), None)
+                        orientation_key = next((k for k, v in ExifTags.TAGS.items() if v == "Orientation"), None)
                         if orientation_key:
                             o = exif.get(orientation_key)
                             if o == 3:
@@ -526,12 +526,19 @@ def upload_private():
             elif len(raw) > MAX_CLOUDINARY_SIZE and not mimetype.startswith("image"):
                 return jsonify({"success": False, "error": f"文件 {file.filename} 太大且不是图片"}), 400
 
-            # 上传
-            folder_path = f"private/{album_name}"
+            # ---- 上传到 Cloudinary ----
+            folder_path = f"private/{re.sub(r'[^a-zA-Z0-9_-]', '_', album_name).strip('_')}"
             upload_buffer.seek(0)
-            result = cloudinary.uploader.upload(upload_buffer, folder=folder_path, public_id=safe_name)
+            result = cloudinary.uploader.upload(
+                upload_buffer,
+                folder=folder_path,
+                public_id=safe_name,
+                resource_type="image",
+                type="private",   # 🔑 设置为私有上传
+                overwrite=True
+            )
 
-            # 存数据库
+            # ---- 存数据库 ----
             new_photo = Photo(
                 album=album_name,
                 url=result.get("secure_url"),
@@ -547,6 +554,7 @@ def upload_private():
             return jsonify({"success": False, "error": f"上传失败 {file.filename}: {e}"}), 500
 
     return jsonify({"success": True, "urls": uploaded_urls, "album": album_name})
+
 # --------------------------
 # 登录/登出
 # --------------------------
