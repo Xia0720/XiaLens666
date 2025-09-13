@@ -71,39 +71,98 @@
 }
 </style>
 
+<script src="https://cdn.jsdelivr.net/npm/exifreader@4/dist/exif-reader.min.js"></script>
 <script>
-document.getElementById("show-upload-btn").addEventListener("click", function(){
-  const area = document.getElementById("upload-area");
-  area.style.display = area.style.display === "none" ? "block" : "none";
-});
+const CLOUD_NAME    = "dpr0pl2tf";
+const UPLOAD_PRESET = "unsigned_preset"; // 你的 unsigned preset
+const MAIN_FOLDER   = "private";         // private 上传的主文件夹
+const MAX_SIZE      = 10 * 1024 * 1024;  // 10MB
+const MAX_ATTEMPTS  = 3;
 
-// 显示/隐藏新建相册输入框
-document.getElementById("album-select").addEventListener("change", function(){
-  document.getElementById("new-album-div").style.display = this.value === "new" ? "block" : "none";
-});
-
-// 上传 Ajax
-document.getElementById("private-upload-form").addEventListener("submit", function(e){
+document.getElementById("private-upload-form").addEventListener("submit", async function(e){
   e.preventDefault();
   const form = e.target;
-  const data = new FormData(form);
-  const status = document.getElementById("upload-status");
-  status.textContent = "Uploading...";
+  const files = document.getElementById("photo-input").files;
+  const albumSelect = document.getElementById("album-select");
+  const newAlbumInput = document.getElementById("new-album-input");
+  const statusDiv = document.getElementById("upload-status");
 
-  fetch("{{ url_for('upload_private') }}", {
-    method: "POST",
-    body: data
-  }).then(res=>res.json())
-    .then(res=>{
-      if(res.success){
-        status.textContent = "Upload successful!";
-        setTimeout(()=>location.reload(), 1000); // 上传成功刷新页面显示封面
-      } else {
-        status.textContent = "Error: " + res.error;
-      }
-    }).catch(err=>{
-      status.textContent = "Upload failed: " + err;
-    });
+  let album = (albumSelect.value === "new") ? (newAlbumInput.value||"").trim() : albumSelect.value;
+  if(!album){ alert("请填写相册名！"); return; }
+  if(!files || files.length===0){ alert("请选择照片！"); return; }
+
+  statusDiv.innerHTML = "";
+  for(const file of Array.from(files)){
+    const item = document.createElement("div");
+    item.textContent = `${file.name} - 准备上传...`;
+    statusDiv.appendChild(item);
+
+    try{
+      const url = await uploadWithRetries(file, `${MAIN_FOLDER}/${album}`, MAX_ATTEMPTS, item);
+      await savePhotoToDB(album, url);
+      item.textContent = `${file.name} ✅ 上传成功`;
+      item.style.color = "green";
+    } catch(err){
+      console.error(err);
+      item.textContent = `${file.name} ❌ 上传失败：${err.message || err}`;
+      item.style.color = "red";
+    }
+  }
 });
+
+// 上传带重试
+async function uploadWithRetries(file, folder, maxAttempts, statusItem){
+  let attempt = 0;
+  while(attempt < maxAttempts){
+    attempt++;
+    try{
+      statusItem.textContent = `${file.name} - 上传中（第${attempt}次）...`;
+      return await uploadToCloudinary(file, folder);
+    } catch(err){
+      console.warn(`上传第${attempt}次失败`, err);
+      if(attempt >= maxAttempts) throw err;
+      await new Promise(r=>setTimeout(r, 500*attempt));
+    }
+  }
+}
+
+// 上传到 Cloudinary（含大文件压缩 + public_id 安全化）
+async function uploadToCloudinary(file, folder){
+  let uploadFile = file;
+  if(file.size > MAX_SIZE){
+    const img = await createImageBitmap(file);
+    const canvas = document.createElement("canvas");
+    let width = img.width, height = img.height;
+    const maxDim = 3000;
+    if(width>height && width>maxDim){ height=Math.round(height*maxDim/width); width=maxDim; }
+    else if(height>width && height>maxDim){ width=Math.round(width*maxDim/height); height=maxDim; }
+    else if(width===height && width>maxDim){ width=maxDim; height=maxDim; }
+    canvas.width=width; canvas.height=height;
+    const ctx=canvas.getContext("2d"); ctx.drawImage(img,0,0,width,height);
+    uploadFile = await new Promise(r=>canvas.toBlob(r,"image/jpeg",0.9));
+  }
+
+  const apiUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
+  const fd = new FormData();
+  fd.append("file", uploadFile);
+  fd.append("upload_preset", UPLOAD_PRESET);
+  fd.append("folder", folder);
+  fd.append("public_id", file.name.split('.').slice(0,-1).join('_').replace(/[^a-zA-Z0-9_-]/g,'_'));
+  const res = await fetch(apiUrl,{method:"POST",body:fd});
+  const data = await res.json();
+  if(!res.ok) throw new Error(data.error?.message || JSON.stringify(data));
+  return data.secure_url;
+}
+
+// 保存到数据库
+async function savePhotoToDB(album,url){
+  const res = await fetch("{{ url_for('upload_private') }}",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({album:album,url:url})
+  });
+  const data = await res.json();
+  if(!res.ok || data.success===false) throw new Error(data.error||"保存失败");
+  return data;
+}
 </script>
-{% endblock %}
