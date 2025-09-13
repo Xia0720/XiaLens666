@@ -455,20 +455,20 @@ def upload():
 # --------------------------
 # 私密空间上传（仅登录）
 # --------------------------
-# --------------------------
-# 私密空间上传（严格私有化，仅登录）
-# --------------------------
-# --------------------------
-# 私密空间上传（方案 A：逻辑分区，不强制私有）
-# --------------------------
 @app.route("/upload_private", methods=["POST"])
 @login_required
 def upload_private():
+    import re, uuid, io
+    from PIL import Image, ExifTags
+
     album_name = request.form.get("album")
     if album_name == "new":
         album_name = (request.form.get("new_album") or "").strip()
         if not album_name:
             return jsonify({"success": False, "error": "相册名不能为空"}), 400
+
+    # ---- 相册名安全化 ----
+    safe_album = re.sub(r'[^a-zA-Z0-9_-]', '_', album_name).strip('_') or "default"
 
     files = request.files.getlist("photo")
     if not files or all(f.filename == '' for f in files):
@@ -480,7 +480,7 @@ def upload_private():
         if not file or file.filename == '':
             continue
         try:
-            # ---- public_id 安全处理 ----
+            # ---- 文件名安全化 ----
             base_name = file.filename.rsplit('.', 1)[0]
             safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', base_name).strip('_')
             if not safe_name:
@@ -489,10 +489,9 @@ def upload_private():
             file.stream.seek(0)
             raw = file.read()
             upload_buffer = io.BytesIO(raw)
-
             mimetype = (file.mimetype or "").lower()
 
-            # ---- 压缩逻辑 (保持你原来的逻辑) ----
+            # ---- 压缩 & EXIF 旋转逻辑 ----
             if len(raw) > MAX_CLOUDINARY_SIZE and mimetype.startswith("image"):
                 img = Image.open(io.BytesIO(raw))
                 try:
@@ -507,7 +506,7 @@ def upload_private():
                                 img = img.rotate(270, expand=True)
                             elif o == 8:
                                 img = img.rotate(90, expand=True)
-                except:
+                except Exception:
                     pass
 
                 max_dim = 3000
@@ -542,8 +541,8 @@ def upload_private():
             elif len(raw) > MAX_CLOUDINARY_SIZE and not mimetype.startswith("image"):
                 return jsonify({"success": False, "error": f"文件 {file.filename} 太大且不是图片"}), 400
 
-            # ---- 上传到 Cloudinary (方案 A：和公开一样，只是放 private/ 文件夹) ----
-            folder_path = f"private/{re.sub(r'[^a-zA-Z0-9_-]', '_', album_name).strip('_')}"
+            # ---- 上传到 Cloudinary ----
+            folder_path = f"private/{safe_album}"
             upload_buffer.seek(0)
             result = cloudinary.uploader.upload(
                 upload_buffer,
@@ -556,7 +555,7 @@ def upload_private():
             # ---- 存数据库 ----
             new_photo = Photo(
                 album=album_name,
-                url=result.get("secure_url"),  # 这里可以直接存 secure_url
+                url=result.get("secure_url"),
                 is_private=True,
                 created_at=datetime.utcnow()
             )
