@@ -160,8 +160,8 @@ body.album-page::before {
 
   <!-- Google Drive 旧照片入口（如果后端传入 drive_link） -->
   {% if drive_link %}
-    <div style="text-align:center;">
-      <a class="drive-cta" href="{{ drive_link }}" target="_blank" rel="noopener">
+    <div style="text-align:center; margin-top:20px;">
+      <a href="{{ drive_link }}" target="_blank" class="btn btn-outline-primary">
         查看旧照片（Google Drive）
       </a>
     </div>
