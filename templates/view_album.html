@@ -17,7 +17,7 @@ body.album-page::before {
   content: "";
   position: fixed;
   inset: 0;
-  background-image: url('{{ background_url if background_url else "/static/default_bg.jpg" }}');
+  background-image: url('{{ background_url if background_url else "https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756329504/pexels-alex-andrews-271121-1983038_dbwaac.jpg" }}');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -29,7 +29,7 @@ body.album-page::before {
 .album-bg-fallback {
   position: fixed;
   inset: 0;
-  background-image: url('{{ background_fallback_url if background_fallback_url else "/static/default_bg.jpg" }}');
+  background-image: url('{{ background_fallback_url if background_fallback_url else "https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756329504/pexels-alex-andrews-271121-1983038_dbwaac.jpg" }}');
   background-size: cover;
   background-position: center;
   filter: blur(8px) brightness(0.82);
@@ -179,7 +179,7 @@ body.album-page::before {
         <div class="album-item">
           {% if logged_in %}
             <!-- 这里 value 用 public_id 或 URL，两种都兼容后端删图逻辑 -->
-            <input type="checkbox" name="public_ids" value="{{ img.public_id or img.secure_url }}">
+            <input type="checkbox" name="to_delete" value="{{ img.source }}::{{ img.public_id }}">
           {% endif %}
           <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
             <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
