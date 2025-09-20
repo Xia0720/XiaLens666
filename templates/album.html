@@ -106,7 +106,7 @@
     line-height: 1.2;
   }
 
-.drive-link {
+  .drive-link {
     text-align: center;
     margin: 6px 0 10px;
   }
@@ -116,13 +116,8 @@
     text-decoration: underline;
   }
 
-  @media (max-width: 768px) {
-    .album-info h2 { font-size: 0.75rem; }
-  }
-
-  @media (max-width: 480px) {
-    .album-info h2 { font-size: 0.6rem; }
-  }
+  @media (max-width: 768px) { .album-info h2 { font-size: 0.75rem; } }
+  @media (max-width: 480px) { .album-info h2 { font-size: 0.6rem; } }
 </style>
 
 <script>
@@ -157,7 +152,7 @@
           {% if album.cover %}
             <img src="{{ album.cover }}" alt="{{ album.name }}">
           {% else %}
-            <div class="album-cover placeholder"><span>No cover</span></div>
+            <img src="{{ url_for('static', filename='images/default_cover.jpg') }}" alt="No cover">
           {% endif %}
           <div class="album-info"><h2>{{ album.name }}</h2></div>
         </a>
