@@ -285,6 +285,25 @@ def view_album(album_name):
     except Exception as e:
         return f"Error loading album: {str(e)}"
 
+@app.route("/admin/albums", methods=["GET", "POST"])
+def admin_albums():
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
+
+    albums = Album.query.order_by(Album.id.asc()).all()
+
+    if request.method == "POST":
+        album_id = request.form.get("album_id")
+        cover_url = request.form.get("cover_url").strip()
+        album = Album.query.get(album_id)
+        if album:
+            album.cover = cover_url
+            db.session.commit()
+            flash(f"Album '{album.name}' cover updated.", "success")
+        return redirect(url_for("admin_albums"))
+
+    return render_template("admin_albums.html", albums=albums)
+
 # --------------------------
 # 删除图片（仅登录）
 # --------------------------
