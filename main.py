@@ -140,6 +140,12 @@ def login_required(f):
 
 # 新增 Photo 数据模型
 # --------------------------
+class Album(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False, unique=True)
+    cover = db.Column(db.String(500), nullable=True)
+    drive_folder_id = db.Column(db.String(200), nullable=True)  # Google Drive Folder ID
+
 class Photo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     album = db.Column(db.String(128), nullable=False)   # 保持原来 128
