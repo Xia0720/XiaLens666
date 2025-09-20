@@ -29,7 +29,7 @@
             {% if album.cover %}
                 <img src="{{ album.cover }}" width="120">
             {% else %}
-                No cover
+                <img src="{{ url_for('static', filename='images/default_cover.jpg') }}" width="120" alt="No cover">
             {% endif %}
         </td>
         <td>
