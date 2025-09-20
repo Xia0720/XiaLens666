@@ -14,8 +14,8 @@ import time
 from cloudinary.utils import api_sign_request
 from sqlalchemy.pool import NullPool, QueuePool
 import re, uuid
-from models import db, Photo
-from models import Album
+from extensions import db
+from models import Album, Photo
 
 
 app = Flask(__name__)
