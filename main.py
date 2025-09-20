@@ -82,7 +82,7 @@ if database_url:
     }
 else:
     # 本地环境：SQLite + NullPool
-    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///stories.db"
+    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///app.db"
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         "poolclass": NullPool
     }
