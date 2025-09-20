@@ -13,8 +13,9 @@ class AlbumCover(db.Model):
     cover_public_id = db.Column(db.String(255))  # ✅ 缺这个
 
 class Photo(db.Model):
-    __tablename__ = 'photo'
+    __tablename__ = "photo"
     id = db.Column(db.Integer, primary_key=True)
-    album_id = db.Column(db.Integer, db.ForeignKey('album.id'))
-    url = db.Column(db.String(500))  # ✅ 缺这个
+    url = db.Column(db.String(255), nullable=False)
+    album_id = db.Column(db.Integer, db.ForeignKey("album.id"), nullable=False)
+    is_private = db.Column(db.Boolean, default=False)   # ✅ 只在这里定义
 
