@@ -154,14 +154,12 @@ body.album-page::before {
 </style>
 
 <div class="album-bg-fallback" aria-hidden="true"></div>
-
 <div class="album-content">
   <h1>{{ album_name }} Album</h1>
 
-  <!-- Google Drive 旧照片入口（如果后端传入 drive_link） -->
   {% if drive_link %}
     <div style="text-align:center; margin-top:20px;">
-      <a href="{{ drive_link }}" target="_blank" class="btn btn-outline-primary">
+      <a href="{{ drive_link }}" target="_blank" class="drive-cta">
         查看旧照片（Google Drive）
       </a>
     </div>
@@ -178,11 +176,10 @@ body.album-page::before {
         {% for img in images[i:i+row_size] %}
         <div class="album-item">
           {% if logged_in %}
-            <!-- 这里 value 用 public_id 或 URL，两种都兼容后端删图逻辑 -->
-            <input type="checkbox" name="to_delete" value="{{ img.source }}::{{ img.public_id }}">
+            <input type="checkbox" name="to_delete" value="{{ img.source }}">
           {% endif %}
-          <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-            <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
+          <a href="{{ img.source }}" class="glightbox" data-gallery="album-{{ album_name }}">
+            <img src="{{ img.source }}" alt="Photo" loading="lazy">
           </a>
         </div>
         {% endfor %}
@@ -207,18 +204,10 @@ body.album-page::before {
       </button>
     </div>
   {% endif %}
-  {% if logged_in %}
-  </form>
-  {% endif %}
+  {% if logged_in %}</form>{% endif %}
 </div>
 
 <script>
-const lightbox = GLightbox({
-  selector: '.glightbox',
-  loop: true,
-  touchNavigation: true,
-  keyboardNavigation: true,
-  closeOnOutsideClick: true
-});
+const lightbox = GLightbox({ selector: '.glightbox', loop: true, touchNavigation: true, keyboardNavigation: true, closeOnOutsideClick: true });
 </script>
 {% endblock %}
