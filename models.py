@@ -6,7 +6,7 @@ class Album(db.Model):
     __tablename__ = 'album'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), unique=True, nullable=False)
-    # 其他字段
+    cover = db.Column(db.String(500))  # ✅ 新增字段，存封面 URL
 
 class AlbumCover(db.Model):
     __tablename__ = 'album_cover'
