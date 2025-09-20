@@ -14,8 +14,7 @@ import time
 from cloudinary.utils import api_sign_request
 from sqlalchemy.pool import NullPool, QueuePool
 import re, uuid
-from extensions import db
-from models import Album, Photo
+from models import db, Photo
 
 
 app = Flask(__name__)
@@ -91,7 +90,7 @@ else:
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-db.init_app(app)
+db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 # 保证请求结束后释放 session
@@ -138,6 +137,15 @@ def login_required(f):
             return redirect(url_for("login", next=request.path))
         return f(*args, **kwargs)
     return decorated
+
+# 新增 Photo 数据模型
+# --------------------------
+class Photo(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    album = db.Column(db.String(128), nullable=False)   # 保持原来 128
+    url = db.Column(db.String(512), nullable=False, unique=True)  # 保持原来 512，加 unique
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_private = db.Column(db.Boolean, default=False)   # 新增字段
 
 # --------------------------
 # 数据模型
