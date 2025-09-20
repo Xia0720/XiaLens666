@@ -242,7 +242,7 @@ def view_album(album_name):
 
         images = []
 
-        # 1) 从 Cloudinary 读取（如果可用）
+        # 1) 从 Cloudinary 读取
         try:
             resources = cloudinary.api.resources(
                 type="upload",
@@ -257,15 +257,24 @@ def view_album(album_name):
         except Exception as e:
             print("Cloudinary list failed (ignored):", e)
 
-        # 2) 从数据库读取该 album 的记录（优先展示数据库里的 URL，避免 Cloudinary 停用后看不到）
+        # 2) 从数据库读取
         db_imgs = Photo.query.filter_by(album=album_name, is_private=False).order_by(Photo.created_at.asc()).all()
         for p in db_imgs:
-            # 避免重复（比对 URL）
             if not any(item.get("secure_url") == p.url for item in images):
                 images.append({"public_id": str(p.id), "secure_url": p.url, "source": "supabase"})
 
         logged_in = session.get("logged_in", False)
-        return render_template("view_album.html", album_name=album_name, images=images, logged_in=logged_in)
+
+        # 3) Google Drive 链接（你可以写死，也可以放环境变量）
+        drive_link = "https://drive.google.com/drive/folders/1K_miEEKeQjw9pmmHBbJBzmEOg5l69zV_"
+
+        return render_template(
+            "view_album.html",
+            album_name=album_name,
+            images=images,
+            logged_in=logged_in,
+            drive_link=drive_link   # 👈 把它传给模板
+        )
 
     except Exception as e:
         return f"Error loading album: {str(e)}"
