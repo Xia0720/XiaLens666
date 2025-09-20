@@ -1,5 +1,4 @@
-from flask_sqlalchemy import SQLAlchemy
-from main import db   # ✅ 用同一个 db
+from extensions import db
 
 class Album(db.Model):
     __tablename__ = 'album'
