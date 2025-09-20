@@ -250,7 +250,7 @@ def view_album(album_name):
                 max_results=500
             )
             images += [
-                {"public_id": img["public_id"], "secure_url": img["secure_url"]}
+                {"public_id": img["public_id"], "secure_url": img["secure_url"], "source": "cloudinary"}
                 for img in resources.get("resources", [])
                 if img.get("public_id", "").startswith(prefix + "/")
             ]
@@ -262,7 +262,7 @@ def view_album(album_name):
         for p in db_imgs:
             # 避免重复（比对 URL）
             if not any(item.get("secure_url") == p.url for item in images):
-                images.append({"public_id": None, "secure_url": p.url})
+                images.append({"public_id": str(p.id), "secure_url": p.url, "source": "supabase"})
 
         logged_in = session.get("logged_in", False)
         return render_template("view_album.html", album_name=album_name, images=images, logged_in=logged_in)
@@ -275,16 +275,28 @@ def view_album(album_name):
 # --------------------------
 @app.route("/delete_images", methods=["POST"])
 def delete_images():
-    public_ids = request.form.getlist("public_ids")
+    selections = request.form.getlist("to_delete")
     album_name = request.form.get("album_name")
-    if not public_ids:
+    if not selections:
         flash("No images selected for deletion.", "warning")
         return redirect(url_for("view_album", album_name=album_name))
-    try:
-        cloudinary.api.delete_resources(public_ids)
-        flash(f"Deleted {len(public_ids)} images successfully.", "success")
-    except Exception as e:
-        flash(f"Delete failed: {str(e)}", "error")
+
+    deleted_count = 0
+    for sel in selections:
+        try:
+            source, identifier = sel.split("::", 1)
+            if source == "cloudinary":
+                cloudinary.api.delete_resources([identifier])
+            elif source == "supabase":
+                photo = Photo.query.get(int(identifier))
+                if photo:
+                    db.session.delete(photo)
+                    db.session.commit()
+            deleted_count += 1
+        except Exception as e:
+            print("Delete error:", e)
+
+    flash(f"Deleted {deleted_count} images successfully.", "success")
     return redirect(url_for("view_album", album_name=album_name))
 
 # --------------------------
