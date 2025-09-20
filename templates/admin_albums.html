@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Admin Albums - My Lens{% endblock %}
+
+{% block content %}
+<h1>Manage Album Covers</h1>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <ul>
+    {% for category, msg in messages %}
+      <li style="color: {% if category=='success' %}green{% else %}red{% endif %}">{{ msg }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+
+<table border="1" cellpadding="8" cellspacing="0">
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Current Cover</th>
+        <th>Set New Cover URL</th>
+    </tr>
+    {% for album in albums %}
+    <tr>
+        <td>{{ album.id }}</td>
+        <td>{{ album.name }}</td>
+        <td>
+            {% if album.cover %}
+                <img src="{{ album.cover }}" width="120">
+            {% else %}
+                No cover
+            {% endif %}
+        </td>
+        <td>
+            <form method="POST" style="display:inline-block;">
+                <input type="hidden" name="album_id" value="{{ album.id }}">
+                <input type="text" name="cover_url" placeholder="Enter image URL">
+                <button type="submit">Set Cover</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}
