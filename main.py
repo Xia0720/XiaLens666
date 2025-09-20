@@ -139,15 +139,6 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
-
-# 新增 Photo 数据模型
-# --------------------------
-class Photo(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    album = db.Column(db.String(128), nullable=False)   # 保持原来 128
-    url = db.Column(db.String(512), nullable=False, unique=True)  # 保持原来 512，加 unique
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    is_private = db.Column(db.Boolean, default=False)   # 新增字段
 # --------------------------
 # 数据模型
 # --------------------------
