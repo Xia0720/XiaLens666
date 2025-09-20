@@ -17,7 +17,7 @@ body.album-page::before {
   content: "";
   position: fixed;
   inset: 0;
-  background-image: url('{{ background_url if background_url else "https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756329504/pexels-alex-andrews-271121-1983038_dbwaac.jpg" }}');
+  background-image: url('{{ background_url if background_url else "/static/default_bg.jpg" }}');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -29,7 +29,7 @@ body.album-page::before {
 .album-bg-fallback {
   position: fixed;
   inset: 0;
-  background-image: url('{{ background_fallback_url if background_fallback_url else "https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756329504/pexels-alex-andrews-271121-1983038_dbwaac.jpg" }}');
+  background-image: url('{{ background_fallback_url if background_fallback_url else "/static/default_bg.jpg" }}');
   background-size: cover;
   background-position: center;
   filter: blur(8px) brightness(0.82);
@@ -44,22 +44,35 @@ body.album-page::before {
   width: 100%;
   padding: 40px 20px;
   box-sizing: border-box;
-  min-height: 100vh; /* 避免高度不够时露出白底 */
+  min-height: 100vh;
 }
 
 /* 页面标题 */
 .album-content h1 {
   text-align: center;
   font-size: 1.8rem;
-  color: #000; /* 黑色主文字 */
-  font-weight: 900; /* 超粗体 */
+  color: #000;
+  font-weight: 900;
   text-shadow: 
     -1px -1px 0 #fff,
      1px -1px 0 #fff,
     -1px  1px 0 #fff,
      1px  1px 0 #fff,
-     0  2px 5px rgba(0,0,0,0.5); /* 柔和外阴影 */
-  margin-bottom: 36px;
+     0  2px 5px rgba(0,0,0,0.5);
+  margin-bottom: 8px;
+}
+
+/* Drive CTA */
+.drive-cta {
+  display:inline-block;
+  margin: 8px auto 28px;
+  text-decoration: none;
+  background:#f1f8ff;
+  border:1px solid #cfe6ff;
+  color:#174ea6;
+  padding:8px 12px;
+  border-radius:8px;
+  font-weight:600;
 }
 
 /* ---------- 横向滚动行 ---------- */
@@ -91,8 +104,8 @@ body.album-page::before {
 /* ---------- 单张图片 ---------- */
 .album-item {
   flex: 0 0 auto;
-  width: 260px;   /* 再调大 */
-  height: 200px;  /* 再调大 */
+  width: 260px;
+  height: 200px;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 6px 18px rgba(0,0,0,0.15);
@@ -129,6 +142,15 @@ body.album-page::before {
 @media (max-width: 1024px) { .album-item { width: 260px; height: 200px; } }
 @media (max-width: 768px)  { .album-item { width: 200px; height: 150px; } }
 @media (max-width: 480px)  { .album-item { width: 140px; height: 110px; } }
+
+.empty-note {
+  text-align:center;
+  color:#666;
+  padding:36px 12px;
+  background:#fffdf7;
+  border-radius:8px;
+  margin-top:18px;
+}
 </style>
 
 <div class="album-bg-fallback" aria-hidden="true"></div>
@@ -136,25 +158,46 @@ body.album-page::before {
 <div class="album-content">
   <h1>{{ album_name }} Album</h1>
 
+  <!-- Google Drive 旧照片入口（如果后端传入 drive_link） -->
+  {% if drive_link %}
+    <div style="text-align:center;">
+      <a class="drive-cta" href="{{ drive_link }}" target="_blank" rel="noopener">
+        查看旧照片（Google Drive）
+      </a>
+    </div>
+  {% endif %}
+
   {% if logged_in %}
   <form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
   {% endif %}
 
   {% set row_size = 10 %}
-  {% for i in range(0, images|length, row_size) %}
-    <div class="album-row">
-      {% for img in images[i:i+row_size] %}
-      <div class="album-item">
-        {% if logged_in %}
-          <input type="checkbox" name="public_ids" value="{{ img.public_id }}">
-        {% endif %}
-        <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-          <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
-        </a>
+  {% if images and images|length > 0 %}
+    {% for i in range(0, images|length, row_size) %}
+      <div class="album-row">
+        {% for img in images[i:i+row_size] %}
+        <div class="album-item">
+          {% if logged_in %}
+            <!-- 这里 value 用 public_id 或 URL，两种都兼容后端删图逻辑 -->
+            <input type="checkbox" name="public_ids" value="{{ img.public_id or img.secure_url }}">
+          {% endif %}
+          <a href="{{ img.secure_url }}" class="glightbox" data-gallery="album-{{ album_name }}">
+            <img src="{{ img.secure_url }}" alt="Photo" loading="lazy">
+          </a>
+        </div>
+        {% endfor %}
       </div>
-      {% endfor %}
+    {% endfor %}
+  {% else %}
+    <div class="empty-note">
+      这个相册中还没有（新的）照片可以显示。
+      {% if drive_link %}
+        <div style="margin-top:10px;">
+          旧照片可通过 <a href="{{ drive_link }}" target="_blank">Google Drive（旧照片）</a> 查看。
+        </div>
+      {% endif %}
     </div>
-  {% endfor %}
+  {% endif %}
 
   {% if logged_in %}
     <input type="hidden" name="album_name" value="{{ album_name }}">
@@ -163,6 +206,9 @@ body.album-page::before {
         Delete Selected Images
       </button>
     </div>
+  {% endif %}
+  {% if logged_in %}
+  </form>
   {% endif %}
 </div>
 
