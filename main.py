@@ -15,6 +15,8 @@ from cloudinary.utils import api_sign_request
 from sqlalchemy.pool import NullPool, QueuePool
 import re, uuid
 from models import db, Photo
+from models import Album
+
 
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
