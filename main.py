@@ -1,3 +1,4 @@
+# main.py (修复版)
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.utils import secure_filename
 from flask_sqlalchemy import SQLAlchemy
@@ -13,10 +14,12 @@ import io
 import time
 from cloudinary.utils import api_sign_request
 from sqlalchemy.pool import NullPool, QueuePool
+from sqlalchemy import text, func
 import re, uuid
-from models import db, Photo
 
-
+# --------------------------
+# App & secret
+# --------------------------
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
 
@@ -29,38 +32,48 @@ cloudinary.config(
     api_secret=os.getenv('CLOUDINARY_API_SECRET', '9o-PlPBRQzQPfuVCQfaGrUV3_IE')
 )
 
-# main.py（靠近 cloudinary.config(...) 的地方）
 MAIN_ALBUM_FOLDER = os.getenv("MAIN_ALBUM_FOLDER", "albums")  # 若不想主文件夹，设置为空字符串 ""
 MAX_CLOUDINARY_SIZE = 10 * 1024 * 1024  # 10MB
 
 # ---------- Supabase 初始化（新增） ----------
+# 需要安装 supabase 库：pip install supabase
 from supabase import create_client
-# SUPABASE_URL 和 SUPABASE_KEY 在 Render 环境变量里设置
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "photos")  # 默认 photos
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "photos")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
 
-# helper: 从 Supabase 公共 bucket 构造可直接访问的 URL
 def make_supabase_public_url(path):
+    """从 Supabase 公共 bucket 构造可直接访问的 URL"""
+    if not SUPABASE_URL or not SUPABASE_BUCKET:
+        return None
     return f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/public/{SUPABASE_BUCKET}/{path}"
 
-# helper: 上传到 Supabase（path 是 bucket 下的相对路径，例如 "albums/xxx/img.jpg"）
 def supabase_upload_file(path, file_like, content_type=None):
+    """上传到 Supabase，返回 public url 或抛异常"""
     if not supabase:
         raise RuntimeError("Supabase 未配置 (SUPABASE_URL / SUPABASE_KEY)")
     file_like.seek(0)
     data = file_like.read()
-    # supabase-py 支持 file-like 或 bytes
-    # 上传：upload(path, file, content_type=None)
-    res = supabase.storage.from_(SUPABASE_BUCKET).upload(path, io.BytesIO(data), content_type)
-    # res 里遇到 error 时做报错（不同库版本返回内容可能不同）
+    # 某些 supabase client 版本接受 bytes 或 file-like
+    try:
+        res = supabase.storage.from_(SUPABASE_BUCKET).upload(path, io.BytesIO(data), content_type)
+    except Exception as e:
+        # 有时 upload 会抛异常或返回 dict 带 error
+        # 尝试再用 bytes
+        try:
+            res = supabase.storage.from_(SUPABASE_BUCKET).upload(path, data, content_type)
+        except Exception:
+            raise
     if isinstance(res, dict) and res.get("error"):
         raise Exception(res["error"])
+    # 返回可直接访问的公共 URL（假设 bucket 是 public）
     return make_supabase_public_url(path)
 
-# helper: 从 Supabase 公共 URL 解析出 bucket 内的 path，用于删除
 def supabase_path_from_public_url(url):
+    """从 Supabase 公共 URL 解析出 bucket 内的 path，用于删除"""
+    if not url or not SUPABASE_BUCKET or not SUPABASE_URL:
+        return None
     marker = f"/storage/v1/object/public/{SUPABASE_BUCKET}/"
     if marker in url:
         return url.split(marker, 1)[1]
@@ -69,20 +82,18 @@ def supabase_path_from_public_url(url):
 # --------------------------
 # 数据库配置
 # --------------------------
-database_url = os.getenv("DATABASE_URL")  # Render / Supabase
+database_url = os.getenv("DATABASE_URL")
 
 if database_url:
-    # 生产环境：Postgres + QueuePool
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         "poolclass": QueuePool,
-        "pool_size": 5,           # 常驻连接数
-        "max_overflow": 10,       # 最大额外连接
-        "pool_timeout": 30,       # 等待连接超时（秒）
-        "pool_recycle": 1800      # 回收过期连接（秒），防止 server 断开
+        "pool_size": 5,
+        "max_overflow": 10,
+        "pool_timeout": 30,
+        "pool_recycle": 1800
     }
 else:
-    # 本地环境：SQLite + NullPool
     app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///stories.db"
     app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
         "poolclass": NullPool
@@ -99,23 +110,55 @@ def shutdown_session(exception=None):
     db.session.remove()
 
 # --------------------------
-# 模板全局变量
+# 模型（在此统一定义，避免重复导入冲突）
+# --------------------------
+class Photo(db.Model):
+    __tablename__ = "photo"
+    id = db.Column(db.Integer, primary_key=True)
+    album = db.Column(db.String(128), nullable=False)
+    url = db.Column(db.String(512), nullable=False, unique=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_private = db.Column(db.Boolean, default=False)
+
+class Story(db.Model):
+    __tablename__ = "story"
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    images = db.relationship("StoryImage", backref="story", cascade="all, delete-orphan")
+
+class StoryImage(db.Model):
+    __tablename__ = "story_image"
+    id = db.Column(db.Integer, primary_key=True)
+    image_url = db.Column(db.String(500), nullable=False)
+    story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
+
+# 确保 instance 文件夹存在
+if not os.path.exists('instance'):
+    os.makedirs('instance')
+
+# 自动创建表（开发时有用；生产可以依赖 Alembic）
+with app.app_context():
+    db.create_all()
+
+# --------------------------
+# 模板上下文
 # --------------------------
 @app.context_processor
 def inject_logged_in():
     return dict(logged_in=session.get("logged_in", False))
 
-# ---------- 工具函数：自动修正图片方向 ----------
-def fix_image_orientation(file):
-    img = Image.open(file)
+# --------------------------
+# 工具：修正图片方向
+# --------------------------
+def fix_image_orientation(file_like):
+    file_like.seek(0)
+    img = Image.open(file_like)
     try:
-        for orientation in ExifTags.TAGS.keys():
-            if ExifTags.TAGS[orientation] == "Orientation":
-                break
-
+        orientation_key = next((k for k, v in ExifTags.TAGS.items() if v == "Orientation"), None)
         exif = img._getexif()
-        if exif is not None:
-            orientation_value = exif.get(orientation)
+        if exif and orientation_key:
+            orientation_value = exif.get(orientation_key)
             if orientation_value == 3:
                 img = img.rotate(180, expand=True)
             elif orientation_value == 6:
@@ -123,12 +166,11 @@ def fix_image_orientation(file):
             elif orientation_value == 8:
                 img = img.rotate(90, expand=True)
     except Exception:
-        pass  # 没有EXIF就跳过
-
+        pass
     return img
 
 # --------------------------
-# 登录保护装饰器
+# 登录保护
 # --------------------------
 def login_required(f):
     @wraps(f)
@@ -138,39 +180,8 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated
 
-# 新增 Photo 数据模型
 # --------------------------
-class Photo(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    album = db.Column(db.String(128), nullable=False)   # 保持原来 128
-    url = db.Column(db.String(512), nullable=False, unique=True)  # 保持原来 512，加 unique
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    is_private = db.Column(db.Boolean, default=False)   # 新增字段
-
-# --------------------------
-# 数据模型
-# --------------------------
-class Story(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    text = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    images = db.relationship("StoryImage", backref="story", cascade="all, delete-orphan")
-
-class StoryImage(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    image_url = db.Column(db.String(500), nullable=False)
-    story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
-
-# 确保 instance 文件夹存在
-if not os.path.exists('instance'):
-    os.makedirs('instance')
-
-# 自动创建表
-with app.app_context():
-    db.create_all()
-
-# --------------------------
-# 首页和静态页面
+# 首页 & 静态页面
 # --------------------------
 @app.route("/")
 def index():
@@ -185,7 +196,7 @@ def about():
     return render_template("about.html")
 
 # --------------------------
-# 相册列表
+# 相册列表（合并 Cloudinary + DB）
 # --------------------------
 @app.route("/album")
 def albums():
@@ -193,37 +204,36 @@ def albums():
         albums_list = []
         main = (MAIN_ALBUM_FOLDER or "").strip('/')
 
-        # 1) 尝试从 Cloudinary 读取现有相册（保留原有行为）
+        # 1) Cloudinary 子文件夹（容错）
         try:
-            folders = cloudinary.api.subfolders(main) if cloudinary.config().cloud_name else {"folders": []}
-            album_names_cloud = [f["name"] for f in folders.get("folders", [])]
+            if cloudinary.config().cloud_name:
+                folders = cloudinary.api.subfolders(main) if main else cloudinary.api.subfolders('')
+            else:
+                folders = {"folders": []}
+            album_names_cloud = [f.get("name") for f in folders.get("folders", [])]
         except Exception as e:
             print("Cloudinary subfolders fetch failed:", e)
             album_names_cloud = []
 
-        # 2) 从数据库 Photo 表读取 album（非私密）
+        # 2) DB 中的 album（非私密）
         db_album_covers = {}
         db_albums = db.session.query(Photo.album, Photo.url).filter(Photo.is_private == False).all()
         for a, url in db_albums:
             if a:
                 db_album_covers.setdefault(a, url)
 
-        # 合并：Cloudinary 的优先使用其封面，否则使用 DB 的封面
         album_set = set(album_names_cloud) | set(db_album_covers.keys())
         for album_name in sorted(album_set):
             cover = None
-            # cloudinary cover
             try:
                 if album_name in album_names_cloud:
-                    r = cloudinary.api.resources(type="upload", prefix=f"{main}/{album_name}/", max_results=1)
+                    r = cloudinary.api.resources(type="upload", prefix=f"{main}/{album_name}/" if main else f"{album_name}/", max_results=1)
                     if r.get('resources'):
                         cover = r['resources'][0].get('secure_url')
             except Exception:
                 cover = None
             if not cover:
-                cover = db_album_covers.get(album_name)
-            if not cover:
-                cover = ""  # 可显示默认占位
+                cover = db_album_covers.get(album_name, "")
             albums_list.append({'name': album_name, 'cover': cover})
 
         return render_template("album.html", albums=albums_list)
@@ -233,7 +243,7 @@ def albums():
         return f"Error fetching albums: {str(e)}"
 
 # --------------------------
-# Album 内容页
+# 查看相册（Cloudinary + Supabase DB），并传 Drive 跳转入口
 # --------------------------
 @app.route("/album/<album_name>", methods=["GET", "POST"])
 def view_album(album_name):
@@ -243,11 +253,11 @@ def view_album(album_name):
 
         images = []
 
-        # 1) 从 Cloudinary 读取
+        # 1) Cloudinary 资源
         try:
             resources = cloudinary.api.resources(
                 type="upload",
-                prefix=prefix + "/",   # 确保只匹配该目录
+                prefix=prefix + "/",
                 max_results=500
             )
             images += [
@@ -258,7 +268,7 @@ def view_album(album_name):
         except Exception as e:
             print("Cloudinary list failed (ignored):", e)
 
-        # 2) 从数据库读取
+        # 2) DB 中的 Supabase (is_private=False)
         db_imgs = Photo.query.filter_by(album=album_name, is_private=False).order_by(Photo.created_at.asc()).all()
         for p in db_imgs:
             if not any(item.get("secure_url") == p.url for item in images):
@@ -266,43 +276,53 @@ def view_album(album_name):
 
         logged_in = session.get("logged_in", False)
 
-        # 3) Google Drive 链接（你可以写死，也可以放环境变量）
-        drive_link = "https://drive.google.com/drive/folders/1K_miEEKeQjw9pmmHBbJBzmEOg5l69zV_"
+        # 3) Google Drive 链接入口（可改为按 album 配置）
+        drive_link = os.getenv("DRIVE_ALBUM_BASE", "https://drive.google.com/drive/folders/1K_miEEKeQjw9pmmHBbJBzmEOg5l69zV_")
 
         return render_template(
             "view_album.html",
             album_name=album_name,
             images=images,
             logged_in=logged_in,
-            drive_link=drive_link   # 👈 把它传给模板
+            drive_link=drive_link
         )
 
     except Exception as e:
         return f"Error loading album: {str(e)}"
 
+# --------------------------
+# Admin albums（改为基于 Photo 表，不依赖 Album 模型）
+# --------------------------
 @app.route("/admin/albums", methods=["GET", "POST"])
+@login_required
 def admin_albums():
-    if not session.get("logged_in"):
-        return redirect(url_for("login"))
+    # 以 Photo 表中的 album 字段生成相册列表
+    try:
+        rows = db.session.query(
+            Photo.album,
+            func.count(Photo.id).label("count"),
+            func.min(Photo.url).label("cover")
+        ).group_by(Photo.album).all()
 
-    albums = Album.query.order_by(Album.id.asc()).all()
+        albums = []
+        for r in rows:
+            albums.append({"name": r[0], "count": r[1], "cover": r[2]})
+    except Exception as e:
+        print("admin_albums error:", e)
+        albums = []
 
     if request.method == "POST":
-        album_id = request.form.get("album_id")
-        cover_url = request.form.get("cover_url").strip()
-        album = Album.query.get(album_id)
-        if album:
-            album.cover = cover_url
-            db.session.commit()
-            flash(f"Album '{album.name}' cover updated.", "success")
+        # 简化：因为没有 Album 模型，我们不在这里修改数据结构
+        flash("Cover update not implemented in this simplified admin view.", "info")
         return redirect(url_for("admin_albums"))
 
     return render_template("admin_albums.html", albums=albums)
 
 # --------------------------
-# 删除图片（仅登录）
+# 删除图片（登录）
 # --------------------------
 @app.route("/delete_images", methods=["POST"])
+@login_required
 def delete_images():
     selections = request.form.getlist("to_delete")
     album_name = request.form.get("album_name")
@@ -315,21 +335,31 @@ def delete_images():
         try:
             source, identifier = sel.split("::", 1)
             if source == "cloudinary":
-                cloudinary.api.delete_resources([identifier])
+                try:
+                    cloudinary.api.delete_resources([identifier])
+                except Exception as e:
+                    print("Cloudinary delete failed:", e)
             elif source == "supabase":
                 photo = Photo.query.get(int(identifier))
                 if photo:
+                    # remove file from supabase storage if possible
+                    path = supabase_path_from_public_url(photo.url)
+                    if path and supabase:
+                        try:
+                            supabase.storage.from_(SUPABASE_BUCKET).remove([path])
+                        except Exception as e:
+                            print("Supabase remove failed:", e)
                     db.session.delete(photo)
-                    db.session.commit()
             deleted_count += 1
         except Exception as e:
             print("Delete error:", e)
 
+    db.session.commit()
     flash(f"Deleted {deleted_count} images successfully.", "success")
     return redirect(url_for("view_album", album_name=album_name))
 
 # --------------------------
-# Story 列表
+# Story 列表 / 详情 / 上传 / 编辑 / 删除
 # --------------------------
 @app.route("/story_list")
 def story_list():
@@ -337,32 +367,22 @@ def story_list():
 
     for story in stories:
         for img in story.images:
-            # 如果 URL 是空或者不是 Cloudinary URL，就尝试修复
-            if not img.image_url or not img.image_url.startswith("https://res.cloudinary.com/dpr0pl2tf/"):
+            if not img.image_url or not img.image_url.startswith("https://res.cloudinary.com/"):
                 try:
-                    # 假设旧图片 filename 在数据库 image_url 中保存
-                    filename = img.image_url.split("/")[-1]  # 旧路径最后部分
-                    public_id = filename.rsplit(".", 1)[0]   # 去掉扩展名
-                    # 假设旧 Story 图片都在 Cloudinary 文件夹 story/
+                    filename = img.image_url.split("/")[-1]
+                    public_id = filename.rsplit(".", 1)[0]
                     new_url, _ = cloudinary.utils.cloudinary_url(f"story/{public_id}")
                     img.image_url = new_url
                 except Exception as e:
-                    print(f"⚠️ 修复旧 Story 图片失败: {img.image_url} -> {e}")
+                    print(f"修复旧 Story 图片失败: {img.image_url} -> {e}")
 
-    # 仅渲染页面，不修改数据库
     return render_template("story_list.html", stories=stories, logged_in=session.get("logged_in", False))
 
-# --------------------------
-# Story 详情
-# --------------------------
 @app.route("/story/<int:story_id>")
 def story_detail(story_id):
     story = Story.query.get_or_404(story_id)
     return render_template("story_detail.html", story=story)
 
-# --------------------------
-# 上传新 Story（仅登录）
-# --------------------------
 @app.route("/upload_story", methods=["GET", "POST"])
 @login_required
 def upload_story():
@@ -395,7 +415,6 @@ def upload_story():
                     else:
                         upload_buffer = file.stream
 
-                    # upload to Supabase in folder "stories/"
                     base = secure_filename(file.filename.rsplit('.', 1)[0])
                     ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else 'jpg'
                     path = f"stories/{base}.{ext}"
@@ -403,7 +422,7 @@ def upload_story():
 
                     db.session.add(StoryImage(image_url=public_url, story=new_story))
                 except Exception as e:
-                    print(f"⚠️ 上传故事图片失败: {e}")
+                    print(f"上传故事图片失败: {e}")
                     flash(f"One image failed to upload: {file.filename}", "error")
 
         db.session.commit()
@@ -412,9 +431,6 @@ def upload_story():
 
     return render_template("upload_story.html")
 
-# --------------------------
-# 编辑 Story（仅登录）
-# --------------------------
 @app.route("/story/<int:story_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit_story(story_id):
@@ -433,7 +449,6 @@ def edit_story(story_id):
             for img_id in delete_image_ids.split(","):
                 img = StoryImage.query.get(int(img_id))
                 if img:
-                    # 尝试从 Supabase 删除对应文件（如果是 Supabase URL）
                     path = supabase_path_from_public_url(img.image_url)
                     if path and supabase:
                         try:
@@ -467,7 +482,7 @@ def edit_story(story_id):
 
                     db.session.add(StoryImage(image_url=public_url, story=story))
                 except Exception as e:
-                    print(f"⚠️ 编辑 Story 上传图片失败: {e}")
+                    print(f"编辑 Story 上传图片失败: {e}")
                     flash(f"Image {file.filename} failed to upload", "error")
 
         db.session.commit()
@@ -475,10 +490,7 @@ def edit_story(story_id):
         return redirect(url_for("story_detail", story_id=story.id))
 
     return render_template("edit_story.html", story=story)
-    
-# --------------------------
-# 删除 Story（仅登录）
-# --------------------------
+
 @app.route("/delete_story/<int:story_id>", methods=["POST"])
 @login_required
 def delete_story(story_id):
@@ -489,7 +501,7 @@ def delete_story(story_id):
     return redirect(url_for("story_list"))
 
 # --------------------------
-# 上传图片到 Cloudinary album（仅登录）
+# 上传图片（将文件上传到 Supabase；前端再通过 save_photo 写 DB）
 # --------------------------
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
@@ -501,17 +513,16 @@ def upload():
         for file in files:
             if file and file.filename:
                 try:
-                    # 组织路径：albums/<album>/<safe_name>.<ext>
                     folder_path = f"{MAIN_ALBUM_FOLDER}/{album_name}" if MAIN_ALBUM_FOLDER else album_name
                     base = secure_filename(file.filename.rsplit('.', 1)[0])
                     ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else 'jpg'
                     file_path = f"{folder_path}/{base}.{ext}"
 
-                    # 如果文件太大（例如 >10MB），可以先做压缩（可复用你原来的压缩逻辑）
                     file.stream.seek(0, io.SEEK_END)
                     size = file.stream.tell()
                     file.stream.seek(0)
                     upload_buffer = file.stream
+
                     if size > MAX_CLOUDINARY_SIZE and (file.mimetype or "").startswith("image"):
                         img = Image.open(file.stream)
                         img = img.convert("RGB")
@@ -520,20 +531,17 @@ def upload():
                         out.seek(0)
                         upload_buffer = out
 
-                    # 上传到 Supabase
                     public_url = supabase_upload_file(file_path, upload_buffer, content_type=file.mimetype)
                     uploaded_urls.append(public_url)
 
                 except Exception as e:
-                    print(f"❌ 上传失败 {file.filename}: {e}")
+                    print(f"上传失败 {file.filename}: {e}")
 
-        # 返回 JSON 给前端处理（前端可以继续走 save_photo 来写 DB）
         return jsonify({"success": True, "urls": uploaded_urls})
 
-    # GET 请求：保持你原来的相册获取逻辑（不变）
-    # ---------- 以下为你原来的 GET 逻辑（保持不动） ----------
+    # GET: 获取可选相册（仅从 Cloudinary 列出）
     album_names_set = set()
-    main_prefix = (MAIN_ALBUM_FOLDER or "").strip('/')
+    main_prefix = (MAIN_ALBUM_FOLDER or "").strip(' /')
 
     try:
         next_cursor = None
@@ -559,25 +567,24 @@ def upload():
                 break
 
         album_names = sorted(album_names_set)
-
     except Exception as e:
-        print(f"⚠️ 获取相册失败: {e}")
+        print(f"获取相册失败: {e}")
         album_names = []
 
     return render_template(
         "upload.html",
         album_names=album_names,
         MAIN_ALBUM_FOLDER=MAIN_ALBUM_FOLDER,
-        last_album=""  # 可选：记录上次上传相册
+        last_album=""
     )
 
 # --------------------------
-# 私密空间上传（仅登录）
+# 私密上传（仅登录） -> 上传到 Supabase 并写 Photo(is_private=True)
 # --------------------------
 @app.route("/upload_private", methods=["POST"])
 @login_required
 def upload_private():
-    import re, uuid, io
+    import io
     from PIL import Image, ExifTags
 
     album_name = request.form.get("album")
@@ -604,21 +611,20 @@ def upload_private():
             upload_buffer = io.BytesIO(raw)
             mimetype = (file.mimetype or "").lower()
 
-            # 压缩逻辑（沿用你原来对大文件的处理）
+            # 图片压缩逻辑（超过 MAX_CLOUDINARY_SIZE）
             if len(raw) > MAX_CLOUDINARY_SIZE and mimetype.startswith("image"):
                 img = Image.open(io.BytesIO(raw))
                 try:
+                    orientation_key = next((k for k, v in ExifTags.TAGS.items() if v == "Orientation"), None)
                     exif = img._getexif()
-                    if exif:
-                        orientation_key = next((k for k, v in ExifTags.TAGS.items() if v == "Orientation"), None)
-                        if orientation_key:
-                            o = exif.get(orientation_key)
-                            if o == 3:
-                                img = img.rotate(180, expand=True)
-                            elif o == 6:
-                                img = img.rotate(270, expand=True)
-                            elif o == 8:
-                                img = img.rotate(90, expand=True)
+                    if exif and orientation_key:
+                        o = exif.get(orientation_key)
+                        if o == 3:
+                            img = img.rotate(180, expand=True)
+                        elif o == 6:
+                            img = img.rotate(270, expand=True)
+                        elif o == 8:
+                            img = img.rotate(90, expand=True)
                 except Exception:
                     pass
 
@@ -654,13 +660,11 @@ def upload_private():
             elif len(raw) > MAX_CLOUDINARY_SIZE and not mimetype.startswith("image"):
                 return jsonify({"success": False, "error": f"文件 {file.filename} 太大且不是图片"}), 400
 
-            # 上传到 Supabase（路径 private/<album>/<safe_name>.<ext>）
             folder_path = f"private/{safe_album}"
             path = f"{folder_path}/{safe_name}.{ext}"
             upload_buffer.seek(0)
             public_url = supabase_upload_file(path, upload_buffer, content_type=mimetype)
 
-            # 存数据库
             new_photo = Photo(
                 album=album_name,
                 url=public_url,
@@ -711,7 +715,7 @@ def test_db():
         return "DB OK"
     except Exception as e:
         return f"DB failed: {str(e)}", 500
-        
+
 # --------------------------
 # Private-space（仅登录）
 # --------------------------
@@ -722,7 +726,6 @@ def private_space():
     album_covers = {}
 
     try:
-        # 使用 Photo 表里 is_private=True 的记录
         photos = Photo.query.filter_by(is_private=True).order_by(Photo.created_at.desc()).all()
         for p in photos:
             album = p.album or "default"
@@ -732,7 +735,7 @@ def private_space():
 
         album_names = sorted(album_names_set)
     except Exception as e:
-        print(f"⚠️ 获取私密相册失败: {e}")
+        print(f"获取私密相册失败: {e}")
         album_names = []
         album_covers = {}
 
@@ -742,7 +745,6 @@ def private_space():
         album_covers=album_covers,
         last_album=session.get("last_private_album", "")
     )
-
 
 @app.route("/private_space/<album_name>", methods=["GET", "POST"])
 @login_required
@@ -756,11 +758,9 @@ def view_private_album(album_name):
     except Exception as e:
         return f"Error loading private album: {str(e)}"
 
-
 @app.route("/delete_private_images", methods=["POST"])
 @login_required
 def delete_private_images():
-    # 前端可能传 public_ids（cloudinary）或 urls（新的方式）
     public_ids = request.form.getlist("public_ids")
     album_name = request.form.get("album_name")
     if not public_ids:
@@ -768,11 +768,9 @@ def delete_private_images():
         return redirect(url_for("view_private_album", album_name=album_name))
 
     try:
-        # 先尝试按 supabase URL 删除（如果看起来是 url）
         to_delete_urls = [pid for pid in public_ids if pid.startswith("http")]
         to_delete_public_ids = [pid for pid in public_ids if not pid.startswith("http")]
 
-        # Supabase 删除：从 URL 提取 path，然后 remove
         for url in to_delete_urls:
             path = supabase_path_from_public_url(url)
             if path and supabase:
@@ -780,20 +778,16 @@ def delete_private_images():
                     supabase.storage.from_(SUPABASE_BUCKET).remove([path])
                 except Exception as e:
                     print("Supabase remove failed:", e)
-            # 同时删除 DB 记录
             photo = Photo.query.filter_by(url=url).first()
             if photo:
                 db.session.delete(photo)
 
-        # Cloudinary 删除（保留原流程）
         if to_delete_public_ids:
             try:
                 cloudinary.api.delete_resources(to_delete_public_ids)
             except Exception as e:
                 print("Cloudinary delete failed:", e)
-            # 尝试删除对应 DB 记录（url 匹配）
             for pid in to_delete_public_ids:
-                # 你可能保存了完整 URL 在 DB，可以尝试基于 public_id 去删除
                 Photo.query.filter(Photo.url.contains(pid)).delete(synchronize_session=False)
 
         db.session.commit()
@@ -804,10 +798,12 @@ def delete_private_images():
 
     return redirect(url_for("view_private_album", album_name=album_name))
 
-
+# --------------------------
+# Cloudinary 签名（前端直传时使用）
+# --------------------------
 @app.route("/cloudinary-sign", methods=["POST"])
 @login_required
-def cloudinary_sign():      # 前端直传 Cloudinary 需要签名，这里按 folder 生成一次签名（整批文件可复用）。
+def cloudinary_sign():
     data = request.get_json(force=True) or {}
     folder = data.get("folder", "").strip()
     timestamp = int(time.time())
@@ -826,7 +822,7 @@ def cloudinary_sign():      # 前端直传 Cloudinary 需要签名，这里按 f
     }
 
 # --------------------------
-# 保存上传到数据库
+# 保存上传后的图片记录到 DB（前端调用）
 # --------------------------
 @app.route("/save_photo", methods=["POST"])
 @login_required
@@ -834,13 +830,12 @@ def save_photo():
     data = request.get_json() or {}
     album = data.get("album")
     url = data.get("url")
-    is_private = bool(data.get("private"))  # 前端传 true / false
+    is_private = bool(data.get("private"))
 
     if not album or not url:
         return jsonify({"success": False, "error": "缺少 album 或 url"}), 400
 
     try:
-        # 防止重复保存
         exists = Photo.query.filter_by(url=url).first()
         if exists:
             return jsonify({"success": True, "message": "already_exists"})
@@ -858,6 +853,9 @@ def save_photo():
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
 
+# --------------------------
+# 上传调试页面
+# --------------------------
 @app.route("/upload_debug", methods=["GET", "POST"])
 def upload_debug():
     if request.method == "POST":
