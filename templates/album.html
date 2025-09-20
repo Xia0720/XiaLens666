@@ -3,19 +3,17 @@
 {% block body_class %}album-page{% endblock %}
 
 {% block content %}
-<!-- ✅ 允许手机缩放 -->
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.5, maximum-scale=3, user-scalable=yes">
 
 <style>
   html, body { height: 100%; margin: 0; padding: 0; }
   body.album-page { background: none !important; }
 
-  /* 全屏虚化背景 */
   body.album-page::before {
     content: "";
     position: fixed;
     inset: 0;
-    background-image: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756396039/pexels-pixabay-289618_iyg9c4.jpg');
+    background-image: url('{{ global_bg or "/static/default_bg.jpg" }}');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -27,7 +25,7 @@
   .album-bg-fallback {
     position: fixed;
     inset: 0;
-    background-image: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg');
+    background-image: url('{{ fallback_bg or "/static/default_fallback.jpg" }}');
     background-size: cover;
     background-position: center;
     filter: blur(6px) brightness(0.82);
@@ -48,8 +46,7 @@
     padding: 24px 30px;
   }
 
-  /* 页面标题 */
-  body.album-page .page-title {
+  .page-title {
     text-align: center;
     margin: 30px 0 20px;
     font-size: 2rem;
@@ -59,15 +56,12 @@
     text-shadow: 0 2px 6px rgba(0,0,0,0.6);
   }
 
-  /* ===== 核心：固定 12 列 Mosaic 网格 ===== */
   .album-grid {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
-    grid-auto-rows: 9.5vw;     /* 行高随屏幕宽度变化 */
+    grid-auto-rows: 9.5vw;
     grid-auto-flow: dense;
     gap: 14px;
-
-    /* 保持居中，最大宽度限制 */
     width: min(1680px, calc(100vw - 48px));
     margin: 0 auto;
   }
@@ -89,19 +83,12 @@
   }
   .album-item:hover img { transform: scale(1.03); }
 
-  /* ===== 尺寸等级 ===== */
   .item--w2 { grid-column: span 3; }
   .item--w3 { grid-column: span 4; }
   .item--h2 { grid-row: span 2; }
-
-  .item--feature {
-    grid-column: span 5;
-    grid-row: span 3;
-  }
-
+  .item--feature { grid-column: span 5; grid-row: span 3; }
   .item--min { grid-column: span 3; grid-row: span 1; }
 
-  /* 相册名遮罩 */
   .album-info {
     position: absolute;
     left: 0; right: 0; bottom: 0;
@@ -113,24 +100,28 @@
   }
 
   .album-info h2 {
-  margin: 0;
-  font-size: 1rem;   /* 默认大小（PC端合适） */
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-/* 在小屏手机上缩小 */
-@media (max-width: 768px) {
-  .album-info h2 {
-    font-size: 0.75rem;   /* 平板、手机上缩小一点 */
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.2;
   }
-}
 
-@media (max-width: 480px) {
-  .album-info h2 {
-    font-size: 0.6rem;    /* 超小屏手机再缩小 */
+  @media (max-width: 768px) {
+    .album-info h2 { font-size: 0.75rem; }
   }
-}
+
+  @media (max-width: 480px) {
+    .album-info h2 { font-size: 0.6rem; }
+  }
+
+  /* 🔹 特殊样式：Google Drive 相册卡片 */
+  .drive-card {
+    border: 2px dashed #4285F4; /* Google 蓝色 */
+    background: #f0f6ff;
+  }
+  .drive-card .album-info {
+    background: linear-gradient(180deg, rgba(66,133,244,0.3) 0%, rgba(66,133,244,0.8) 100%);
+  }
 </style>
 
 <script>
@@ -140,8 +131,8 @@
         document.body.classList.add('album-page');
       }
     } catch (e) {
-      document.addEventListener('DOMContentLoaded', function(){ 
-        document.body.classList.add('album-page'); 
+      document.addEventListener('DOMContentLoaded', function(){
+        document.body.classList.add('album-page');
       });
     }
   })();
@@ -153,6 +144,7 @@
   <h1 class="page-title">Albums</h1>
 
   <div class="album-grid">
+    <!-- Supabase 相册循环 -->
     {% for album in albums %}
       <div class="album-item
                   {% if loop.index == 1 %} item--feature
@@ -169,6 +161,14 @@
         </a>
       </div>
     {% endfor %}
+
+    <!-- Google Drive 旧照片入口 -->
+    <div class="album-item item--w3 item--h2 drive-card">
+      <a href="https://drive.google.com/drive/folders/你的分享ID" target="_blank">
+        <img src="{{ url_for('static', filename='images/google_drive_cover.jpg') }}" alt="Old Photos">
+        <div class="album-info"><h2>Old Photos (Google Drive)</h2></div>
+      </a>
+    </div>
   </div>
 </div>
 {% endblock %}
