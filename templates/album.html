@@ -106,21 +106,22 @@
     line-height: 1.2;
   }
 
+.drive-link {
+    text-align: center;
+    margin: 6px 0 10px;
+  }
+  .drive-link a {
+    font-size: 0.8rem;
+    color: #4285F4;
+    text-decoration: underline;
+  }
+
   @media (max-width: 768px) {
     .album-info h2 { font-size: 0.75rem; }
   }
 
   @media (max-width: 480px) {
     .album-info h2 { font-size: 0.6rem; }
-  }
-
-  /* 🔹 特殊样式：Google Drive 相册卡片 */
-  .drive-card {
-    border: 2px dashed #4285F4; /* Google 蓝色 */
-    background: #f0f6ff;
-  }
-  .drive-card .album-info {
-    background: linear-gradient(180deg, rgba(66,133,244,0.3) 0%, rgba(66,133,244,0.8) 100%);
   }
 </style>
 
@@ -144,13 +145,14 @@
   <h1 class="page-title">Albums</h1>
 
   <div class="album-grid">
-    <!-- Supabase 相册循环 -->
     {% for album in albums %}
       <div class="album-item
                   {% if loop.index == 1 %} item--feature
                   {% elif loop.index % 5 == 0 %} item--w3 item--h2
                   {% elif loop.index % 3 == 0 %} item--w2
                   {% else %} item--min {% endif %}">
+        
+        <!-- 点击进入 Supabase 相册 -->
         <a href="{{ url_for('view_album', album_name=album.name) }}">
           {% if album.cover %}
             <img src="{{ album.cover }}" alt="{{ album.name }}">
@@ -159,16 +161,17 @@
           {% endif %}
           <div class="album-info"><h2>{{ album.name }}</h2></div>
         </a>
+
+        <!-- 如果有 Drive 链接，显示按钮 -->
+        {% if album.drive_folder_id %}
+          <div class="drive-link">
+            <a href="https://drive.google.com/drive/folders/{{ album.drive_folder_id }}" target="_blank">
+              View Old Photos
+            </a>
+          </div>
+        {% endif %}
       </div>
     {% endfor %}
-
-    <!-- Google Drive 旧照片入口 -->
-    <div class="album-item item--w3 item--h2 drive-card">
-      <a href="https://drive.google.com/drive/folders/1K_miEEKeQjw9pmmHBbJBzmEOg5l69zV_?usp=sharing" target="_blank">
-        <img src="{{ url_for('static', filename='images/google_drive_cover.jpg') }}" alt="Old Photos">
-        <div class="album-info"><h2>Old Photos (Google Drive)</h2></div>
-      </a>
-    </div>
   </div>
 </div>
 {% endblock %}
