@@ -83,40 +83,24 @@
 }
 </style>
 
-<!-- ExifReader (同 upload.html 使用的库) -->
-<script src="https://cdn.jsdelivr.net/npm/exifreader@4/dist/exif-reader.min.js"></script>
-
 <script>
-/*
-  与 upload.html 一致的前端上传逻辑（上传到 Cloudinary unsigned，然后调用后端保存记录）
-  - 请确保后端存在 /save_photo 路由来接收 { album, url } JSON 并写入数据库
-*/
+/* 将前端上传改为：直接 POST 到 /upload_private（后端负责压缩 / 存储 / 写 DB） */
 
-const CLOUD_NAME    = "dpr0pl2tf";       // Cloudinary cloud name（与你 site 一致）
-const UPLOAD_PRESET = "unsigned_preset"; // 你的 unsigned preset（与你 upload.html 一致）
-const MAIN_FOLDER   = "private";         // private 上传的主文件夹（与后端 upload_private 的 folder 一致）
-const MAX_SIZE      = 10 * 1024 * 1024;  // 10MB
-const MAX_ATTEMPTS  = 3;
-const SAVE_PHOTO_ENDPOINT = "/save_photo"; // 与 upload.html 一致的保存记录端点
+const MAX_ATTEMPTS = 3;
 
-// 显示/隐藏上传区域
 document.getElementById("show-upload-btn").addEventListener("click", () => {
   const area = document.getElementById("upload-area");
   area.style.display = (area.style.display === "none" || area.style.display === "") ? "block" : "none";
   if (area.style.display === "block") area.scrollIntoView({behavior:"smooth", block:"center"});
 });
 
-// 新相册输入框切换
 function toggleNewAlbumInput() {
   const select = document.getElementById('albumSelect');
   const newAlbumDiv = document.getElementById('newAlbumDiv');
   newAlbumDiv.style.display = (select && select.value === 'new') ? 'block' : 'none';
 }
-document.addEventListener('DOMContentLoaded', () => {
-  toggleNewAlbumInput();
-});
+document.addEventListener('DOMContentLoaded', () => { toggleNewAlbumInput(); });
 
-// 表单提交逻辑（和 upload.html 一致）
 document.getElementById('uploadForm').addEventListener('submit', async function (e) {
   e.preventDefault();
 
@@ -130,8 +114,6 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
   if (!album) { alert("请填写相册名！"); return; }
   if (!files || files.length === 0) { alert("请选择照片！"); return; }
 
-  const folderPath = MAIN_FOLDER ? `${MAIN_FOLDER}/${album}` : album;
-
   submitBtn.disabled = true;
   submitBtn.textContent = "正在上传...";
   statusDiv.innerHTML = "";
@@ -141,122 +123,41 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
     item.textContent = `${file.name} - 准备上传...`;
     statusDiv.appendChild(item);
 
-    try {
-      const url = await uploadWithRetries(file, folderPath, MAX_ATTEMPTS, item);
-      await savePhotoToDB(album, url);
-      item.textContent = `${file.name} ✅ 上传并保存成功`;
-      item.style.color = "green";
-    } catch (err) {
-      console.error(err);
-      item.textContent = `${file.name} ❌ 上传失败：${err && err.message ? err.message : err}`;
-      item.style.color = "red";
+    let success = false;
+    let lastError = null;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS && !success; attempt++) {
+      try {
+        item.textContent = `${file.name} - 上传中（第 ${attempt} 次）...`;
+        const formData = new FormData();
+        formData.append('photo', file);
+        formData.append('album', album);
+        if (albumSelect.value === 'new') formData.append('new_album', album);
+
+        const res = await fetch('/upload_private', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (!res.ok || data.success === false) {
+          throw new Error(data.error || `Upload failed (status ${res.status})`);
+        }
+
+        item.textContent = `${file.name} ✅ 上传成功`;
+        item.style.color = "green";
+        success = true;
+      } catch (err) {
+        console.warn(`Upload attempt ${attempt} failed for ${file.name}:`, err);
+        lastError = err;
+        if (attempt < MAX_ATTEMPTS) {
+          await new Promise(r => setTimeout(r, 400 * attempt));
+        } else {
+          item.textContent = `${file.name} ❌ 上传失败：${err.message || err}`;
+          item.style.color = "red";
+        }
+      }
     }
   }
 
   submitBtn.disabled = false;
   submitBtn.textContent = "上传";
 });
-
-// ====== 工具函数：读取拍摄时间（尝试 EXIF） ======
-async function getTakenAtISO(file) {
-  try {
-    const buf = await file.arrayBuffer();
-    const tags = ExifReader.load(buf, {expanded: true});
-    const dt = (tags.exif && (tags.exif.DateTimeOriginal || tags.exif.CreateDate))
-               ? (tags.exif.DateTimeOriginal.description || tags.exif.CreateDate.description)
-               : null;
-    if (dt) {
-      const iso = dt.replace(/^(\d{4}):(\d{2}):(\d{2})\s+/, '$1-$2-$3T') + 'Z';
-      return iso;
-    }
-  } catch(e) {}
-  try { return new Date(file.lastModified).toISOString(); } catch(e) { return new Date().toISOString(); }
-}
-
-// ====== 上传带重试 ======
-async function uploadWithRetries(file, folder, maxAttempts, statusItem) {
-  let attempt = 0;
-  while (attempt < maxAttempts) {
-    attempt++;
-    try {
-      statusItem.textContent = `${file.name} - 上传中（第 ${attempt} 次）...`;
-      const url = await uploadToCloudinary(file, folder);
-      return url;
-    } catch (err) {
-      console.warn(`上传第 ${attempt} 次失败`, err);
-      if (attempt >= maxAttempts) throw err;
-      await new Promise(r => setTimeout(r, 500 * attempt));
-    }
-  }
-}
-
-// ====== 上传到 Cloudinary（含大文件压缩 + public_id 安全化 + context taken_at） ======
-async function uploadToCloudinary(file, folder) {
-  let uploadFile = file;
-
-  // 超过 MAX_SIZE 前端压缩（图片）
-  if (file.size > MAX_SIZE) {
-    const img = await createImageBitmap(file);
-    const canvas = document.createElement("canvas");
-    let width = img.width;
-    let height = img.height;
-
-    const maxDim = 3000;
-    if (width > height && width > maxDim) {
-      height = Math.round(height * maxDim / width);
-      width = maxDim;
-    } else if (height > width && height > maxDim) {
-      width = Math.round(width * maxDim / height);
-      height = maxDim;
-    } else if (width === height && width > maxDim) {
-      width = maxDim;
-      height = maxDim;
-    }
-
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(img, 0, 0, width, height);
-
-    uploadFile = await new Promise(resolve => 
-      canvas.toBlob(resolve, "image/jpeg", 0.9)
-    );
-  }
-
-  const takenAt = await getTakenAtISO(file);
-  const apiUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
-  const fd = new FormData();
-  fd.append("file", uploadFile);
-  fd.append("upload_preset", UPLOAD_PRESET);
-  if (folder) fd.append("folder", folder);
-
-  // public_id 用文件名（去掉扩展），并做简单安全化
-  const baseName = file.name.split('.').slice(0, -1).join('.') || Date.now().toString();
-  const safePublicId = baseName.replace(/[^a-zA-Z0-9_-]/g,'_').slice(0, 200);
-  fd.append("public_id", safePublicId);
-  fd.append("context", `taken_at=${takenAt}`);
-
-  const res = await fetch(apiUrl, { method: "POST", body: fd });
-  const data = await res.json();
-  if (!res.ok) {
-    const msg = (data && data.error && data.error.message) ? data.error.message : JSON.stringify(data);
-    throw new Error(msg);
-  }
-  return data.secure_url;
-}
-
-// ====== 保存到后端数据库（与 upload.html 一致） ======
-async function savePhotoToDB(album, url) {
-  const res = await fetch(SAVE_PHOTO_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ album: album, url: url })
-  });
-  const data = await res.json();
-  if (!res.ok || data.success === false) {
-    throw new Error(data.error || "保存到数据库失败");
-  }
-  return data;
-}
 </script>
 {% endblock %}
