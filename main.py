@@ -448,6 +448,32 @@ def view_private_album(album_name):
     images = Photo.query.filter_by(album=album_name, is_private=True).all()
     return render_template("view_private_album.html", album_name=album_name, images=images)
 
+
+@app.route('/save_photo', methods=['POST'])
+def save_photo():
+    try:
+        album_name = request.form.get("album")
+        is_private = request.form.get("is_private") == "true"
+        file_url = request.form.get("url")
+        taken_at = request.form.get("taken_at")
+
+        if not album_name or not file_url:
+            return jsonify({"success": False, "error": "Missing album or file URL"}), 400
+
+        album = Album.query.filter_by(name=album_name, is_private=is_private).first()
+        if not album:
+            album = Album(name=album_name, is_private=is_private)
+            db.session.add(album)
+            db.session.commit()
+
+        photo = Photo(album=album.name, url=file_url, is_private=is_private, taken_at=taken_at)
+        db.session.add(photo)
+        db.session.commit()
+
+        return jsonify({"success": True, "url": file_url})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 # --------------------------
 # 启动
 # --------------------------
