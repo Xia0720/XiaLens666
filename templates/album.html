@@ -3,17 +3,19 @@
 {% block body_class %}album-page{% endblock %}
 
 {% block content %}
+<!-- ✅ 允许手机缩放 -->
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=0.5, maximum-scale=3, user-scalable=yes">
 
 <style>
   html, body { height: 100%; margin: 0; padding: 0; }
   body.album-page { background: none !important; }
 
+  /* 全屏虚化背景 */
   body.album-page::before {
     content: "";
     position: fixed;
     inset: 0;
-    background-image: url('{{ global_bg or "/static/default_bg.jpg" }}');
+    background-image: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756396039/pexels-pixabay-289618_iyg9c4.jpg');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -25,7 +27,7 @@
   .album-bg-fallback {
     position: fixed;
     inset: 0;
-    background-image: url('{{ fallback_bg or "/static/default_fallback.jpg" }}');
+    background-image: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1754343393/pexels-caio-69969_aq5kzz.jpg');
     background-size: cover;
     background-position: center;
     filter: blur(6px) brightness(0.82);
@@ -46,7 +48,8 @@
     padding: 24px 30px;
   }
 
-  .page-title {
+  /* 页面标题 */
+  body.album-page .page-title {
     text-align: center;
     margin: 30px 0 20px;
     font-size: 2rem;
@@ -56,12 +59,15 @@
     text-shadow: 0 2px 6px rgba(0,0,0,0.6);
   }
 
+  /* ===== 核心：固定 12 列 Mosaic 网格 ===== */
   .album-grid {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
-    grid-auto-rows: 9.5vw;
+    grid-auto-rows: 9.5vw;     /* 行高随屏幕宽度变化 */
     grid-auto-flow: dense;
     gap: 14px;
+
+    /* 保持居中，最大宽度限制 */
     width: min(1680px, calc(100vw - 48px));
     margin: 0 auto;
   }
@@ -83,12 +89,19 @@
   }
   .album-item:hover img { transform: scale(1.03); }
 
+  /* ===== 尺寸等级 ===== */
   .item--w2 { grid-column: span 3; }
   .item--w3 { grid-column: span 4; }
   .item--h2 { grid-row: span 2; }
-  .item--feature { grid-column: span 5; grid-row: span 3; }
+
+  .item--feature {
+    grid-column: span 5;
+    grid-row: span 3;
+  }
+
   .item--min { grid-column: span 3; grid-row: span 1; }
 
+  /* 相册名遮罩 */
   .album-info {
     position: absolute;
     left: 0; right: 0; bottom: 0;
@@ -100,24 +113,24 @@
   }
 
   .album-info h2 {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    line-height: 1.2;
-  }
+  margin: 0;
+  font-size: 1rem;   /* 默认大小（PC端合适） */
+  font-weight: 600;
+  line-height: 1.2;
+}
 
-  .drive-link {
-    text-align: center;
-    margin: 6px 0 10px;
+/* 在小屏手机上缩小 */
+@media (max-width: 768px) {
+  .album-info h2 {
+    font-size: 0.75rem;   /* 平板、手机上缩小一点 */
   }
-  .drive-link a {
-    font-size: 0.8rem;
-    color: #4285F4;
-    text-decoration: underline;
-  }
+}
 
-  @media (max-width: 768px) { .album-info h2 { font-size: 0.75rem; } }
-  @media (max-width: 480px) { .album-info h2 { font-size: 0.6rem; } }
+@media (max-width: 480px) {
+  .album-info h2 {
+    font-size: 0.6rem;    /* 超小屏手机再缩小 */
+  }
+}
 </style>
 
 <div class="album-bg-fallback" aria-hidden="true"></div>
@@ -151,3 +164,4 @@
   </div>
 </div>
 {% endblock %}
+
