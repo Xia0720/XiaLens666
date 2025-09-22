@@ -103,8 +103,8 @@ os.makedirs(LOCAL_UPLOAD_DIR, exist_ok=True)
 
 # create tables if not exist
 with app.app_context():
-  #  db.create_all()
-
+    pass  # 不要直接创建表，交给 Flask-Migrate 管理
+    
 # --------------------------
 # Helper: inject logged_in into all templates
 # --------------------------
