@@ -92,6 +92,11 @@ class StoryImage(db.Model):
     image_url = db.Column(db.String(500), nullable=False)
     story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
 
+class Album(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), unique=True, nullable=False)
+    drive_folder_id = db.Column(db.String(255), nullable=True)  # Google Drive 文件夹 ID
+
 # ensure static upload folder exists (fallback)
 LOCAL_UPLOAD_DIR = os.path.join(app.root_path, "static", "uploads")
 os.makedirs(LOCAL_UPLOAD_DIR, exist_ok=True)
@@ -456,16 +461,31 @@ def delete_story(story_id):
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     if request.method == "GET":
-        # return existing album names for form select
-        rows = db.session.query(Photo.album).filter_by(is_private=False).distinct().all()
+        # 返回已有相册名
+        rows = db.session.query(Album.name).all()
         album_names = [r[0] for r in rows]
-        return render_template("upload.html", album_names=album_names, last_album=session.get("last_album", ""))
+        return render_template(
+            "upload.html",
+            album_names=album_names,
+            last_album=session.get("last_album", "")
+        )
 
-    # POST: handle file uploads
+    # POST: 上传文件
     try:
         album = (request.form.get("album") or request.form.get("new_album") or "").strip()
         if not album:
             return jsonify({"success": False, "error": "album name required"}), 400
+
+        # ✅ 获取 Google Drive folder id（仅新建相册时）
+        drive_folder_id = request.form.get("drive_folder_id", "").strip()
+
+        # 查找相册
+        album_obj = Album.query.filter_by(name=album).first()
+        if not album_obj:
+            # 如果相册不存在，新建
+            album_obj = Album(name=album, drive_folder_id=drive_folder_id if drive_folder_id else None)
+            db.session.add(album_obj)
+            db.session.commit()
 
         files = request.files.getlist("photo")
         if not files:
@@ -477,10 +497,9 @@ def upload():
                 continue
             raw = f.read()
             buf = compress_image_bytes(raw)   # BytesIO
-            file_bytes = buf.getvalue()       # ✅ 转成 bytes
+            file_bytes = buf.getvalue()
 
-            safe_name = secure_filename(f.filename.rsplit('.', 1)[0])
-            filename = safe_filename(f.filename)
+            filename = secure_filename(f.filename)
 
             # try Supabase
             public_url = None
@@ -504,19 +523,21 @@ def upload():
                     out.write(file_bytes)
                 public_url = url_for('static', filename=f"uploads/{filename}", _external=True)
 
-            # save DB record
+            # 保存照片记录
             new_photo = Photo(album=album, url=public_url, is_private=False)
             db.session.add(new_photo)
             db.session.commit()
 
             uploaded_urls.append(public_url)
 
+        # 记住最近相册
+        session["last_album"] = album
+
         return jsonify({"success": True, "urls": uploaded_urls})
 
     except Exception as e:
         app.logger.exception("Upload failed")
         return jsonify({"success": False, "error": str(e)}), 500
-
 
 # --------------------------
 # Upload private (logged-in required)
