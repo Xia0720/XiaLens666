@@ -65,7 +65,9 @@ database_url = os.getenv("DATABASE_URL")
 if database_url:
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///instance/app.db"
+    # use absolute path to avoid "unable to open database file" errors
+    db_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "instance", "app.db")
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
