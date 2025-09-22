@@ -502,7 +502,7 @@ def upload():
             raw = f.read()
             buf = compress_image_bytes(raw)
             file_bytes = buf.getvalue()
-            filename = secure_filename(f.filename)
+            filename = f"{uuid.uuid4().hex}_{secure_filename(f.filename)}"
 
             # Supabase 上传逻辑
             public_url = None
