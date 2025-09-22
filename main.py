@@ -219,18 +219,29 @@ def albums():
 @app.route("/album/<album_name>")
 def view_album(album_name):
     try:
+        # 获取相册的所有公开照片
         photos = Photo.query.filter_by(album=album_name, is_private=False).order_by(Photo.created_at.desc()).all()
-        # template expects images with .source etc in existing template; create compatibility dict
         images = []
         for p in photos:
             images.append({
                 "id": p.id,
                 "url": p.url,
-                "source": p.url,   # for older templates referencing img.source
+                "source": p.url,   # 兼容老模板
                 "created_at": p.created_at
             })
-        # drive_link logic: you can add drive links in Album table if you add such model; here we pass None
-        return render_template("view_album.html", album_name=album_name, images=images, drive_link=None)
+
+        # 获取相册对象，拿 drive_folder_id
+        album_obj = Album.query.filter_by(name=album_name).first()
+        drive_link = None
+        if album_obj and album_obj.drive_folder_id:
+            drive_link = f"https://drive.google.com/drive/folders/{album_obj.drive_folder_id}"
+
+        return render_template(
+            "view_album.html",
+            album_name=album_name,
+            images=images,
+            drive_link=drive_link
+        )
     except Exception as e:
         app.logger.exception("view_album failed")
         return f"Error loading album: {e}", 500
