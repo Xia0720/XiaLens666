@@ -167,6 +167,15 @@ def safe_filename(name):
     safe = re.sub(r'[^a-zA-Z0-9_-]', '_', base).strip('_') or str(uuid.uuid4())
     return safe + ".jpg"
 
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get("logged_in"):
+            flash("Please log in first.", "warning")
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated_function
+    
 # --------------------------
 # Routes: index / static pages
 # --------------------------
