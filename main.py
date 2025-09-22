@@ -103,7 +103,7 @@ os.makedirs(LOCAL_UPLOAD_DIR, exist_ok=True)
 
 # create tables if not exist
 with app.app_context():
-    db.create_all()
+  #  db.create_all()
 
 # --------------------------
 # Helper: inject logged_in into all templates
