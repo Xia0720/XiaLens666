@@ -99,6 +99,19 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
 
         item.textContent = `${file.name} ✅ 上传成功`;
         item.style.color = "green";
+        // ✅ 显示 Google Drive 链接（如果有）
+        if (data.uploads) {
+            data.uploads.forEach(u => {
+                if (u.drive_link) {
+                    const link = document.createElement('a');
+                    link.href = u.drive_link;
+                    link.target = "_blank";
+                    link.textContent = "打开 Google Drive 文件夹";
+                    item.appendChild(document.createElement('br'));
+                    item.appendChild(link);
+                }
+            });
+        }
         success = true;
       } catch (err) {
         console.warn(`Upload attempt ${attempt} failed for ${file.name}:`, err);
