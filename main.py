@@ -37,8 +37,8 @@ app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
 # --------------------------
 cloudinary.config(
     cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME', 'dpr0pl2tf'),
-    api_key=os.getenv('CLOUDINARY_API_KEY', None),
-    api_secret=os.getenv('CLOUDINARY_API_SECRET', None)
+    api_key=os.getenv('CLOUDINARY_API_KEY', '548549517251566'),
+    api_secret=os.getenv('CLOUDINARY_API_SECRET', '9o-PlPBRQzQPfuVCQfaGrUV3_IE')
 )
 
 # --------------------------
