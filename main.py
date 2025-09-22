@@ -591,10 +591,6 @@ def logout():
     session.pop("logged_in", None)
     flash("Logged out.", "info")
     return redirect(url_for("index"))
-
-@app.context_processor
-def inject_logged_in():
-    return dict(logged_in=('user_id' in session))
     
 # --------------------------
 # DB 测试
