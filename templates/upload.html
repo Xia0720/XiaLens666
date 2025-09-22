@@ -18,12 +18,18 @@
     </select>
   </div>
 
+  <!-- ✅ 新相册时允许输入 Google Drive 文件夹 ID -->
   <div id="newAlbumDiv"
        style="display:{% if last_album and last_album not in album_names %}block{% else %}none{% endif %}; margin-top:10px;">
     <label for="new_album">新相册名</label><br>
     <input type="text" name="new_album" id="newAlbumInput"
            placeholder="输入新相册名"
            value="{% if last_album and last_album not in album_names %}{{ last_album }}{% endif %}">
+
+    <br><br>
+    <label for="drive_folder_id">Google Drive 文件夹 ID (可选)</label><br>
+    <input type="text" name="drive_folder_id" id="driveFolderInput" placeholder="粘贴 Google Drive 文件夹 ID">
+    <p style="font-size:12px; color:#555;">提示：打开 Google Drive 文件夹 → 从 URL 复制 <code>/folders/xxxxxxxx</code> 里的 ID</p>
   </div>
 
   <div style="margin-top:15px;">
@@ -37,13 +43,6 @@
 <div id="uploadStatus" style="margin-top:15px; font-size:14px; color:#444;"></div>
 
 <script>
-/*
-  前端上传逻辑（改为：直接把每个文件 POST 到后端 /upload）
-  - 逐文件上传，单文件 FormData: { photo: file, album: <name> 或 new_album: <name> }
-  - 每个文件最多重试 3 次
-  - 不依赖 Cloudinary 前端 API；后端负责压缩并保存到 Supabase（或处理 google-drive 链接）
-*/
-
 const MAX_ATTEMPTS = 3;
 
 function toggleNewAlbumInput() {
@@ -58,6 +57,7 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
 
   const albumSelect = document.getElementById('albumSelect');
   const newAlbumInput = document.getElementById('newAlbumInput');
+  const driveFolderInput = document.getElementById('driveFolderInput');
   const files = document.getElementById('photo').files;
   const statusDiv = document.getElementById('uploadStatus');
   const submitBtn = document.getElementById('submitBtn');
@@ -65,6 +65,8 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
   let album = (albumSelect.value === 'new') ? (newAlbumInput.value || "").trim() : albumSelect.value;
   if (!album) { alert("请填写相册名！"); return; }
   if (!files || files.length === 0) { alert("请选择照片！"); return; }
+
+  const driveFolderId = (albumSelect.value === 'new') ? (driveFolderInput.value || "").trim() : "";
 
   submitBtn.disabled = true;
   submitBtn.textContent = "正在上传...";
@@ -83,7 +85,10 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
         const formData = new FormData();
         formData.append('photo', file);
         formData.append('album', album);
-        if (albumSelect.value === 'new') formData.append('new_album', album);
+        if (albumSelect.value === 'new') {
+          formData.append('new_album', album);
+          if (driveFolderId) formData.append('drive_folder_id', driveFolderId);
+        }
 
         const res = await fetch('/upload', { method: 'POST', body: formData });
         const data = await res.json();
@@ -92,8 +97,6 @@ document.getElementById('uploadForm').addEventListener('submit', async function 
           throw new Error(data.error || `Upload failed (status ${res.status})`);
         }
 
-        // data.urls 是后端返回的已上传 URL 列表（此处应该对应单文件上传，取第一个）
-        const uploadedUrl = (data.urls && data.urls.length) ? data.urls[0] : null;
         item.textContent = `${file.name} ✅ 上传成功`;
         item.style.color = "green";
         success = true;
