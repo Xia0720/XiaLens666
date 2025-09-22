@@ -467,8 +467,8 @@ def upload():
             if not f or not f.filename:
                 continue
             raw = f.read()
-            # compress image bytes if applicable
-            buf = compress_image_bytes(raw)
+            buf = compress_image_bytes(raw)   # BytesIO
+            file_bytes = buf.getvalue()       # ✅ 转成 bytes
 
             safe_name = secure_filename(f.filename.rsplit('.', 1)[0])
             filename = safe_filename(f.filename)
@@ -478,9 +478,7 @@ def upload():
             if use_supabase and supabase:
                 try:
                     path = f"{album}/{filename}"
-                    # supabase upload expects bytes-like; use buf.getvalue()
-                    res = supabase.storage.from_(SUPABASE_BUCKET).upload(path, buf.getvalue(), {"upsert": True})
-                    # get public url — depending on supabase client return format
+                    res = supabase.storage.from_(SUPABASE_BUCKET).upload(path, file_bytes, {"upsert": True})
                     pub = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(path)
                     if isinstance(pub, dict):
                         public_url = pub.get("publicURL") or pub.get("public_url") or pub.get("publicUrl")
@@ -494,7 +492,7 @@ def upload():
             if not public_url:
                 local_path = os.path.join(LOCAL_UPLOAD_DIR, filename)
                 with open(local_path, "wb") as out:
-                    out.write(buf.getvalue())
+                    out.write(file_bytes)
                 public_url = url_for('static', filename=f"uploads/{filename}", _external=True)
 
             # save DB record
@@ -509,6 +507,7 @@ def upload():
     except Exception as e:
         app.logger.exception("Upload failed")
         return jsonify({"success": False, "error": str(e)}), 500
+
 
 # --------------------------
 # Upload private (logged-in required)
@@ -532,14 +531,15 @@ def upload_private():
             if not f or not f.filename:
                 continue
             raw = f.read()
-            buf = compress_image_bytes(raw)
+            buf = compress_image_bytes(raw)   # BytesIO
+            file_bytes = buf.getvalue()       # ✅ 转成 bytes
             filename = safe_filename(f.filename)
 
             public_url = None
             if use_supabase and supabase:
                 try:
                     path = f"private/{album}/{filename}"
-                    res = supabase.storage.from_(SUPABASE_BUCKET).upload(path, buf.getvalue(), {"upsert": True})
+                    res = supabase.storage.from_(SUPABASE_BUCKET).upload(path, file_bytes, {"upsert": True})
                     pub = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(path)
                     if isinstance(pub, dict):
                         public_url = pub.get("publicURL") or pub.get("public_url") or pub.get("publicUrl")
@@ -552,7 +552,7 @@ def upload_private():
             if not public_url:
                 local_path = os.path.join(LOCAL_UPLOAD_DIR, filename)
                 with open(local_path, "wb") as out:
-                    out.write(buf.getvalue())
+                    out.write(file_bytes)
                 public_url = url_for('static', filename=f"uploads/{filename}", _external=True)
 
             new_photo = Photo(album=album, url=public_url, is_private=True)
