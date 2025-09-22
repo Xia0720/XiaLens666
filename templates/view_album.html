@@ -166,7 +166,8 @@ body.album-page::before {
   {% endif %}
 
   {% if logged_in %}
-  <form method="POST" action="{{ url_for('delete_images') }}" onsubmit="return confirm('Are you sure to delete selected images?');">
+  <form method="POST" action="{{ url_for('delete_images') }}" 
+        onsubmit="return confirm('Are you sure to delete selected images?');">
   {% endif %}
 
   {% set row_size = 10 %}
@@ -203,8 +204,8 @@ body.album-page::before {
         Delete Selected Images
       </button>
     </div>
+  </form>
   {% endif %}
-  {% if logged_in %}</form>{% endif %}
 </div>
 
 <script>
