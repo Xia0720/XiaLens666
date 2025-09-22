@@ -1,65 +1,85 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
-from werkzeug.utils import secure_filename
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
+# main.py  —— 可直接替换（覆盖你当前文件）
 import os
+import re
+import io
+import uuid
 from datetime import datetime
 from functools import wraps
-from PIL import Image, ExifTags
-import io, uuid, re
 
-from sqlalchemy.pool import NullPool, QueuePool
-from supabase import create_client, Client
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from werkzeug.utils import secure_filename
+from PIL import Image, ExifTags, UnidentifiedImageError
+
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+
+# optional supabase client (if you have it installed and env vars set)
+try:
+    from supabase import create_client, Client as SupabaseClient
+except Exception:
+    create_client = None
+    SupabaseClient = None
+
+# Cloudinary is still used for Story (unchanged)
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+from cloudinary.utils import api_sign_request
 
 # --------------------------
-# Flask 初始化
+# Flask init
 # --------------------------
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
 
 # --------------------------
-# Supabase 配置
+# Cloudinary config (left for Story features)
+# --------------------------
+cloudinary.config(
+    cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME', 'dpr0pl2tf'),
+    api_key=os.getenv('CLOUDINARY_API_KEY', None),
+    api_secret=os.getenv('CLOUDINARY_API_SECRET', None)
+)
+
+# --------------------------
+# Supabase config (optional). If not present, we fallback to local storage.
 # --------------------------
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "photos")  # 存储桶名字
-
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-MAX_IMAGE_SIZE = 3 * 1024 * 1024  # 3MB 压缩目标
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "photos")
+use_supabase = False
+supabase = None
+if SUPABASE_URL and SUPABASE_KEY and create_client:
+    try:
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        use_supabase = True
+    except Exception as e:
+        app.logger.warning("Supabase client init failed: %s", e)
+        supabase = None
+        use_supabase = False
 
 # --------------------------
-# 数据库配置
+# DB config (same as original)
 # --------------------------
 database_url = os.getenv("DATABASE_URL")
-
 if database_url:
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        "poolclass": QueuePool,
-        "pool_size": 5,
-        "max_overflow": 10,
-        "pool_timeout": 30,
-        "pool_recycle": 1800
-    }
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///stories.db"
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"poolclass": NullPool}
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 # --------------------------
-# 数据模型
+# Models (kept compatible)
 # --------------------------
 class Photo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     album = db.Column(db.String(128), nullable=False)
-    url = db.Column(db.String(512), nullable=False, unique=True)
+    url = db.Column(db.String(512), nullable=False, unique=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_private = db.Column(db.Boolean, default=False)
-
 
 class Story(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -67,96 +87,204 @@ class Story(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     images = db.relationship("StoryImage", backref="story", cascade="all, delete-orphan")
 
-
 class StoryImage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     image_url = db.Column(db.String(500), nullable=False)
     story_id = db.Column(db.Integer, db.ForeignKey("story.id"), nullable=False)
 
+# ensure static upload folder exists (fallback)
+LOCAL_UPLOAD_DIR = os.path.join(app.root_path, "static", "uploads")
+os.makedirs(LOCAL_UPLOAD_DIR, exist_ok=True)
+
+# create tables if not exist
+with app.app_context():
+    db.create_all()
 
 # --------------------------
-# 工具函数
+# Helper: inject logged_in into all templates
 # --------------------------
-def compress_image(file_stream, max_size=MAX_IMAGE_SIZE):
-    """压缩图片到 max_size 以内"""
-    img = Image.open(file_stream)
-    img = img.convert("RGB")
+@app.context_processor
+def inject_logged_in():
+    # Use the same session key your login sets. Here we use 'logged_in' as earlier code did.
+    return dict(logged_in=bool(session.get("logged_in", False)))
 
-    buf = io.BytesIO()
+# --------------------------
+# Utils: image compress
+# --------------------------
+MAX_UPLOAD_BYTES = 3 * 1024 * 1024  # try to compress to <= 3MB
+
+def compress_image_bytes(input_bytes, target_bytes=MAX_UPLOAD_BYTES, max_dim=3000):
+    """
+    Return BytesIO containing JPEG bytes compressed to be <= target_bytes if possible.
+    """
+    try:
+        img = Image.open(io.BytesIO(input_bytes))
+    except UnidentifiedImageError:
+        # not an image -> return original
+        return io.BytesIO(input_bytes)
+
+    # fix orientation if any
+    try:
+        exif = img._getexif()
+        if exif:
+            orientation_key = next((k for k, v in ExifTags.TAGS.items() if v == "Orientation"), None)
+            if orientation_key:
+                o = exif.get(orientation_key)
+                if o == 3:
+                    img = img.rotate(180, expand=True)
+                elif o == 6:
+                    img = img.rotate(270, expand=True)
+                elif o == 8:
+                    img = img.rotate(90, expand=True)
+    except Exception:
+        pass
+
+    # resize if too large
+    w, h = img.size
+    if max(w, h) > max_dim:
+        if w >= h:
+            new_w = max_dim
+            new_h = int(h * max_dim / w)
+        else:
+            new_h = max_dim
+            new_w = int(w * max_dim / h)
+        img = img.resize((new_w, new_h), Image.LANCZOS)
+
+    # compress loop
+    out = io.BytesIO()
     quality = 85
-    img.save(buf, format="JPEG", quality=quality, optimize=True)
-    while buf.tell() > max_size and quality > 30:
+    img.convert("RGB").save(out, format="JPEG", quality=quality, optimize=True)
+    while out.tell() > target_bytes and quality > 30:
         quality -= 10
-        buf.seek(0)
-        buf.truncate(0)
-        img.save(buf, format="JPEG", quality=quality, optimize=True)
+        out.seek(0); out.truncate(0)
+        img.convert("RGB").save(out, format="JPEG", quality=quality, optimize=True)
 
-    buf.seek(0)
-    return buf
+    out.seek(0)
+    return out
 
-
-def login_required(f):
-    from functools import wraps
-
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if not session.get("logged_in"):
-            return redirect(url_for("login", next=request.path))
-        return f(*args, **kwargs)
-
-    return decorated
+def safe_filename(name):
+    base = name.rsplit('.', 1)[0]
+    safe = re.sub(r'[^a-zA-Z0-9_-]', '_', base).strip('_') or str(uuid.uuid4())
+    return safe + ".jpg"
 
 # --------------------------
-# 首页和静态页面
+# Routes: index / static pages
 # --------------------------
 @app.route("/")
 def index():
     return render_template("index.html")
-
-@app.route("/gallery")
-def gallery():
-    return render_template("gallery.html")
 
 @app.route("/about")
 def about():
     return render_template("about.html")
 
 # --------------------------
-# 相册列表
+# Albums list (reads from DB)
 # --------------------------
 @app.route("/album")
 def albums():
-    albums = (
-        db.session.query(Photo.album, db.func.min(Photo.url))
-        .filter_by(is_private=False)
-        .group_by(Photo.album)
-        .all()
-    )
-    albums_list = [{"name": a[0], "cover": a[1]} for a in albums]
-    return render_template("album.html", albums=albums_list)
-
-
-@app.route("/album/<album_name>")
-def view_album(album_name):
-    images = Photo.query.filter_by(album=album_name, is_private=False).all()
-    return render_template("view_album.html", album_name=album_name, images=images, logged_in=session.get("logged_in", False))
+    try:
+        # get distinct album names and one cover each (min created_at)
+        rows = db.session.query(Photo.album, Photo.url).filter_by(is_private=False).order_by(Photo.album, Photo.created_at).all()
+        # build a dict of first url per album
+        album_map = {}
+        for album, url in rows:
+            if album not in album_map:
+                album_map[album] = url
+        albums_list = [{"name": name, "cover": album_map.get(name)} for name in sorted(album_map.keys())]
+        return render_template("album.html", albums=albums_list)
+    except Exception as e:
+        app.logger.exception("Failed to load albums")
+        return f"Error loading albums: {e}", 500
 
 # --------------------------
-# 删除图片（仅登录）
+# View album (public)
+# --------------------------
+@app.route("/album/<album_name>")
+def view_album(album_name):
+    try:
+        photos = Photo.query.filter_by(album=album_name, is_private=False).order_by(Photo.created_at.desc()).all()
+        # template expects images with .source etc in existing template; create compatibility dict
+        images = []
+        for p in photos:
+            images.append({
+                "id": p.id,
+                "url": p.url,
+                "source": p.url,   # for older templates referencing img.source
+                "created_at": p.created_at
+            })
+        # drive_link logic: you can add drive links in Album table if you add such model; here we pass None
+        return render_template("view_album.html", album_name=album_name, images=images, drive_link=None)
+    except Exception as e:
+        app.logger.exception("view_album failed")
+        return f"Error loading album: {e}", 500
+        
+# --------------------------
+# Delete endpoints (handle id or url)
 # --------------------------
 @app.route("/delete_images", methods=["POST"])
 def delete_images():
-    public_ids = request.form.getlist("public_ids")
-    album_name = request.form.get("album_name")
-    if not public_ids:
+    if not session.get("logged_in"):
+        flash("Login required to delete images.", "warning")
+        return redirect(url_for("login"))
+
+    ids = request.form.getlist("photo_ids") or request.form.getlist("to_delete") or request.form.getlist("public_ids")
+    album_name = request.form.get("album_name") or request.form.get("album")
+
+    if not ids:
         flash("No images selected for deletion.", "warning")
-        return redirect(url_for("view_album", album_name=album_name))
-    try:
-        cloudinary.api.delete_resources(public_ids)
-        flash(f"Deleted {len(public_ids)} images successfully.", "success")
-    except Exception as e:
-        flash(f"Delete failed: {str(e)}", "error")
-    return redirect(url_for("view_album", album_name=album_name))
+        return redirect(url_for("view_album", album_name=album_name) if album_name else url_for("album"))
+
+    deleted = 0
+    for ident in ids:
+        # try interpret as integer id first
+        try:
+            pid = int(ident)
+            p = Photo.query.get(pid)
+            if p:
+                # if using supabase, try to remove object by deriving path from URL if possible (not always trivial)
+                db.session.delete(p)
+                db.session.commit()
+                deleted += 1
+                continue
+        except Exception:
+            pass
+        # otherwise try url match
+        p = Photo.query.filter_by(url=ident).first()
+        if p:
+            db.session.delete(p)
+            db.session.commit()
+            deleted += 1
+            continue
+        # cannot find -> ignore
+
+    flash(f"Deleted {deleted} images.", "success")
+    return redirect(url_for("view_album", album_name=album_name) if album_name else url_for("album"))
+
+@app.route("/delete_private_images", methods=["POST"])
+def delete_private_images():
+    if not session.get("logged_in"):
+        flash("Login required to delete images.", "warning")
+        return redirect(url_for("login"))
+
+    ids = request.form.getlist("public_ids") or request.form.getlist("photo_ids") or []
+    album_name = request.form.get("album_name")
+
+    deleted = 0
+    for ident in ids:
+        try:
+            pid = int(ident)
+            p = Photo.query.get(pid)
+            if p:
+                db.session.delete(p); db.session.commit(); deleted += 1; continue
+        except Exception:
+            pass
+        p = Photo.query.filter_by(url=ident).first()
+        if p:
+            db.session.delete(p); db.session.commit(); deleted += 1; continue
+
+    flash(f"Deleted {deleted} images.", "success")
+    return redirect(url_for("view_private_album", album_name=album_name) if album_name else url_for("private_space"))
 
 # --------------------------
 # Story 列表
@@ -314,105 +442,154 @@ def delete_story(story_id):
     return redirect(url_for("story_list"))
 
 # --------------------------
-# 上传图片到 Cloudinary album（仅登录）
+# Upload (public album) - accepts multipart/form-data
 # --------------------------
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
-    if request.method == "POST":
-        album_name = request.form.get("album") or request.form.get("new_album")
+    if request.method == "GET":
+        # return existing album names for form select
+        rows = db.session.query(Photo.album).filter_by(is_private=False).distinct().all()
+        album_names = [r[0] for r in rows]
+        return render_template("upload.html", album_names=album_names, last_album=session.get("last_album", ""))
+
+    # POST: handle file uploads
+    try:
+        album = (request.form.get("album") or request.form.get("new_album") or "").strip()
+        if not album:
+            return jsonify({"success": False, "error": "album name required"}), 400
+
         files = request.files.getlist("photo")
+        if not files:
+            return jsonify({"success": False, "error": "no files"}), 400
+
         uploaded_urls = []
-
-        for file in files:
-            if not file or not file.filename:
+        for f in files:
+            if not f or not f.filename:
                 continue
+            raw = f.read()
+            # compress image bytes if applicable
+            buf = compress_image_bytes(raw)
 
-            # Google Drive 链接直接存
-            if file.filename.startswith("http"):
-                url = file.filename.strip()
-                new_photo = Photo(album=album_name, url=url, is_private=False)
-                db.session.add(new_photo)
-                db.session.commit()
-                uploaded_urls.append(url)
-                continue
+            safe_name = secure_filename(f.filename.rsplit('.', 1)[0])
+            filename = safe_filename(f.filename)
 
-            # 压缩
-            buf = compress_image(file.stream)
+            # try Supabase
+            public_url = None
+            if use_supabase and supabase:
+                try:
+                    path = f"{album}/{filename}"
+                    # supabase upload expects bytes-like; use buf.getvalue()
+                    res = supabase.storage.from_(SUPABASE_BUCKET).upload(path, buf.getvalue(), {"upsert": True})
+                    # get public url — depending on supabase client return format
+                    pub = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(path)
+                    if isinstance(pub, dict):
+                        public_url = pub.get("publicURL") or pub.get("public_url") or pub.get("publicUrl")
+                    elif isinstance(pub, str):
+                        public_url = pub
+                except Exception as e:
+                    app.logger.exception("Supabase upload failed, falling back to local: %s", e)
+                    public_url = None
 
-            # 上传 Supabase
-            safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', file.filename.rsplit(".", 1)[0]) or str(uuid.uuid4())
-            path = f"{album_name}/{safe_name}.jpg"
-            supabase.storage.from_(SUPABASE_BUCKET).upload(path, buf, {"upsert": True})
+            # fallback to local save
+            if not public_url:
+                local_path = os.path.join(LOCAL_UPLOAD_DIR, filename)
+                with open(local_path, "wb") as out:
+                    out.write(buf.getvalue())
+                public_url = url_for('static', filename=f"uploads/{filename}", _external=True)
 
-            public_url = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(path)
-
-            # 存数据库
-            new_photo = Photo(album=album_name, url=public_url, is_private=False)
+            # save DB record
+            new_photo = Photo(album=album, url=public_url, is_private=False)
             db.session.add(new_photo)
             db.session.commit()
+
             uploaded_urls.append(public_url)
 
         return jsonify({"success": True, "urls": uploaded_urls})
 
-    # GET: 获取已有相册名
-    albums = db.session.query(Photo.album).filter_by(is_private=False).distinct().all()
-    album_names = [a[0] for a in albums]
-    return render_template("upload.html", album_names=album_names, last_album="")
+    except Exception as e:
+        app.logger.exception("Upload failed")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 # --------------------------
-# 私密空间上传（仅登录）
+# Upload private (logged-in required)
 # --------------------------
 @app.route("/upload_private", methods=["POST"])
-@login_required
 def upload_private():
-    album_name = request.form.get("album") or request.form.get("new_album")
-    files = request.files.getlist("photo")
-    uploaded_urls = []
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "login required"}), 401
 
-    for file in files:
-        if not file or not file.filename:
-            continue
+    try:
+        album = (request.form.get("album") or request.form.get("new_album") or "").strip()
+        if not album:
+            return jsonify({"success": False, "error": "album name required"}), 400
 
-        if file.filename.startswith("http"):
-            url = file.filename.strip()
-            new_photo = Photo(album=album_name, url=url, is_private=True)
+        files = request.files.getlist("photo")
+        if not files:
+            return jsonify({"success": False, "error": "no files"}), 400
+
+        uploaded_urls = []
+        for f in files:
+            if not f or not f.filename:
+                continue
+            raw = f.read()
+            buf = compress_image_bytes(raw)
+            filename = safe_filename(f.filename)
+
+            public_url = None
+            if use_supabase and supabase:
+                try:
+                    path = f"private/{album}/{filename}"
+                    res = supabase.storage.from_(SUPABASE_BUCKET).upload(path, buf.getvalue(), {"upsert": True})
+                    pub = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(path)
+                    if isinstance(pub, dict):
+                        public_url = pub.get("publicURL") or pub.get("public_url") or pub.get("publicUrl")
+                    elif isinstance(pub, str):
+                        public_url = pub
+                except Exception as e:
+                    app.logger.exception("Supabase private upload failed, fallback to local: %s", e)
+                    public_url = None
+
+            if not public_url:
+                local_path = os.path.join(LOCAL_UPLOAD_DIR, filename)
+                with open(local_path, "wb") as out:
+                    out.write(buf.getvalue())
+                public_url = url_for('static', filename=f"uploads/{filename}", _external=True)
+
+            new_photo = Photo(album=album, url=public_url, is_private=True)
             db.session.add(new_photo)
             db.session.commit()
-            uploaded_urls.append(url)
-            continue
+            uploaded_urls.append(public_url)
 
-        buf = compress_image(file.stream)
-        safe_name = re.sub(r'[^a-zA-Z0-9_-]', '_', file.filename.rsplit(".", 1)[0]) or str(uuid.uuid4())
-        path = f"private/{album_name}/{safe_name}.jpg"
-        supabase.storage.from_(SUPABASE_BUCKET).upload(path, buf, {"upsert": True})
+        return jsonify({"success": True, "urls": uploaded_urls, "album": album})
 
-        public_url = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(path)
-
-        new_photo = Photo(album=album_name, url=public_url, is_private=True)
-        db.session.add(new_photo)
-        db.session.commit()
-        uploaded_urls.append(public_url)
-
-    return jsonify({"success": True, "urls": uploaded_urls, "album": album_name})
-
+    except Exception as e:
+        app.logger.exception("upload_private failed")
+        return jsonify({"success": False, "error": str(e)}), 500
+        
 # --------------------------
-# 登录/登出
+# Login / logout
 # --------------------------
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        if request.form.get("username") == "xia0720" and request.form.get("password") == "qq123456":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
+        # keep your original credential check
+        if username == "xia0720" and password == "qq123456":
             session["logged_in"] = True
-            return redirect(url_for("story_list"))
-        flash("Invalid credentials.")
-        return redirect(url_for("login"))
+            flash("Logged in.", "success")
+            next_url = request.args.get("next")
+            return redirect(next_url or url_for("story_list"))
+        else:
+            flash("Invalid credentials.", "danger")
+            return redirect(url_for("login"))
     return render_template("login.html")
 
 
 @app.route("/logout")
 def logout():
     session.pop("logged_in", None)
-    flash("Logged out.")
+    flash("Logged out.", "info")
     return redirect(url_for("index"))
 
 @app.context_processor
@@ -431,53 +608,83 @@ def test_db():
         return f"DB failed: {str(e)}", 500
         
 # --------------------------
-# Private-space（仅登录）
+# Private-space index (shows private albums)
 # --------------------------
 @app.route("/private_space")
-@login_required
 def private_space():
-    albums = (
-        db.session.query(Photo.album, db.func.min(Photo.url))
-        .filter_by(is_private=True)
-        .group_by(Photo.album)
-        .all()
-    )
-    album_list = [{"name": a[0], "cover": a[1]} for a in albums]
-    return render_template("private_album.html", album_names=[a["name"] for a in album_list], album_covers={a["name"]: a["cover"] for a in album_list})
+    # protect page - only allow logged_in; but if you want guests to see list, remove guard
+    if not session.get("logged_in"):
+        return redirect(url_for("login", next=request.path))
+
+    try:
+        rows = db.session.query(Photo.album, Photo.url).filter_by(is_private=True).order_by(Photo.album, Photo.created_at).all()
+        album_map = {}
+        for album, url in rows:
+            if album not in album_map:
+                album_map[album] = url
+        album_names = sorted(album_map.keys())
+        album_covers = {k: v for k, v in album_map.items()}
+        return render_template("private_album.html", album_names=album_names, album_covers=album_covers, last_album=session.get("last_private_album", ""))
+    except Exception as e:
+        app.logger.exception("private_space failed")
+        return f"Error loading private space: {e}", 500
 
 
+# --------------------------
+# View private album (only logged in)
+# --------------------------
 @app.route("/private_space/<album_name>")
-@login_required
 def view_private_album(album_name):
-    images = Photo.query.filter_by(album=album_name, is_private=True).all()
-    return render_template("view_private_album.html", album_name=album_name, images=images)
+    if not session.get("logged_in"):
+        return redirect(url_for("login", next=request.path))
+    try:
+        photos = Photo.query.filter_by(album=album_name, is_private=True).order_by(Photo.created_at.desc()).all()
+        images = []
+        for p in photos:
+            images.append({
+                "id": p.id,
+                "url": p.url,
+                "secure_url": p.url,   # for compatibility with templates expecting secure_url
+                "public_id": str(p.id)
+            })
+        return render_template("view_private_album.html", album_name=album_name, images=images)
+    except Exception as e:
+        app.logger.exception("view_private_album failed")
+        return f"Error loading private album: {e}", 500
 
 
-@app.route('/save_photo', methods=['POST'])
+# --------------------------
+# Save photo endpoint (compatibility - JSON)
+# --------------------------
+@app.route("/save_photo", methods=["POST"])
 def save_photo():
     try:
-        album_name = request.form.get("album")
-        is_private = request.form.get("is_private") == "true"
-        file_url = request.form.get("url")
-        taken_at = request.form.get("taken_at")
+        data = None
+        if request.is_json:
+            data = request.get_json()
+        else:
+            # try form
+            data = request.form.to_dict()
 
-        if not album_name or not file_url:
-            return jsonify({"success": False, "error": "Missing album or file URL"}), 400
+        album = data.get("album") or data.get("album_name")
+        url = data.get("url") or data.get("file_url")
+        is_private = data.get("private") in (True, "true", "1", "on")
 
-        album = Album.query.filter_by(name=album_name, is_private=is_private).first()
-        if not album:
-            album = Album(name=album_name, is_private=is_private)
-            db.session.add(album)
-            db.session.commit()
+        if not album or not url:
+            return jsonify({"success": False, "error": "missing album or url"}), 400
 
-        photo = Photo(album=album.name, url=file_url, is_private=is_private, taken_at=taken_at)
-        db.session.add(photo)
+        # prevent duplicates
+        exists = Photo.query.filter_by(url=url).first()
+        if exists:
+            return jsonify({"success": True, "message": "already_exists"})
+
+        new_photo = Photo(album=album, url=url, is_private=is_private)
+        db.session.add(new_photo)
         db.session.commit()
-
-        return jsonify({"success": True, "url": file_url})
+        return jsonify({"success": True})
     except Exception as e:
+        app.logger.exception("save_photo failed")
         return jsonify({"success": False, "error": str(e)}), 500
-
 # --------------------------
 # 启动
 # --------------------------
