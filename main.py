@@ -474,20 +474,25 @@ def upload():
 
     # POST: 上传文件
     try:
-        album = (request.form.get("album") or request.form.get("new_album") or "").strip()
-        if not album:
+        album_name = (request.form.get("album") or request.form.get("new_album") or "").strip()
+        if not album_name:
             return jsonify({"success": False, "error": "album name required"}), 400
 
-        # ✅ 获取 Google Drive folder id（仅新建相册时）
+        # 获取 Google Drive folder id（可选）
         drive_folder_id = request.form.get("drive_folder_id", "").strip()
 
         # 查找相册
-        album_obj = Album.query.filter_by(name=album).first()
+        album_obj = Album.query.filter_by(name=album_name).first()
         if not album_obj:
-            # 如果相册不存在，新建
-            album_obj = Album(name=album, drive_folder_id=drive_folder_id if drive_folder_id else None)
+            # 新建相册
+            album_obj = Album(name=album_name, drive_folder_id=drive_folder_id if drive_folder_id else None)
             db.session.add(album_obj)
             db.session.commit()
+        else:
+            # 已有相册，但表单提供了 drive_folder_id，则更新
+            if drive_folder_id and album_obj.drive_folder_id != drive_folder_id:
+                album_obj.drive_folder_id = drive_folder_id
+                db.session.commit()
 
         files = request.files.getlist("photo")
         if not files:
@@ -497,18 +502,18 @@ def upload():
         for f in files:
             if not f or not f.filename:
                 continue
+
             raw = f.read()
             buf = compress_image_bytes(raw)   # BytesIO
             file_bytes = buf.getvalue()
-
             filename = secure_filename(f.filename)
 
-            # try Supabase
+            # 上传 Supabase
             public_url = None
             if use_supabase and supabase:
                 try:
-                    path = f"{album}/{filename}"
-                    res = supabase.storage.from_(SUPABASE_BUCKET).upload(path, file_bytes, {"upsert": True})
+                    path = f"{album_name}/{filename}"
+                    supabase.storage.from_(SUPABASE_BUCKET).upload(path, file_bytes, {"upsert": True})
                     pub = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(path)
                     if isinstance(pub, dict):
                         public_url = pub.get("publicURL") or pub.get("public_url") or pub.get("publicUrl")
@@ -518,7 +523,7 @@ def upload():
                     app.logger.exception("Supabase upload failed, falling back to local: %s", e)
                     public_url = None
 
-            # fallback to local save
+            # 本地存储 fallback
             if not public_url:
                 local_path = os.path.join(LOCAL_UPLOAD_DIR, filename)
                 with open(local_path, "wb") as out:
@@ -526,14 +531,14 @@ def upload():
                 public_url = url_for('static', filename=f"uploads/{filename}", _external=True)
 
             # 保存照片记录
-            new_photo = Photo(album=album, url=public_url, is_private=False)
+            new_photo = Photo(album=album_name, url=public_url, is_private=False)
             db.session.add(new_photo)
             db.session.commit()
 
             uploaded_urls.append(public_url)
 
         # 记住最近相册
-        session["last_album"] = album
+        session["last_album"] = album_name
 
         return jsonify({"success": True, "urls": uploaded_urls})
 
