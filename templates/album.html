@@ -152,10 +152,12 @@
           {% endif %}
           <div class="album-info"><h2>{{ album.name }}</h2></div>
         </a>
+
+        <!-- ✅ 如果相册绑定了 Google Drive 文件夹，显示入口 -->
         {% if album.drive_folder_id %}
           <div class="drive-link">
             <a href="https://drive.google.com/drive/folders/{{ album.drive_folder_id }}" target="_blank">
-              View Old Photos
+              📂 View on Google Drive
             </a>
           </div>
         {% endif %}
@@ -164,4 +166,3 @@
   </div>
 </div>
 {% endblock %}
-
