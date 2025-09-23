@@ -395,7 +395,7 @@ def delete_album(album_name):
     except Exception as e:
         app.logger.exception("delete_album failed")
         flash(f"Failed to delete album '{album_name}': {e}", "danger")
-        return redirect(url_for("album"))
+        return redirect(url_for("albums"))
 
 # --------------------------
 # Story 列表
