@@ -391,7 +391,7 @@ def delete_album(album_name):
                 db.session.rollback()
 
         flash(f"Deleted album '{album_name}': {deleted_db} photo records removed, {deleted_local_files} local files removed.", "success")
-        return redirect(url_for("album"))
+        return redirect(url_for("albums"))
     except Exception as e:
         app.logger.exception("delete_album failed")
         flash(f"Failed to delete album '{album_name}': {e}", "danger")
