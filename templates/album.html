@@ -8,14 +8,15 @@
 
 <style>
   html, body { height: 100%; margin: 0; padding: 0; }
-  body.album-page { background: none !important; }
+  /* 去掉 album.html 里的 background:none !important; */
+  body.album-page { background: transparent; }
 
   /* 全屏虚化背景 */
   body.album-page::before {
     content: "";
     position: fixed;
     inset: 0;
-    background-image: url('https://res.cloudinary.com/dpr0pl2tf/image/upload/v1756396039/pexels-pixabay-289618_iyg9c4.jpg');
+    background-image: url('https://res.cloudinary.com/dqmez4f6x/image/upload/v1758647656/pexels-pixabay-289618_h9wqbf.jpg');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
