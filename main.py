@@ -36,9 +36,9 @@ app.secret_key = os.getenv('FLASK_SECRET', 'xia0720_secret')
 # Cloudinary config (left for Story features)
 # --------------------------
 cloudinary.config(
-    cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME', 'dpr0pl2tf'),
-    api_key=os.getenv('CLOUDINARY_API_KEY', '548549517251566'),
-    api_secret=os.getenv('CLOUDINARY_API_SECRET', '9o-PlPBRQzQPfuVCQfaGrUV3_IE')
+    cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME', 'dqmez4f6x'),
+    api_key=os.getenv('CLOUDINARY_API_KEY', '964243141587263'),
+    api_secret=os.getenv('CLOUDINARY_API_SECRET', 'nh-yjA_3rQIw7wNgqyHQo4gwCIY')
 )
 
 # --------------------------
