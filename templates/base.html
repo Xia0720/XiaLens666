@@ -18,7 +18,7 @@
 
     {% block head_extra %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
     <nav class="navbar {% if request.path.startswith('/story_list') %}story-navbar{% endif %}">
         <div class="nav-container {% if logged_in and request.path.startswith('/story_list') %}has-right{% endif %}">
             <div class="nav-left">
