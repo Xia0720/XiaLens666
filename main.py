@@ -186,7 +186,52 @@ def login_required(f):
             return redirect(url_for("login"))
         return f(*args, **kwargs)
     return decorated_function
-    
+
+def compress_image_file(tmp_path, output_dir=LOCAL_UPLOAD_DIR, max_size=(1920,1920), quality=75):
+    """
+    压缩图片文件并保存到 output_dir，返回压缩后的文件路径
+    ⚡ 使用本地文件避免一次性大文件占用内存
+    """
+    import os
+    from PIL import Image, ExifTags, UnidentifiedImageError
+    import shutil
+
+    try:
+        img = Image.open(tmp_path)
+    except UnidentifiedImageError:
+        # 非图片 -> 直接复制原文件
+        output_path = os.path.join(output_dir, os.path.basename(tmp_path))
+        shutil.copy(tmp_path, output_path)
+        return output_path
+
+    # 修正方向
+    try:
+        exif = img._getexif()
+        if exif:
+            orientation_key = next((k for k,v in ExifTags.TAGS.items() if v=="Orientation"), None)
+            if orientation_key:
+                o = exif.get(orientation_key)
+                if o==3:
+                    img = img.rotate(180, expand=True)
+                elif o==6:
+                    img = img.rotate(270, expand=True)
+                elif o==8:
+                    img = img.rotate(90, expand=True)
+    except Exception:
+        pass
+
+    # 限制尺寸
+    img.thumbnail(max_size, Image.LANCZOS)
+
+    # 输出路径
+    output_path = os.path.join(output_dir, f"compressed_{os.path.basename(tmp_path)}")
+
+    # 保存 JPEG
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+    img.save(output_path, format="JPEG", quality=quality, optimize=True)
+
+    return output_path
 # --------------------------
 # Routes: index / static pages
 # --------------------------
@@ -254,43 +299,75 @@ def view_album(album_name):
 # Delete endpoints (handle id or url)
 # --------------------------
 @app.route("/delete_images", methods=["POST"])
+@login_required
 def delete_images():
-    if not session.get("logged_in"):
-        flash("Login required to delete images.", "warning")
-        return redirect(url_for("login"))
-
     ids = request.form.getlist("photo_ids") or request.form.getlist("to_delete") or request.form.getlist("public_ids")
     album_name = request.form.get("album_name") or request.form.get("album")
 
     if not ids:
         flash("No images selected for deletion.", "warning")
-        return redirect(url_for("view_album", album_name=album_name) if album_name else url_for("album"))
+        return redirect(url_for("view_album", album_name=album_name) if album_name else url_for("albums"))
 
-    deleted = 0
+    deleted_db = 0
+    deleted_local_files = 0
+
     for ident in ids:
-        # try interpret as integer id first
+        p = None
+        # 按 id 查询
         try:
             pid = int(ident)
             p = Photo.query.get(pid)
-            if p:
-                # if using supabase, try to remove object by deriving path from URL if possible (not always trivial)
-                db.session.delete(p)
-                db.session.commit()
-                deleted += 1
-                continue
         except Exception:
             pass
-        # otherwise try url match
-        p = Photo.query.filter_by(url=ident).first()
-        if p:
+        # 若没找到，再按 URL 查询
+        if not p:
+            p = Photo.query.filter_by(url=ident).first()
+        if not p:
+            continue
+
+        # 删除本地文件
+        filename = None
+        try:
+            parsed = urlparse(p.url)
+            path = unquote(parsed.path or "")
+            filename = os.path.basename(path) if path else None
+        except Exception:
+            filename = None
+
+        if filename:
+            local_path = os.path.join(LOCAL_UPLOAD_DIR, filename)
+            if os.path.exists(local_path):
+                try:
+                    os.remove(local_path)
+                    deleted_local_files += 1
+                except Exception as e:
+                    app.logger.debug("Failed to delete local file %s: %s", local_path, e)
+
+        # 删除 Supabase 文件
+        if use_supabase and supabase and filename and album_name:
+            possible_paths = [
+                f"{album_name}/{filename}",
+                f"private/{album_name}/{filename}",
+                filename
+            ]
+            for _path in possible_paths:
+                try:
+                    supabase.storage.from_(SUPABASE_BUCKET).remove([_path])
+                except Exception as e:
+                    app.logger.debug("Supabase remove(%s) failed: %s", _path, e)
+
+        # 删除数据库记录
+        try:
             db.session.delete(p)
             db.session.commit()
-            deleted += 1
-            continue
-        # cannot find -> ignore
+            deleted_db += 1
+        except Exception as e:
+            app.logger.exception("Failed to delete Photo DB record %s: %s", p.id if p else "?", e)
+            db.session.rollback()
 
-    flash(f"Deleted {deleted} images.", "success")
-    return redirect(url_for("view_album", album_name=album_name) if album_name else url_for("album"))
+    flash(f"Deleted {deleted_db} images, {deleted_local_files} local files removed.", "success")
+    return redirect(url_for("view_album", album_name=album_name) if album_name else url_for("albums"))
+    
 
 @app.route("/delete_private_images", methods=["POST"])
 def delete_private_images():
@@ -325,12 +402,10 @@ def delete_private_images():
 def delete_album(album_name):
     """
     删除整个相册：
-      - 尝试删除 Supabase 上可能存在的对象（若启用）
-      - 尝试删除本地 static/uploads 中的文件（若存在）
-      - 删除 Photo 数据库记录（全部）
-      - 删除 Album 表记录（如果存在）
-    说明：Supabase 上的路径无法 100% 针对所有 URL 保证解析成功，
-    我们采用常见路径尝试（album_name/filename 和 private/album_name/filename），失败则忽略并继续。
+      - 删除 Supabase 文件
+      - 删除本地文件
+      - 删除 Photo 数据库记录
+      - 删除 Album 数据库记录
     """
     try:
         photos = Photo.query.filter_by(album=album_name).all()
@@ -338,17 +413,15 @@ def delete_album(album_name):
         deleted_local_files = 0
 
         for p in photos:
-            url = (p.url or "").strip()
             filename = None
-            # 尝试从 URL 中提取文件名
             try:
-                parsed = urlparse(url)
+                parsed = urlparse(p.url)
                 path = unquote(parsed.path or "")
                 filename = os.path.basename(path) if path else None
             except Exception:
-                filename = None
+                pass
 
-            # 如果启用了 Supabase，尝试删除常见路径
+            # 删除 Supabase 文件
             if use_supabase and supabase and filename:
                 possible_paths = [
                     f"{album_name}/{filename}",
@@ -357,12 +430,11 @@ def delete_album(album_name):
                 ]
                 for _path in possible_paths:
                     try:
-                        # supabase python client: storage.from_(bucket).remove([path])
                         supabase.storage.from_(SUPABASE_BUCKET).remove([_path])
                     except Exception as e:
                         app.logger.debug("Supabase remove(%s) failed: %s", _path, e)
 
-            # 尝试删除本地文件 (static/uploads/<filename>)
+            # 删除本地文件
             if filename:
                 local_path = os.path.join(LOCAL_UPLOAD_DIR, filename)
                 if os.path.exists(local_path):
@@ -372,7 +444,7 @@ def delete_album(album_name):
                     except Exception as e:
                         app.logger.debug("Failed to delete local file %s: %s", local_path, e)
 
-            # 最后删除数据库记录
+            # 删除数据库记录
             try:
                 db.session.delete(p)
                 db.session.commit()
@@ -381,7 +453,7 @@ def delete_album(album_name):
                 app.logger.exception("Failed to delete Photo DB record %s: %s", p.id if p else "?", e)
                 db.session.rollback()
 
-        # 删除 Album 表记录（如果存在）
+        # 删除 Album 记录
         album_obj = Album.query.filter_by(name=album_name).first()
         if album_obj:
             try:
@@ -392,6 +464,7 @@ def delete_album(album_name):
 
         flash(f"Deleted album '{album_name}': {deleted_db} photo records removed, {deleted_local_files} local files removed.", "success")
         return redirect(url_for("albums"))
+
     except Exception as e:
         app.logger.exception("delete_album failed")
         flash(f"Failed to delete album '{album_name}': {e}", "danger")
@@ -576,12 +649,10 @@ def upload():
 
         album_obj = Album.query.filter_by(name=album_name).first()
         if not album_obj:
-            # 新相册：保存 drive_folder_id
-            album_obj = Album(name=album_name, drive_folder_id=drive_folder_id if drive_folder_id else None)
+            album_obj = Album(name=album_name, drive_folder_id=drive_folder_id or None)
             db.session.add(album_obj)
             db.session.commit()
         else:
-            # 已有相册，如果 drive_folder_id 提交了，可以选择更新
             if drive_folder_id:
                 album_obj.drive_folder_id = drive_folder_id
                 db.session.commit()
@@ -591,26 +662,33 @@ def upload():
             return jsonify({"success": False, "error": "no files"}), 400
 
         uploaded_urls = []
+
         for f in files:
             if not f or not f.filename:
                 continue
-            raw = f.read()
-            buf = compress_image_bytes(raw)
-            file_bytes = buf.getvalue()
+
             filename = f"{uuid.uuid4().hex}_{secure_filename(f.filename)}"
 
-            # Supabase 上传逻辑
+            # ⚡ 流式写入临时文件
+            tmp_path = os.path.join("/tmp", filename)
+            with open(tmp_path, "wb") as tmp_file:
+                for chunk in f.stream:
+                    tmp_file.write(chunk)
+
+            # 压缩并生成本地临时文件
+            compressed_path = compress_image_file(tmp_path)
+            with open(compressed_path, "rb") as buf:
+                file_bytes = buf.read()
+
+            # Supabase 上传
             public_url = None
             if use_supabase and supabase:
                 try:
                     path = f"{album_name}/{filename}"
-                    res = supabase.storage.from_(SUPABASE_BUCKET).upload(
+                    supabase.storage.from_(SUPABASE_BUCKET).upload(
                         path,
                         file_bytes,
-                        {
-                            "content-type": f.mimetype or "application/octet-stream",
-                            "upsert": "true"   # ⚡ 必须是字符串
-                        }
+                        {"content-type": f.mimetype or "application/octet-stream", "upsert": "true"}
                     )
                     pub = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(path)
                     if isinstance(pub, dict):
@@ -618,33 +696,31 @@ def upload():
                     elif isinstance(pub, str):
                         public_url = pub
                 except Exception as e:
-                    app.logger.exception("Supabase upload failed, falling back to local: %s", e)
+                    app.logger.exception("Supabase upload failed, fallback to local: %s", e)
                     public_url = None
 
             # fallback 本地
             if not public_url:
                 local_path = os.path.join(LOCAL_UPLOAD_DIR, filename)
-                with open(local_path, "wb") as out:
-                    out.write(file_bytes)
-                public_url = url_for('static', filename=f"uploads/{filename}", _external=True)
+                os.replace(compressed_path, local_path)
+                public_url = url_for("static", filename=f"uploads/{filename}", _external=True)
+            else:
+                os.remove(compressed_path)
 
-            # 保存照片
+            # 保存数据库
             new_photo = Photo(album=album_name, url=public_url, is_private=False)
             db.session.add(new_photo)
             db.session.commit()
 
-            # 如果 album 有 drive_folder_id，加上跳转链接
             drive_link = f"https://drive.google.com/drive/folders/{album_obj.drive_folder_id}" if album_obj.drive_folder_id else None
             uploaded_urls.append({"photo_url": public_url, "drive_link": drive_link})
 
         session["last_album"] = album_name
-
         return jsonify({"success": True, "uploads": uploaded_urls})
 
     except Exception as e:
         app.logger.exception("Upload failed")
         return jsonify({"success": False, "error": str(e)}), 500
-
 # --------------------------
 # Upload private (logged-in required)
 # --------------------------
