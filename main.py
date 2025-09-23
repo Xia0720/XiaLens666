@@ -5,6 +5,7 @@ import io
 import uuid
 from datetime import datetime
 from functools import wraps
+from urllib.parse import urlparse, unquote
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.utils import secure_filename
@@ -25,6 +26,9 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 from cloudinary.utils import api_sign_request
+
+# (optional helper used in test-db route)
+from sqlalchemy import text
 
 # --------------------------
 # Flask init
@@ -312,6 +316,86 @@ def delete_private_images():
 
     flash(f"Deleted {deleted} images.", "success")
     return redirect(url_for("view_private_album", album_name=album_name) if album_name else url_for("private_space"))
+
+# --------------------------
+# Delete entire album (新加)
+# --------------------------
+@app.route("/delete_album/<album_name>", methods=["POST"])
+@login_required
+def delete_album(album_name):
+    """
+    删除整个相册：
+      - 尝试删除 Supabase 上可能存在的对象（若启用）
+      - 尝试删除本地 static/uploads 中的文件（若存在）
+      - 删除 Photo 数据库记录（全部）
+      - 删除 Album 表记录（如果存在）
+    说明：Supabase 上的路径无法 100% 针对所有 URL 保证解析成功，
+    我们采用常见路径尝试（album_name/filename 和 private/album_name/filename），失败则忽略并继续。
+    """
+    try:
+        photos = Photo.query.filter_by(album=album_name).all()
+        deleted_db = 0
+        deleted_local_files = 0
+
+        for p in photos:
+            url = (p.url or "").strip()
+            filename = None
+            # 尝试从 URL 中提取文件名
+            try:
+                parsed = urlparse(url)
+                path = unquote(parsed.path or "")
+                filename = os.path.basename(path) if path else None
+            except Exception:
+                filename = None
+
+            # 如果启用了 Supabase，尝试删除常见路径
+            if use_supabase and supabase and filename:
+                possible_paths = [
+                    f"{album_name}/{filename}",
+                    f"private/{album_name}/{filename}",
+                    filename
+                ]
+                for _path in possible_paths:
+                    try:
+                        # supabase python client: storage.from_(bucket).remove([path])
+                        supabase.storage.from_(SUPABASE_BUCKET).remove([_path])
+                    except Exception as e:
+                        app.logger.debug("Supabase remove(%s) failed: %s", _path, e)
+
+            # 尝试删除本地文件 (static/uploads/<filename>)
+            if filename:
+                local_path = os.path.join(LOCAL_UPLOAD_DIR, filename)
+                if os.path.exists(local_path):
+                    try:
+                        os.remove(local_path)
+                        deleted_local_files += 1
+                    except Exception as e:
+                        app.logger.debug("Failed to delete local file %s: %s", local_path, e)
+
+            # 最后删除数据库记录
+            try:
+                db.session.delete(p)
+                db.session.commit()
+                deleted_db += 1
+            except Exception as e:
+                app.logger.exception("Failed to delete Photo DB record %s: %s", p.id if p else "?", e)
+                db.session.rollback()
+
+        # 删除 Album 表记录（如果存在）
+        album_obj = Album.query.filter_by(name=album_name).first()
+        if album_obj:
+            try:
+                db.session.delete(album_obj)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
+        flash(f"Deleted album '{album_name}': {deleted_db} photo records removed, {deleted_local_files} local files removed.", "success")
+        return redirect(url_for("album"))
+    except Exception as e:
+        app.logger.exception("delete_album failed")
+        flash(f"Failed to delete album '{album_name}': {e}", "danger")
+        return redirect(url_for("album"))
 
 # --------------------------
 # Story 列表
