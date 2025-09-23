@@ -120,6 +120,29 @@
   line-height: 1.2;
 }
 
+/* 删除按钮样式 */
+.album-item .delete-form {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+}
+
+.album-item .delete-form button {
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.album-item .delete-form button:hover {
+  background: rgba(200,0,0,0.8);
+}
+
 /* 在小屏手机上缩小 */
 @media (max-width: 768px) {
   .album-info h2 {
