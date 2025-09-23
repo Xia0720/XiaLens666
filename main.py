@@ -675,22 +675,26 @@ def upload():
                 for chunk in f.stream:
                     tmp_file.write(chunk)
 
-            # 使用 compress_image_file(tmp_path) 压缩到本地临时文件
-            compressed_path = compress_image_file(tmp_path)  # 你自己实现的函数，返回压缩后的文件路径
-            file_bytes = None
+            # 压缩到临时文件
+            compressed_path = compress_image_file(tmp_path)  # 你自己实现的函数，返回压缩后的路径
+
+            # 读取压缩后的文件
             with open(compressed_path, "rb") as buf:
-                file_bytes = buf.read()  # 压缩后读取内容
+                file_bytes = buf.read()
 
             public_url = None
             if use_supabase and supabase:
                 try:
                     path = f"{album_name}/{filename}"
-                    supabase.storage.from_(SUPABASE_BUCKET).upload(
+                    res = supabase.storage.from_("photos").upload(
                         path,
                         file_bytes,
-                        {"content-type": f.mimetype or "application/octet-stream", "upsert": "true"}
+                        upsert=True,
+                        content_type=f.mimetype or "application/octet-stream"
                     )
-                    pub = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(path)
+                    app.logger.info("Supabase upload response: %s", res)
+
+                    pub = supabase.storage.from_("photos").get_public_url(path)
                     if isinstance(pub, dict):
                         public_url = pub.get("publicURL") or pub.get("public_url") or pub.get("publicUrl")
                     elif isinstance(pub, str):
@@ -702,9 +706,10 @@ def upload():
             # fallback 本地
             if not public_url:
                 local_path = os.path.join(LOCAL_UPLOAD_DIR, filename)
-                os.replace(compressed_path, local_path)
+                os.replace(compressed_path, local_path)  # 移动压缩文件到本地 uploads
                 public_url = url_for("static", filename=f"uploads/{filename}", _external=True)
             else:
+                # 删除临时文件
                 os.remove(compressed_path)
 
             # 保存到数据库
@@ -712,7 +717,7 @@ def upload():
             db.session.add(new_photo)
             db.session.commit()
 
-            # ⚡ 保留 drive 链接
+            # 保留 Google Drive 链接
             drive_link = f"https://drive.google.com/drive/folders/{album_obj.drive_folder_id}" if album_obj.drive_folder_id else None
             uploaded_urls.append({"photo_url": public_url, "drive_link": drive_link})
 
