@@ -669,18 +669,18 @@ def upload():
 
             filename = f"{uuid.uuid4().hex}_{secure_filename(f.filename)}"
 
-            # ⚡ 流式写入临时文件
+            # ⚡ 流式写入临时文件，避免占用内存
             tmp_path = os.path.join("/tmp", filename)
             with open(tmp_path, "wb") as tmp_file:
                 for chunk in f.stream:
                     tmp_file.write(chunk)
 
-            # 压缩并生成本地临时文件
-            compressed_path = compress_image_file(tmp_path)
+            # 使用 compress_image_file(tmp_path) 压缩到本地临时文件
+            compressed_path = compress_image_file(tmp_path)  # 你自己实现的函数，返回压缩后的文件路径
+            file_bytes = None
             with open(compressed_path, "rb") as buf:
-                file_bytes = buf.read()
+                file_bytes = buf.read()  # 压缩后读取内容
 
-            # Supabase 上传
             public_url = None
             if use_supabase and supabase:
                 try:
@@ -707,11 +707,12 @@ def upload():
             else:
                 os.remove(compressed_path)
 
-            # 保存数据库
+            # 保存到数据库
             new_photo = Photo(album=album_name, url=public_url, is_private=False)
             db.session.add(new_photo)
             db.session.commit()
 
+            # ⚡ 保留 drive 链接
             drive_link = f"https://drive.google.com/drive/folders/{album_obj.drive_folder_id}" if album_obj.drive_folder_id else None
             uploaded_urls.append({"photo_url": public_url, "drive_link": drive_link})
 
