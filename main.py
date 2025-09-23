@@ -604,7 +604,14 @@ def upload():
             if use_supabase and supabase:
                 try:
                     path = f"{album_name}/{filename}"
-                    res = supabase.storage.from_(SUPABASE_BUCKET).upload(path, file_bytes, {"upsert": True})
+                    res = supabase.storage.from_(SUPABASE_BUCKET).upload(
+                        path,
+                        file_bytes,
+                        {
+                            "content-type": f.mimetype or "application/octet-stream",
+                            "upsert": "true"   # ⚡ 必须是字符串
+                        }
+                    )
                     pub = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(path)
                     if isinstance(pub, dict):
                         public_url = pub.get("publicURL") or pub.get("public_url") or pub.get("publicUrl")
