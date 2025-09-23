@@ -144,7 +144,7 @@
                   {% elif loop.index % 5 == 0 %} item--w3 item--h2
                   {% elif loop.index % 3 == 0 %} item--w2
                   {% else %} item--min {% endif %}">
-        <!-- 点击进入 Supabase 相册 -->
+        <!-- 点击进入相册 -->
         <a href="{{ url_for('view_album', album_name=album.name) }}">
           {% if album.cover %}
             <img src="{{ album.cover }}" alt="{{ album.name }}">
@@ -154,9 +154,18 @@
           <div class="album-info"><h2>{{ album.name }}</h2></div>
         </a>
 
-        <!-- ✅ 如果相册绑定了 Google Drive 文件夹，显示入口 -->
+        {% if logged_in %}
+        <!-- 删除相册按钮 -->
+        <form class="delete-form"
+              action="{{ url_for('delete_album', album_name=album.name) }}"
+              method="POST"
+              onsubmit="return confirm('Delete album {{ album.name }} and all its photos?');">
+          <button type="submit">🗑 Delete Album</button>
+        </form>
+        {% endif %}
+
         {% if album.drive_folder_id %}
-          <div class="drive-link">
+          <div class="drive-link" style="text-align:center; background:#fff; padding:5px;">
             <a href="https://drive.google.com/drive/folders/{{ album.drive_folder_id }}" target="_blank">
               📂 View on Google Drive
             </a>
