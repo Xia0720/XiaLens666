@@ -653,15 +653,18 @@ def upload():
 
         drive_folder_id = request.form.get("drive_folder_id", "").strip()
 
+        # 相册存在性检查
         album_obj = Album.query.filter_by(name=album_name).first()
         if not album_obj:
             album_obj = Album(name=album_name, drive_folder_id=drive_folder_id or None)
             db.session.add(album_obj)
             db.session.commit()
+            app.logger.info(f"Created new album: {album_name}")
         else:
             if drive_folder_id:
                 album_obj.drive_folder_id = drive_folder_id
                 db.session.commit()
+                app.logger.info(f"Updated album {album_name} with drive_folder_id={drive_folder_id}")
 
         files = request.files.getlist("photo")
         if not files:
@@ -674,37 +677,42 @@ def upload():
                 continue
 
             filename = f"{uuid.uuid4().hex}_{secure_filename(f.filename)}"
+            app.logger.info(f"Processing upload: {filename}")
 
-            # ⚡ 流式写入临时文件，避免占用内存
+            # ⚡ 流式写入临时文件
             tmp_path = os.path.join("/tmp", filename)
             with open(tmp_path, "wb") as tmp_file:
                 for chunk in f.stream:
                     tmp_file.write(chunk)
+            app.logger.info(f"Saved temp file: {tmp_path}")
 
-            # 压缩到临时文件
-            compressed_path = compress_image_file(tmp_path)  # 你自己实现的函数，返回压缩后的路径
+            # 压缩文件
+            compressed_path = compress_image_file(tmp_path)
+            app.logger.info(f"Compressed file saved: {compressed_path}")
 
-            # 读取压缩后的文件
+            # 读取压缩后的内容
             with open(compressed_path, "rb") as buf:
                 file_bytes = buf.read()
+            app.logger.info(f"Read {len(file_bytes)} bytes from compressed file")
 
             public_url = None
             if use_supabase and supabase:
                 try:
                     path = f"{album_name}/{filename}"
-                    res = supabase.storage.from_("photos").upload(
+                    app.logger.info(f"Uploading to Supabase bucket={SUPABASE_BUCKET}, path={path}")
+                    res = supabase.storage.from_(SUPABASE_BUCKET).upload(
                         path,
                         file_bytes,
-                        upsert=True,
-                        content_type=f.mimetype or "application/octet-stream"
+                        file_options={"content-type": f.mimetype or "application/octet-stream", "upsert": "true"}
                     )
                     app.logger.info("Supabase upload response: %s", res)
 
-                    pub = supabase.storage.from_("photos").get_public_url(path)
+                    pub = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(path)
                     if isinstance(pub, dict):
                         public_url = pub.get("publicURL") or pub.get("public_url") or pub.get("publicUrl")
                     elif isinstance(pub, str):
                         public_url = pub
+                    app.logger.info("Supabase public URL: %s", public_url)
                 except Exception as e:
                     app.logger.exception("Supabase upload failed, fallback to local: %s", e)
                     public_url = None
@@ -712,18 +720,19 @@ def upload():
             # fallback 本地
             if not public_url:
                 local_path = os.path.join(LOCAL_UPLOAD_DIR, filename)
-                os.replace(compressed_path, local_path)  # 移动压缩文件到本地 uploads
+                os.replace(compressed_path, local_path)
                 public_url = url_for("static", filename=f"uploads/{filename}", _external=True)
+                app.logger.warning(f"Falling back to local storage: {local_path}")
             else:
-                # 删除临时文件
                 os.remove(compressed_path)
 
-            # 保存到数据库
+            # 保存数据库
             new_photo = Photo(album=album_name, url=public_url, is_private=False)
             db.session.add(new_photo)
             db.session.commit()
+            app.logger.info(f"Photo saved to DB: {public_url}")
 
-            # 保留 Google Drive 链接
+            # Google Drive 链接
             drive_link = f"https://drive.google.com/drive/folders/{album_obj.drive_folder_id}" if album_obj.drive_folder_id else None
             uploaded_urls.append({"photo_url": public_url, "drive_link": drive_link})
 
