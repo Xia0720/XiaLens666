@@ -3,6 +3,7 @@ import os
 import re
 import io
 import uuid
+import stat
 from datetime import datetime
 from functools import wraps
 from urllib.parse import urlparse, unquote
@@ -107,6 +108,11 @@ class Album(db.Model):
 LOCAL_UPLOAD_DIR = os.path.join(app.root_path, "static", "uploads")
 os.makedirs(LOCAL_UPLOAD_DIR, exist_ok=True)
 
+# 检查是否可写
+if not os.access(LOCAL_UPLOAD_DIR, os.W_OK):
+    raise PermissionError(f"Upload directory {LOCAL_UPLOAD_DIR} is not writable. "
+                          f"Please check folder permissions (chmod/chown).")
+    
 # create tables if not exist
 with app.app_context():
     pass  # 不要直接创建表，交给 Flask-Migrate 管理
