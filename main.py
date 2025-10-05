@@ -518,36 +518,29 @@ def delete_album(album_name):
 # --------------------------
 # Story 列表
 # --------------------------
-# --------------------------
-# Story 列表
-# --------------------------
 @app.route("/story_list")
 def story_list():
     stories = []
 
     try:
         if use_supabase and supabase:
-            # Supabase 查询
-            response = supabase.table("story").select("*, images(*)").order("created_at", desc=True).execute()
+            response = supabase.table("story").select("*, image(*)").order("created_at", desc=True).execute()
             if response.data:
-                # 将 Supabase 数据转成和本地 ORM 类似的结构
                 for s in response.data:
-                    story = type("StoryObj", (), {})()  # 动态对象
+                    story = type("StoryObj", (), {})()
                     story.id = s.get("id")
                     story.text = s.get("text")
                     story.created_at = s.get("created_at")
                     story.images = []
-                    for img in s.get("images", []):
+                    for img in s.get("image", []):
                         img_obj = type("StoryImageObj", (), {})()
                         img_obj.image_url = img.get("image_url")
                         story.images.append(img_obj)
                     stories.append(story)
         else:
-            # 回退到本地 SQLite
             stories = Story.query.order_by(Story.created_at.desc()).all()
     except Exception as e:
         app.logger.warning(f"⚠️ 获取 Story 列表失败: {e}")
-        # 回退到 SQLite，确保页面可用
         try:
             stories = Story.query.order_by(Story.created_at.desc()).all()
         except Exception as e2:
@@ -573,7 +566,27 @@ def story_list():
 # --------------------------
 @app.route("/story/<int:story_id>")
 def story_detail(story_id):
-    story = Story.query.get_or_404(story_id)
+    try:
+        if use_supabase and supabase:
+            s = supabase.table("story").select("*, image(*)").eq("id", story_id).single().execute()
+            if s.data:
+                story = type("StoryObj", (), {})()
+                story.id = s.data.get("id")
+                story.text = s.data.get("text")
+                story.created_at = s.data.get("created_at")
+                story.images = []
+                for img in s.data.get("image", []):
+                    img_obj = type("StoryImageObj", (), {})()
+                    img_obj.image_url = img.get("image_url")
+                    story.images.append(img_obj)
+            else:
+                return "Story not found", 404
+        else:
+            story = Story.query.get_or_404(story_id)
+    except Exception as e:
+        app.logger.warning(f"⚠️ 获取 Story 详情失败: {e}")
+        story = Story.query.get_or_404(story_id)
+
     return render_template("story_detail.html", story=story)
 
 # --------------------------
@@ -590,41 +603,39 @@ def upload_story():
             flash("Story content is required.", "error")
             return redirect(request.url)
 
+        if use_supabase and supabase:
+            # 上传到 Supabase
+            try:
+                # 插入 Story
+                res = supabase.table("story").insert({"text": story_text.strip()}).execute()
+                story_id = res.data[0]["id"]
+                uploaded_images = []
+
+                for file in files:
+                    if file and file.filename:
+                        img_url = upload_to_cloudinary(file)  # ⚡ 抽成函数
+                        if img_url:
+                            supabase.table("image").insert({
+                                "story_id": story_id,
+                                "image_url": img_url
+                            }).execute()
+                            uploaded_images.append(img_url)
+                flash("Story uploaded successfully!", "success")
+                return redirect(url_for("story_list"))
+
+            except Exception as e:
+                app.logger.exception("Supabase upload_story failed, fallback to SQLite: %s", e)
+                # fallback SQLite
+
+        # SQLite 回退逻辑
         new_story = Story(text=story_text.strip())
         db.session.add(new_story)
         db.session.flush()
-
         for file in files:
             if file and file.filename:
-                try:
-                    # 压缩大文件 > 9.5MB
-                    file.stream.seek(0, 2)  # 移动到末尾
-                    size = file.stream.tell()
-                    file.stream.seek(0)
-
-                    if size > 9.5 * 1024 * 1024:  # 超过 9.5MB
-                        img = Image.open(file.stream)
-                        img = img.convert("RGB")
-                        buf = io.BytesIO()
-                        img.save(buf, format="JPEG", quality=85, optimize=True)
-                        buf.seek(0)
-                        upload_result = cloudinary.uploader.upload(
-                            buf,
-                            folder="stories"
-                        )
-                    else:
-                        upload_result = cloudinary.uploader.upload(
-                            file,
-                            folder="stories"
-                        )
-
-                    img_url = upload_result.get("secure_url")
-                    if img_url:
-                        db.session.add(StoryImage(image_url=img_url, story=new_story))
-                except Exception as e:
-                    print(f"⚠️ 上传故事图片失败: {e}")
-                    flash(f"One image failed to upload: {file.filename}", "error")
-
+                img_url = upload_to_cloudinary(file)
+                if img_url:
+                    db.session.add(StoryImage(image_url=img_url, story=new_story))
         db.session.commit()
         flash("Story uploaded successfully!", "success")
         return redirect(url_for("story_list"))
@@ -637,7 +648,25 @@ def upload_story():
 @app.route("/story/<int:story_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit_story(story_id):
-    story = Story.query.get_or_404(story_id)
+    if use_supabase and supabase:
+        try:
+            s = supabase.table("story").select("*, image(*)").eq("id", story_id).single().execute()
+            if not s.data:
+                return "Story not found", 404
+            story = type("StoryObj", (), {})()
+            story.id = s.data.get("id")
+            story.text = s.data.get("text")
+            story.images = []
+            for img in s.data.get("image", []):
+                img_obj = type("StoryImageObj", (), {})()
+                img_obj.id = img.get("id")
+                img_obj.image_url = img.get("image_url")
+                story.images.append(img_obj)
+        except Exception as e:
+            app.logger.exception("Supabase edit_story failed, fallback to SQLite: %s", e)
+            story = Story.query.get_or_404(story_id)
+    else:
+        story = Story.query.get_or_404(story_id)
 
     if request.method == "POST":
         text = request.form.get("text")
@@ -645,60 +674,75 @@ def edit_story(story_id):
             flash("Story content cannot be empty", "error")
             return render_template("edit_story.html", story=story)
 
-        story.text = text.strip()
+        if use_supabase and supabase:
+            try:
+                supabase.table("story").update({"text": text.strip()}).eq("id", story_id).execute()
 
-        # 删除选中的旧图
+                # 删除选中的旧图
+                delete_image_ids = request.form.get("delete_images", "")
+                if delete_image_ids:
+                    for img_id in delete_image_ids.split(","):
+                        supabase.table("image").delete().eq("id", int(img_id)).execute()
+
+                # 上传新图
+                files = request.files.getlist("story_images")
+                for file in files:
+                    if file and file.filename:
+                        img_url = upload_to_cloudinary(file)
+                        if img_url:
+                            supabase.table("image").insert({"story_id": story_id, "image_url": img_url}).execute()
+                flash("Story updated", "success")
+                return redirect(url_for("story_detail", story_id=story_id))
+            except Exception as e:
+                app.logger.exception("Supabase edit_story failed, fallback to SQLite: %s", e)
+                # fallback SQLite
+
+        # SQLite 回退逻辑
+        story_obj = Story.query.get_or_404(story_id)
+        story_obj.text = text.strip()
         delete_image_ids = request.form.get("delete_images", "")
         if delete_image_ids:
             for img_id in delete_image_ids.split(","):
                 img = StoryImage.query.get(int(img_id))
                 if img:
                     db.session.delete(img)
-
-        # 上传新图
         files = request.files.getlist("story_images")
         for file in files:
             if file and file.filename:
-                try:
-                    # 检查文件大小
-                    file.stream.seek(0, 2)  # 移动到末尾
-                    size = file.stream.tell()
-                    file.stream.seek(0)  # 回到开头
-
-                    if size > 9.5 * 1024 * 1024:  # 大于9.5MB，压缩
-                        img = Image.open(file.stream)
-                        img = img.convert("RGB")
-                        buf = io.BytesIO()
-                        img.save(buf, format="JPEG", quality=85, optimize=True)
-                        buf.seek(0)
-                        upload_result = cloudinary.uploader.upload(buf, folder="stories")
-                    else:
-                        upload_result = cloudinary.uploader.upload(file, folder="stories")
-
-                    img_url = upload_result.get("secure_url")
-                    if img_url:
-                        db.session.add(StoryImage(image_url=img_url, story=story))
-                except Exception as e:
-                    print(f"⚠️ 编辑 Story 上传图片失败: {e}")
-                    flash(f"Image {file.filename} failed to upload", "error")
-
+                img_url = upload_to_cloudinary(file)
+                if img_url:
+                    db.session.add(StoryImage(image_url=img_url, story=story_obj))
         db.session.commit()
         flash("Story updated", "success")
-        return redirect(url_for("story_detail", story_id=story.id))
+        return redirect(url_for("story_detail", story_id=story_id))
 
     return render_template("edit_story.html", story=story)
+
 # --------------------------
 # 删除 Story（仅登录）
 # --------------------------
 @app.route("/delete_story/<int:story_id>", methods=["POST"])
 @login_required
 def delete_story(story_id):
+    if use_supabase and supabase:
+        try:
+            # 删除图片
+            supabase.table("image").delete().eq("story_id", story_id).execute()
+            # 删除 Story
+            supabase.table("story").delete().eq("id", story_id).execute()
+            flash("Story deleted.", "info")
+            return redirect(url_for("story_list"))
+        except Exception as e:
+            app.logger.exception("Supabase delete_story failed, fallback to SQLite: %s", e)
+            # fallback SQLite
+
+    # SQLite 回退
     story = Story.query.get_or_404(story_id)
     db.session.delete(story)
     db.session.commit()
     flash("Story deleted.", "info")
     return redirect(url_for("story_list"))
-
+    
 # --------------------------
 # Upload (public album) - accepts multipart/form-data
 # --------------------------
