@@ -518,25 +518,54 @@ def delete_album(album_name):
 # --------------------------
 # Story 列表
 # --------------------------
+# --------------------------
+# Story 列表
+# --------------------------
 @app.route("/story_list")
 def story_list():
-    stories = Story.query.order_by(Story.created_at.desc()).all()
+    stories = []
 
+    try:
+        if use_supabase and supabase:
+            # Supabase 查询
+            response = supabase.table("story").select("*, images(*)").order("created_at", desc=True).execute()
+            if response.data:
+                # 将 Supabase 数据转成和本地 ORM 类似的结构
+                for s in response.data:
+                    story = type("StoryObj", (), {})()  # 动态对象
+                    story.id = s.get("id")
+                    story.text = s.get("text")
+                    story.created_at = s.get("created_at")
+                    story.images = []
+                    for img in s.get("images", []):
+                        img_obj = type("StoryImageObj", (), {})()
+                        img_obj.image_url = img.get("image_url")
+                        story.images.append(img_obj)
+                    stories.append(story)
+        else:
+            # 回退到本地 SQLite
+            stories = Story.query.order_by(Story.created_at.desc()).all()
+    except Exception as e:
+        app.logger.warning(f"⚠️ 获取 Story 列表失败: {e}")
+        # 回退到 SQLite，确保页面可用
+        try:
+            stories = Story.query.order_by(Story.created_at.desc()).all()
+        except Exception as e2:
+            app.logger.error(f"⚠️ SQLite Story 查询失败: {e2}")
+            stories = []
+
+    # 修复旧 Cloudinary 图片 URL
     for story in stories:
         for img in story.images:
-            # 如果 URL 是空或者不是 Cloudinary URL，就尝试修复
             if not img.image_url or not img.image_url.startswith("https://res.cloudinary.com/dpr0pl2tf/"):
                 try:
-                    # 假设旧图片 filename 在数据库 image_url 中保存
-                    filename = img.image_url.split("/")[-1]  # 旧路径最后部分
-                    public_id = filename.rsplit(".", 1)[0]   # 去掉扩展名
-                    # 假设旧 Story 图片都在 Cloudinary 文件夹 story/
+                    filename = img.image_url.split("/")[-1] if img.image_url else str(uuid.uuid4())
+                    public_id = filename.rsplit(".", 1)[0]
                     new_url, _ = cloudinary.utils.cloudinary_url(f"story/{public_id}")
                     img.image_url = new_url
                 except Exception as e:
                     print(f"⚠️ 修复旧 Story 图片失败: {img.image_url} -> {e}")
 
-    # 仅渲染页面，不修改数据库
     return render_template("story_list.html", stories=stories, logged_in=session.get("logged_in", False))
 
 # --------------------------
