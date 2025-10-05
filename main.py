@@ -238,6 +238,23 @@ def compress_image_file(tmp_path, output_dir=LOCAL_UPLOAD_DIR, max_size=(1280,12
     img.save(output_path, format="JPEG", quality=quality, optimize=True)
 
     return output_path
+    
+
+def upload_to_cloudinary(file):
+    """上传文件到 Cloudinary 并返回图片 URL"""
+    try:
+        upload_result = cloudinary.uploader.upload(
+            file,
+            folder="story",          # 上传到 Cloudinary 的 story 文件夹
+            resource_type="image",   # 明确为图片类型
+            use_filename=True,       # 使用原文件名
+            unique_filename=True     # 自动避免重复
+        )
+        return upload_result["secure_url"]
+    except Exception as e:
+        print(f"❌ Cloudinary 上传失败: {e}")
+        raise
+
 # --------------------------
 # Routes: index / static pages
 # --------------------------
