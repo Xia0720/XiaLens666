@@ -530,6 +530,7 @@ def story_list():
                     story = type("StoryObj", (), {})()
                     story.id = s.get("id")
                     story.text = s.get("text")
+                    # ✅ 直接保留字符串格式
                     story.created_at = s.get("created_at")
                     story.images = []
                     for img in s.get("image", []):
@@ -749,8 +750,14 @@ def delete_story(story_id):
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     if request.method == "GET":
-        rows = db.session.query(Album.name).all()
-        album_names = [r[0] for r in rows]
+        # ✅ 用 Supabase 查询相册名，而不是 SQLAlchemy
+        try:
+            albums_response = supabase.table("album").select("name").execute()
+            album_names = [item["name"] for item in albums_response.data] if albums_response.data else []
+        except Exception as e:
+            app.logger.warning(f"⚠️ 获取相册名失败，使用空列表: {e}")
+            album_names = []
+
         return render_template(
             "upload.html",
             album_names=album_names,
@@ -765,15 +772,29 @@ def upload():
 
         drive_folder_id = request.form.get("drive_folder_id", "").strip()
 
-        album_obj = Album.query.filter_by(name=album_name).first()
-        if not album_obj:
-            album_obj = Album(name=album_name, drive_folder_id=drive_folder_id or None)
-            db.session.add(album_obj)
-            db.session.commit()
+        # ✅ 如果 Supabase 可用，用 Supabase 创建 album
+        album_obj = None
+        if use_supabase and supabase:
+            try:
+                existing = supabase.table("album").select("*").eq("name", album_name).execute()
+                if not existing.data:
+                    supabase.table("album").insert({"name": album_name, "drive_folder_id": drive_folder_id}).execute()
+                else:
+                    if drive_folder_id and existing.data[0].get("drive_folder_id") != drive_folder_id:
+                        supabase.table("album").update({"drive_folder_id": drive_folder_id}).eq("name", album_name).execute()
+            except Exception as e:
+                app.logger.warning(f"⚠️ Supabase 创建 album 失败: {e}")
         else:
-            if drive_folder_id:
-                album_obj.drive_folder_id = drive_folder_id
+            # fallback 本地数据库
+            album_obj = Album.query.filter_by(name=album_name).first()
+            if not album_obj:
+                album_obj = Album(name=album_name, drive_folder_id=drive_folder_id or None)
+                db.session.add(album_obj)
                 db.session.commit()
+            else:
+                if drive_folder_id:
+                    album_obj.drive_folder_id = drive_folder_id
+                    db.session.commit()
 
         files = request.files.getlist("photo")
         if not files:
@@ -786,28 +807,24 @@ def upload():
                 continue
 
             filename = f"{uuid.uuid4().hex}_{secure_filename(f.filename)}"
-
-            # ⚡ 流式写入临时文件
             tmp_path = os.path.join("/tmp", filename)
             with open(tmp_path, "wb") as tmp_file:
                 for chunk in f.stream:
                     tmp_file.write(chunk)
 
-            # ⚡ 压缩后得到新文件路径
             compressed_path = compress_image_file(tmp_path, max_size=(1280, 1280), quality=70)
             with open(compressed_path, "rb") as buf:
                 file_bytes = buf.read()
 
             public_url = None
             try:
-                # ✅ 用 service_role key 初始化 Supabase
                 service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
                 if not service_key:
                     raise Exception("SUPABASE_SERVICE_ROLE_KEY not configured")
 
                 supabase_admin = create_client(SUPABASE_URL, service_key)
-
                 path = f"{album_name}/{filename}"
+
                 res = supabase_admin.storage.from_("photos").upload(
                     path,
                     file_bytes,
@@ -816,10 +833,7 @@ def upload():
                 app.logger.info("Supabase upload response: %s", res)
 
                 pub = supabase_admin.storage.from_("photos").get_public_url(path)
-                if isinstance(pub, dict):
-                    public_url = pub.get("publicURL") or pub.get("public_url") or pub.get("publicUrl")
-                elif isinstance(pub, str):
-                    public_url = pub
+                public_url = pub.get("publicURL") if isinstance(pub, dict) else pub
             except Exception as e:
                 app.logger.exception("Supabase upload failed, fallback to local: %s", e)
                 public_url = None
@@ -830,15 +844,18 @@ def upload():
                 os.replace(compressed_path, local_path)
                 public_url = url_for("static", filename=f"uploads/{filename}", _external=True)
             else:
-                os.remove(compressed_path)  # Supabase 成功后删除临时文件
+                os.remove(compressed_path)
 
-            # 保存到数据库
-            new_photo = Photo(album=album_name, url=public_url, is_private=False)
-            db.session.add(new_photo)
-            db.session.commit()
+            # ✅ 保存图片记录（如果本地数据库可用）
+            try:
+                if not use_supabase:
+                    new_photo = Photo(album=album_name, url=public_url, is_private=False)
+                    db.session.add(new_photo)
+                    db.session.commit()
+            except Exception as e:
+                app.logger.warning(f"⚠️ 本地数据库保存失败: {e}")
 
-            # Google Drive 链接
-            drive_link = f"https://drive.google.com/drive/folders/{album_obj.drive_folder_id}" if album_obj.drive_folder_id else None
+            drive_link = f"https://drive.google.com/drive/folders/{drive_folder_id}" if drive_folder_id else None
             uploaded_urls.append({"photo_url": public_url, "drive_link": drive_link})
 
         session["last_album"] = album_name
@@ -847,6 +864,7 @@ def upload():
     except Exception as e:
         app.logger.exception("Upload failed")
         return jsonify({"success": False, "error": str(e)}), 500
+
 # --------------------------
 # Upload private (logged-in required)
 # --------------------------
