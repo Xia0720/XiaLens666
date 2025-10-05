@@ -250,36 +250,31 @@ def about():
     return render_template("about.html")
 
 # --------------------------
-# Albums list (reads from Supabase if enabled, fallback to DB)
+# Albums list (reads from DB or Supabase)
 # --------------------------
 @app.route("/album")
 def albums():
     try:
-        if use_supabase:
-            # 从 Supabase 获取公开照片
+        albums_list = []
+        if use_supabase and supabase:
+            # Supabase 查询
             response = supabase.table("photo")\
                 .select("album,url")\
                 .eq("is_private", False)\
-                .order("album", ascending=True)\
-                .order("created_at", ascending=True)\
+                .order("album", desc=False)\
+                .order("created_at", desc=False)\
                 .execute()
-
-            if response.error:
-                app.logger.warning("Supabase error: %s", response.error)
-                return f"Error loading albums: {response.error}", 500
-
-            rows = response.data
-            # 构建 album -> first cover map
-            album_map = {}
-            for row in rows:
-                album_name = row["album"]
-                url = row["url"]
-                if album_name not in album_map:
-                    album_map[album_name] = url
-
-            albums_list = [{"name": name, "cover": album_map.get(name)} for name in sorted(album_map.keys())]
+            if response.data:
+                # 构建 dict: 每个相册取第一张照片作为封面
+                album_map = {}
+                for item in response.data:
+                    name = item["album"]
+                    url = item["url"]
+                    if name not in album_map:
+                        album_map[name] = url
+                albums_list = [{"name": name, "cover": album_map[name]} for name in sorted(album_map.keys())]
         else:
-            # fallback to local DB
+            # SQLite 回退逻辑
             rows = db.session.query(Photo.album, Photo.url)\
                 .filter_by(is_private=False)\
                 .order_by(Photo.album, Photo.created_at)\
@@ -288,7 +283,7 @@ def albums():
             for album, url in rows:
                 if album not in album_map:
                     album_map[album] = url
-            albums_list = [{"name": name, "cover": album_map.get(name)} for name in sorted(album_map.keys())]
+            albums_list = [{"name": name, "cover": album_map[name]} for name in sorted(album_map.keys())]
 
         return render_template("album.html", albums=albums_list)
     except Exception as e:
@@ -296,32 +291,40 @@ def albums():
         return f"Error loading albums: {e}", 500
 
 # --------------------------
-# View album (Supabase fallback)
+# View album (public)
 # --------------------------
 @app.route("/album/<album_name>")
 def view_album(album_name):
     try:
-        if use_supabase:
-            # 获取相册的所有公开照片
+        images = []
+        if use_supabase and supabase:
             response = supabase.table("photo")\
                 .select("id,url,created_at")\
                 .eq("album", album_name)\
                 .eq("is_private", False)\
-                .order("created_at", ascending=False)\
+                .order("created_at", desc=True)\
                 .execute()
-
-            if response.error:
-                app.logger.warning("Supabase error: %s", response.error)
-                return f"Error loading album: {response.error}", 500
-
-            photos = response.data
-            images = [{"id": p["id"], "url": p["url"], "source": p["url"], "created_at": p["created_at"]} for p in photos]
+            if response.data:
+                for p in response.data:
+                    images.append({
+                        "id": p["id"],
+                        "url": p["url"],
+                        "source": p["url"],  # 兼容老模板
+                        "created_at": p["created_at"]
+                    })
         else:
-            # fallback to local DB
-            photos = Photo.query.filter_by(album=album_name, is_private=False).order_by(Photo.created_at.desc()).all()
-            images = [{"id": p.id, "url": p.url, "source": p.url, "created_at": p.created_at} for p in photos]
+            photos = Photo.query.filter_by(album=album_name, is_private=False)\
+                .order_by(Photo.created_at.desc())\
+                .all()
+            for p in photos:
+                images.append({
+                    "id": p.id,
+                    "url": p.url,
+                    "source": p.url,
+                    "created_at": p.created_at
+                })
 
-        # 获取 drive_folder_id
+        # 获取相册对象，拿 drive_folder_id
         album_obj = Album.query.filter_by(name=album_name).first()
         drive_link = None
         if album_obj and album_obj.drive_folder_id:
