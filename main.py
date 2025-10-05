@@ -250,42 +250,78 @@ def about():
     return render_template("about.html")
 
 # --------------------------
-# Albums list (reads from DB)
+# Albums list (reads from Supabase if enabled, fallback to DB)
 # --------------------------
 @app.route("/album")
 def albums():
     try:
-        # get distinct album names and one cover each (min created_at)
-        rows = db.session.query(Photo.album, Photo.url).filter_by(is_private=False).order_by(Photo.album, Photo.created_at).all()
-        # build a dict of first url per album
-        album_map = {}
-        for album, url in rows:
-            if album not in album_map:
-                album_map[album] = url
-        albums_list = [{"name": name, "cover": album_map.get(name)} for name in sorted(album_map.keys())]
+        if use_supabase:
+            # 从 Supabase 获取公开照片
+            response = supabase.table("photo")\
+                .select("album,url")\
+                .eq("is_private", False)\
+                .order("album", ascending=True)\
+                .order("created_at", ascending=True)\
+                .execute()
+
+            if response.error:
+                app.logger.warning("Supabase error: %s", response.error)
+                return f"Error loading albums: {response.error}", 500
+
+            rows = response.data
+            # 构建 album -> first cover map
+            album_map = {}
+            for row in rows:
+                album_name = row["album"]
+                url = row["url"]
+                if album_name not in album_map:
+                    album_map[album_name] = url
+
+            albums_list = [{"name": name, "cover": album_map.get(name)} for name in sorted(album_map.keys())]
+        else:
+            # fallback to local DB
+            rows = db.session.query(Photo.album, Photo.url)\
+                .filter_by(is_private=False)\
+                .order_by(Photo.album, Photo.created_at)\
+                .all()
+            album_map = {}
+            for album, url in rows:
+                if album not in album_map:
+                    album_map[album] = url
+            albums_list = [{"name": name, "cover": album_map.get(name)} for name in sorted(album_map.keys())]
+
         return render_template("album.html", albums=albums_list)
     except Exception as e:
         app.logger.exception("Failed to load albums")
         return f"Error loading albums: {e}", 500
 
 # --------------------------
-# View album (public)
+# View album (Supabase fallback)
 # --------------------------
 @app.route("/album/<album_name>")
 def view_album(album_name):
     try:
-        # 获取相册的所有公开照片
-        photos = Photo.query.filter_by(album=album_name, is_private=False).order_by(Photo.created_at.desc()).all()
-        images = []
-        for p in photos:
-            images.append({
-                "id": p.id,
-                "url": p.url,
-                "source": p.url,   # 兼容老模板
-                "created_at": p.created_at
-            })
+        if use_supabase:
+            # 获取相册的所有公开照片
+            response = supabase.table("photo")\
+                .select("id,url,created_at")\
+                .eq("album", album_name)\
+                .eq("is_private", False)\
+                .order("created_at", ascending=False)\
+                .execute()
 
-        # 获取相册对象，拿 drive_folder_id
+            if response.error:
+                app.logger.warning("Supabase error: %s", response.error)
+                return f"Error loading album: {response.error}", 500
+
+            photos = response.data
+            images = [{"id": p["id"], "url": p["url"], "source": p["url"], "created_at": p["created_at"]} for p in photos]
+        else:
+            # fallback to local DB
+            photos = Photo.query.filter_by(album=album_name, is_private=False).order_by(Photo.created_at.desc()).all()
+            images = [{"id": p.id, "url": p.url, "source": p.url, "created_at": p.created_at} for p in photos]
+
+        # 获取 drive_folder_id
         album_obj = Album.query.filter_by(name=album_name).first()
         drive_link = None
         if album_obj and album_obj.drive_folder_id:
