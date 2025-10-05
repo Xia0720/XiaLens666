@@ -575,6 +575,8 @@ def story_list():
 # --------------------------
 # Story 详情
 # --------------------------
+from datetime import datetime
+
 @app.route("/story/<int:story_id>")
 def story_detail(story_id):
     try:
@@ -584,7 +586,18 @@ def story_detail(story_id):
                 story = type("StoryObj", (), {})()
                 story.id = s.data.get("id")
                 story.text = s.data.get("text")
-                story.created_at = s.data.get("created_at")
+                
+                # ⚡ 将字符串转为 datetime
+                created_at_str = s.data.get("created_at")
+                if created_at_str:
+                    try:
+                        story.created_at = datetime.fromisoformat(created_at_str)
+                    except ValueError:
+                        # 如果格式不对，就保留原字符串
+                        story.created_at = created_at_str
+                else:
+                    story.created_at = None
+
                 story.images = []
                 for img in s.data.get("image", []):
                     img_obj = type("StoryImageObj", (), {})()
