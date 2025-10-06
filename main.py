@@ -265,6 +265,8 @@ def about():
 @app.route("/album")
 def albums():
     try:
+        print("✅ use_supabase =", use_supabase)
+
         albums_list = []
 
         if use_supabase and supabase:
