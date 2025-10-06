@@ -785,7 +785,22 @@ def delete_story(story_id):
     db.session.commit()
     flash("Story deleted.", "info")
     return redirect(url_for("story_list"))
-    
+
+
+def get_albums():
+    """从 Supabase 或本地数据库中获取已有相册列表"""
+    try:
+        if use_supabase and supabase:
+            response = supabase.table("photo").select("album").execute()
+            albums = sorted(list({item["album"] for item in response.data if item.get("album")}))
+        else:
+            rows = db.session.query(Photo.album).distinct().all()
+            albums = sorted([r[0] for r in rows if r[0]])
+        return albums
+    except Exception as e:
+        app.logger.warning(f"⚠️ 获取相册列表失败: {e}")
+        return []
+
 # --------------------------
 # Upload (public album) - accepts multipart/form-data
 # --------------------------
