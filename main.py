@@ -317,6 +317,8 @@ def albums():
 def view_album(album_name):
     try:
         images = []
+        drive_link = None  # 暂时不使用 Album 表
+
         if use_supabase and supabase:
             response = supabase.table("photo")\
                 .select("id,url,created_at")\
@@ -329,7 +331,7 @@ def view_album(album_name):
                     images.append({
                         "id": p["id"],
                         "url": p["url"],
-                        "source": p["url"],  # 兼容老模板
+                        "source": p["url"],
                         "created_at": p["created_at"]
                     })
         else:
@@ -343,12 +345,6 @@ def view_album(album_name):
                     "source": p.url,
                     "created_at": p.created_at
                 })
-
-        # 获取相册对象，拿 drive_folder_id
-        album_obj = Album.query.filter_by(name=album_name).first()
-        drive_link = None
-        if album_obj and album_obj.drive_folder_id:
-            drive_link = f"https://drive.google.com/drive/folders/{album_obj.drive_folder_id}"
 
         return render_template(
             "view_album.html",
