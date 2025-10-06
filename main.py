@@ -266,50 +266,61 @@ def about():
 def albums():
     try:
         albums_list = []
+
         if use_supabase and supabase:
-            # Supabase 查询
+            # 查询所有照片，不管 is_private
             response = supabase.table("photo")\
                 .select("album,url,created_at")\
-                .eq("is_private", False)\
                 .order("created_at", desc=True)\
                 .execute()
 
+            album_map = {}  # 用于存放相册封面
+            album_names = set()  # 用于存放所有相册名
+
             if response.data:
-                album_map = {}
                 for item in response.data:
                     name = item.get("album")
                     url = item.get("url")
-                    if not name or not url:
-                        continue  # 忽略空值
-                    # 每个相册只取最新一张照片
-                    if name not in album_map:
+                    if not name:
+                        continue
+                    album_names.add(name)
+                    # 只取第一张照片作为封面
+                    if name not in album_map and url:
                         album_map[name] = url
 
-                albums_list = [{"name": name, "cover": album_map[name]} for name in sorted(album_map.keys())]
+            # 构建最终列表，若没有封面就用默认图片
+            albums_list = [
+                {"name": name, "cover": album_map.get(name, url_for('static', filename='images/default_cover.jpg'))}
+                for name in sorted(album_names)
+            ]
 
         else:
             # SQLite 回退逻辑
             rows = db.session.query(Photo.album, Photo.url, Photo.created_at)\
-                .filter_by(is_private=False)\
                 .order_by(Photo.created_at.desc())\
                 .all()
 
             album_map = {}
+            album_names = set()
             for album, url, _ in rows:
-                if not album or not url:
+                if not album:
                     continue
-                if album not in album_map:
+                album_names.add(album)
+                if album not in album_map and url:
                     album_map[album] = url
 
-            albums_list = [{"name": name, "cover": album_map[name]} for name in sorted(album_map.keys())]
+            albums_list = [
+                {"name": name, "cover": album_map.get(name, url_for('static', filename='images/default_cover.jpg'))}
+                for name in sorted(album_names)
+            ]
 
-        # 🔹 调试输出，部署时可去掉
-        print("Albums list:", albums_list)
-
+        print("Albums list:", albums_list)  # 调试输出
         return render_template("album.html", albums=albums_list)
+
     except Exception as e:
         app.logger.exception("Failed to load albums")
         return f"Error loading albums: {e}", 500
+
 # --------------------------
 # View album (public)
 # --------------------------
