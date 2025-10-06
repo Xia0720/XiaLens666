@@ -168,28 +168,28 @@
                   {% elif loop.index % 3 == 0 %} item--w2
                   {% else %} item--min {% endif %}">
         <!-- 点击进入相册 -->
-        <a href="{{ url_for('view_album', album_name=album.name) }}">
-          {% if album.cover %}
-            <img src="{{ album.cover }}" alt="{{ album.name }}">
+        <a href="{{ url_for('view_album', album_name=album['name']) }}">
+          {% if album['cover'] %}
+            <img src="{{ album['cover'] }}" alt="{{ album['name'] }}">
           {% else %}
             <img src="{{ url_for('static', filename='images/default_cover.jpg') }}" alt="No cover">
           {% endif %}
-          <div class="album-info"><h2>{{ album.name }}</h2></div>
+          <div class="album-info"><h2>{{ album['name'] }}</h2></div>
         </a>
 
         {% if logged_in %}
         <!-- 删除相册按钮 -->
         <form class="delete-form"
-              action="{{ url_for('delete_album', album_name=album.name) }}"
+              action="{{ url_for('delete_album', album_name=album['name']) }}"
               method="POST"
-              onsubmit="return confirm('Delete album {{ album.name }} and all its photos?');">
+              onsubmit="return confirm('Delete album {{ album['name'] }} and all its photos?');">
           <button type="submit">🗑 Delete Album</button>
         </form>
         {% endif %}
 
-        {% if album.drive_folder_id %}
+        {% if album.get('drive_folder_id') %}
           <div class="drive-link" style="text-align:center; background:#fff; padding:5px;">
-            <a href="https://drive.google.com/drive/folders/{{ album.drive_folder_id }}" target="_blank">
+            <a href="https://drive.google.com/drive/folders/{{ album['drive_folder_id'] }}" target="_blank">
               📂 View on Google Drive
             </a>
           </div>
