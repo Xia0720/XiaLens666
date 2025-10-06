@@ -269,37 +269,47 @@ def albums():
         if use_supabase and supabase:
             # Supabase 查询
             response = supabase.table("photo")\
-                .select("album,url")\
+                .select("album,url,created_at")\
                 .eq("is_private", False)\
-                .order("album", desc=False)\
-                .order("created_at", desc=False)\
+                .order("created_at", desc=True)\
                 .execute()
+
             if response.data:
-                # 构建 dict: 每个相册取第一张照片作为封面
                 album_map = {}
                 for item in response.data:
-                    name = item["album"]
-                    url = item["url"]
+                    name = item.get("album")
+                    url = item.get("url")
+                    if not name or not url:
+                        continue  # 忽略空值
+                    # 每个相册只取最新一张照片
                     if name not in album_map:
                         album_map[name] = url
+
                 albums_list = [{"name": name, "cover": album_map[name]} for name in sorted(album_map.keys())]
+
         else:
             # SQLite 回退逻辑
-            rows = db.session.query(Photo.album, Photo.url)\
+            rows = db.session.query(Photo.album, Photo.url, Photo.created_at)\
                 .filter_by(is_private=False)\
-                .order_by(Photo.album, Photo.created_at)\
+                .order_by(Photo.created_at.desc())\
                 .all()
+
             album_map = {}
-            for album, url in rows:
+            for album, url, _ in rows:
+                if not album or not url:
+                    continue
                 if album not in album_map:
                     album_map[album] = url
+
             albums_list = [{"name": name, "cover": album_map[name]} for name in sorted(album_map.keys())]
+
+        # 🔹 调试输出，部署时可去掉
+        print("Albums list:", albums_list)
 
         return render_template("album.html", albums=albums_list)
     except Exception as e:
         app.logger.exception("Failed to load albums")
         return f"Error loading albums: {e}", 500
-
 # --------------------------
 # View album (public)
 # --------------------------
