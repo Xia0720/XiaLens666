@@ -161,41 +161,24 @@
 <div class="album-content">
   <h1 class="page-title">Albums</h1>
   <div class="album-grid">
-    {% for album in albums %}
-      <div class="album-item
-                  {% if loop.index == 1 %} item--feature
-                  {% elif loop.index % 5 == 0 %} item--w3 item--h2
-                  {% elif loop.index % 3 == 0 %} item--w2
-                  {% else %} item--min {% endif %}">
-        <!-- 点击进入相册 -->
-        <a href="{{ url_for('view_album', album_name=album['name']) }}">
-          {% if album['cover'] %}
-            <img src="{{ album['cover'] }}" alt="{{ album['name'] }}">
-          {% else %}
-            <img src="{{ url_for('static', filename='images/default_cover.jpg') }}" alt="No cover">
-          {% endif %}
-          <div class="album-info"><h2>{{ album['name'] }}</h2></div>
-        </a>
 
-        {% if logged_in %}
-        <!-- 删除相册按钮 -->
-        <form class="delete-form"
-              action="{{ url_for('delete_album', album_name=album['name']) }}"
-              method="POST"
-              onsubmit="return confirm('Delete album {{ album['name'] }} and all its photos?');">
-          <button type="submit">🗑 Delete Album</button>
-        </form>
-        {% endif %}
+    {% if albums and albums|length > 0 %}
+      {% for album in albums %}
+        <div class="album-item">
+          <a href="{{ url_for('view_album', album_name=album.name) }}">
+            {% if album.cover %}
+              <img src="{{ album.cover }}" alt="{{ album.name }}">
+            {% else %}
+              <img src="{{ url_for('static', filename='images/default_cover.jpg') }}" alt="No cover">
+            {% endif %}
+            <div class="album-info"><h2>{{ album.name }}</h2></div>
+          </a>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p style="text-align:center; color:#777;">No albums found.</p>
+    {% endif %}
 
-        {% if album.get('drive_folder_id') %}
-          <div class="drive-link" style="text-align:center; background:#fff; padding:5px;">
-            <a href="https://drive.google.com/drive/folders/{{ album['drive_folder_id'] }}" target="_blank">
-              📂 View on Google Drive
-            </a>
-          </div>
-        {% endif %}
-      </div>
-    {% endfor %}
   </div>
 </div>
 {% endblock %}
