@@ -399,43 +399,20 @@ def delete_images():
     deleted_local_files = 0
 
     for ident in ids:
-        p = None
-        # 按 id 查询
+        # 从 Supabase 数据表中删除
         try:
-            pid = int(ident)
-            p = Photo.query.get(pid)
-        except Exception:
-            pass
-        # 若没找到，再按 URL 查询
-        if not p:
-            p = Photo.query.filter_by(url=ident).first()
-        if not p:
-            continue
+            if use_supabase and supabase:
+                supabase.table("photo").delete().eq("id", ident).execute()
+                deleted_db += 1
+        except Exception as e:
+            app.logger.debug(f"Supabase delete photo failed: {e}")
 
-        # 删除本地文件
-        filename = None
-        try:
-            parsed = urlparse(p.url)
-            path = unquote(parsed.path or "")
-            filename = os.path.basename(path) if path else None
-        except Exception:
-            filename = None
-
-        if filename:
-            local_path = os.path.join(LOCAL_UPLOAD_DIR, filename)
-            if os.path.exists(local_path):
-                try:
-                    os.remove(local_path)
-                    deleted_local_files += 1
-                except Exception as e:
-                    app.logger.debug("Failed to delete local file %s: %s", local_path, e)
-
-        # 删除 Supabase 文件
-        if use_supabase and supabase and filename and album_name:
+        # 删除 Supabase 存储文件
+        if use_supabase and supabase and album_name:
             possible_paths = [
-                f"{album_name}/{filename}",
-                f"private/{album_name}/{filename}",
-                filename
+                f"{album_name}/{ident}",
+                f"private/{album_name}/{ident}",
+                ident
             ]
             for _path in possible_paths:
                 try:
@@ -443,16 +420,19 @@ def delete_images():
                 except Exception as e:
                     app.logger.debug("Supabase remove(%s) failed: %s", _path, e)
 
-        # 删除数据库记录
-        try:
-            db.session.delete(p)
-            db.session.commit()
-            deleted_db += 1
-        except Exception as e:
-            app.logger.exception("Failed to delete Photo DB record %s: %s", p.id if p else "?", e)
-            db.session.rollback()
+        # 删除本地数据库（fallback）
+        if not use_supabase:
+            try:
+                p = Photo.query.filter((Photo.id == ident) | (Photo.url == ident)).first()
+                if p:
+                    db.session.delete(p)
+                    db.session.commit()
+                    deleted_db += 1
+            except Exception as e:
+                app.logger.debug(f"SQLite delete photo failed: {e}")
+                db.session.rollback()
 
-    flash(f"Deleted {deleted_db} images, {deleted_local_files} local files removed.", "success")
+    flash(f"Deleted {deleted_db} image records.", "success")
     return redirect(url_for("view_album", album_name=album_name) if album_name else url_for("albums"))
     
 
@@ -487,73 +467,44 @@ def delete_private_images():
 @app.route("/delete_album/<album_name>", methods=["POST"])
 @login_required
 def delete_album(album_name):
-    """
-    删除整个相册：
-      - 删除 Supabase 文件
-      - 删除本地文件
-      - 删除 Photo 数据库记录
-      - 删除 Album 数据库记录
-    """
     try:
-        photos = Photo.query.filter_by(album=album_name).all()
-        deleted_db = 0
-        deleted_local_files = 0
+        deleted_count = 0
 
-        for p in photos:
-            filename = None
+        if use_supabase and supabase:
+            # 删除 Supabase 存储中的文件夹
             try:
-                parsed = urlparse(p.url)
-                path = unquote(parsed.path or "")
-                filename = os.path.basename(path) if path else None
-            except Exception:
-                pass
-
-            # 删除 Supabase 文件
-            if use_supabase and supabase and filename:
-                possible_paths = [
-                    f"{album_name}/{filename}",
-                    f"private/{album_name}/{filename}",
-                    filename
-                ]
-                for _path in possible_paths:
-                    try:
-                        supabase.storage.from_(SUPABASE_BUCKET).remove([_path])
-                    except Exception as e:
-                        app.logger.debug("Supabase remove(%s) failed: %s", _path, e)
-
-            # 删除本地文件
-            if filename:
-                local_path = os.path.join(LOCAL_UPLOAD_DIR, filename)
-                if os.path.exists(local_path):
-                    try:
-                        os.remove(local_path)
-                        deleted_local_files += 1
-                    except Exception as e:
-                        app.logger.debug("Failed to delete local file %s: %s", local_path, e)
-
-            # 删除数据库记录
-            try:
-                db.session.delete(p)
-                db.session.commit()
-                deleted_db += 1
+                files = supabase.storage.from_(SUPABASE_BUCKET).list(album_name)
+                for f in files:
+                    supabase.storage.from_(SUPABASE_BUCKET).remove([f"{album_name}/{f['name']}"])
+                app.logger.info(f"Supabase storage cleared for album: {album_name}")
             except Exception as e:
-                app.logger.exception("Failed to delete Photo DB record %s: %s", p.id if p else "?", e)
-                db.session.rollback()
+                app.logger.warning(f"Failed to clear Supabase storage for {album_name}: {e}")
 
-        # 删除 Album 记录
-        album_obj = Album.query.filter_by(name=album_name).first()
-        if album_obj:
+            # 删除数据库中对应相册的照片
             try:
+                supabase.table("photo").delete().eq("album", album_name).execute()
+                deleted_count += 1
+            except Exception as e:
+                app.logger.warning(f"Supabase DB delete failed for {album_name}: {e}")
+
+        else:
+            # fallback: 本地 SQLite
+            photos = Photo.query.filter_by(album=album_name).all()
+            for p in photos:
+                db.session.delete(p)
+            db.session.commit()
+
+            album_obj = Album.query.filter_by(name=album_name).first()
+            if album_obj:
                 db.session.delete(album_obj)
                 db.session.commit()
-            except Exception:
-                db.session.rollback()
+            deleted_count = len(photos)
 
-        flash(f"Deleted album '{album_name}': {deleted_db} photo records removed, {deleted_local_files} local files removed.", "success")
+        flash(f"Album '{album_name}' deleted successfully. ({deleted_count} photo records removed)", "success")
         return redirect(url_for("albums"))
 
     except Exception as e:
-        app.logger.exception("delete_album failed")
+        app.logger.exception(f"delete_album failed: {e}")
         flash(f"Failed to delete album '{album_name}': {e}", "danger")
         return redirect(url_for("albums"))
 
