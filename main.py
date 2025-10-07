@@ -65,6 +65,8 @@ if SUPABASE_URL and SUPABASE_KEY and create_client:
         supabase = None
         use_supabase = False
 
+# ✅ 这一行一定要加！
+DATABASE_URL = os.getenv("DATABASE_URL")
 engine = create_engine(
     DATABASE_URL,
     poolclass=QueuePool,
