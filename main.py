@@ -30,6 +30,8 @@ from cloudinary.utils import api_sign_request
 
 # (optional helper used in test-db route)
 from sqlalchemy import text
+from sqlalchemy import create_engine
+from sqlalchemy.pool import QueuePool
 
 # --------------------------
 # Flask init
@@ -63,6 +65,15 @@ if SUPABASE_URL and SUPABASE_KEY and create_client:
         supabase = None
         use_supabase = False
 
+engine = create_engine(
+    DATABASE_URL,
+    poolclass=QueuePool,
+    pool_size=5,
+    max_overflow=10,
+    pool_timeout=30,
+    pool_recycle=1800,  # 每 30 分钟重连一次
+    pool_pre_ping=True   # 断线自动重连
+)
 # --------------------------
 # DB config (same as original)
 # --------------------------
