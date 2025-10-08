@@ -283,29 +283,31 @@ def albums():
         albums_list = []
 
         if use_supabase and supabase:
-            # 查询所有照片，不管 is_private
-            response = supabase.table("photo")\
+            # 先读取 album 表
+            album_response = supabase.table("album").select("name").execute()
+
+            album_names = [a["name"] for a in album_response.data] if album_response.data else []
+            album_map = {}
+
+            # 再读取 photo 表，获取封面照片
+            photo_response = supabase.table("photo")\
                 .select("album,url,created_at")\
                 .order("created_at", desc=True)\
                 .execute()
 
-            album_map = {}  # 用于存放相册封面
-            album_names = set()  # 用于存放所有相册名
-
-            if response.data:
-                for item in response.data:
+            if photo_response.data:
+                for item in photo_response.data:
                     name = item.get("album")
                     url = item.get("url")
-                    if not name:
-                        continue
-                    album_names.add(name)
-                    # 只取第一张照片作为封面
-                    if name not in album_map and url:
+                    if name and url and name not in album_map:
                         album_map[name] = url
 
-            # 构建最终列表，若没有封面就用默认图片
+            # 构建最终列表（无照片则显示默认封面）
             albums_list = [
-                {"name": name, "cover": album_map.get(name, url_for('static', filename='images/default_cover.jpg'))}
+                {
+                    "name": name,
+                    "cover": album_map.get(name, url_for('static', filename='images/default_cover.jpg'))
+                }
                 for name in sorted(album_names)
             ]
 
