@@ -171,16 +171,16 @@ body.album-page::before {
   {% endif %}
 
   {% set row_size = 10 %}
-  {% if images and images|length > 0 %}
-    {% for i in range(0, images|length, row_size) %}
+  {% if photos and photos|length > 0 %}
+    {% for i in range(0, photos|length, row_size) %}
       <div class="album-row">
-        {% for img in images[i:i+row_size] %}
+        {% for photo in photos[i:i+row_size] %}
         <div class="album-item">
           {% if logged_in %}
-            <input type="checkbox" name="to_delete" value="{{ img.source }}">
+            <input type="checkbox" name="to_delete" value="{{ photo.url }}">
           {% endif %}
-          <a href="{{ img.source }}" class="glightbox" data-gallery="album-{{ album_name }}">
-            <img src="{{ img.source }}" alt="Photo" loading="lazy">
+          <a href="{{ photo.url }}" class="glightbox" data-gallery="album-{{ album_name }}">
+            <img src="{{ photo.url }}" alt="Photo" loading="lazy">
           </a>
         </div>
         {% endfor %}
@@ -211,4 +211,3 @@ body.album-page::before {
 <script>
 const lightbox = GLightbox({ selector: '.glightbox', loop: true, touchNavigation: true, keyboardNavigation: true, closeOnOutsideClick: true });
 </script>
-{% endblock %}
