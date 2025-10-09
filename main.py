@@ -49,12 +49,6 @@ cloudinary.config(
 )
 
 # --------------------------
-# Supabase config (optional). If not present, we fallback to local storage.
-# --------------------------
-# --------------------------
-# Supabase config
-# --------------------------
-# --------------------------
 # Supabase config
 # --------------------------
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -782,7 +776,6 @@ def get_albums():
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     if request.method == "GET":
-        # 获取相册名
         try:
             if use_supabase and SUPABASE_SERVICE_ROLE_KEY:
                 supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
@@ -858,9 +851,14 @@ def upload():
                         file_options={"content-type": f.mimetype or "application/octet-stream", "upsert": "true"}
                     )
 
+                    # ✅ 修正：新版 SDK 的正确用法
                     pub = supabase_admin.storage.from_("photos").get_public_url(path)
-                    # 根据 SDK 返回 key 修正
-                    public_url = pub.get("public_url") if isinstance(pub, dict) else pub
+                    if hasattr(pub, "public_url"):
+                        public_url = pub.public_url
+                    elif isinstance(pub, dict):
+                        public_url = pub.get("public_url")
+                    else:
+                        public_url = str(pub)
 
                 except Exception as e:
                     app.logger.exception("Supabase upload failed, fallback to local: %s", e)
@@ -894,6 +892,7 @@ def upload():
     except Exception as e:
         app.logger.exception("Upload failed")
         return jsonify({"success": False, "error": str(e)}), 500
+
 # --------------------------
 # Upload private (logged-in required)
 # --------------------------
