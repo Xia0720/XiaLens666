@@ -807,136 +807,81 @@ def get_albums():
 # --------------------------
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
-    # ---------- GET：加载上传页 ----------
     if request.method == "GET":
-        try:
-            if use_supabase and SUPABASE_SERVICE_ROLE_KEY:
-                supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-                albums_response = supabase_client.table("album").select("name").execute()
-                album_names = [a["name"] for a in albums_response.data] if albums_response.data else []
-            else:
-                album_names = []
-        except Exception as e:
-            app.logger.warning(f"获取相册名失败: {e}")
-            album_names = []
-
-        return render_template(
-            "upload.html",
-            album_names=album_names,
-            last_album=session.get("last_album", "")
-        )
-
-    # ---------- POST：上传图片 ----------
-    try:
-        album_name = (request.form.get("album") or request.form.get("new_album") or "").strip()
-        if not album_name:
-            return jsonify({"success": False, "error": "album name required"}), 400
-
-        drive_folder_id = request.form.get("drive_folder_id", "").strip()
-        is_private = request.form.get("is_private", "false").lower() == "true"
-        files = request.files.getlist("photo")
-        if not files:
-            return jsonify({"success": False, "error": "no files"}), 400
-
-        uploaded_urls = []
-
-        # ---------- 使用 Supabase ----------
+        # 获取相册名
+        album_names = []
         if use_supabase and SUPABASE_SERVICE_ROLE_KEY:
-            supabase_admin = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-
-            # 创建相册（如果不存在）
             try:
-                existing = supabase_admin.table("album").select("*").eq("name", album_name).execute()
-                if not existing.data:
-                    supabase_admin.table("album").insert({
-                        "name": album_name,
-                        "drive_folder_id": drive_folder_id
-                    }).execute()
-                elif drive_folder_id and existing.data[0].get("drive_folder_id") != drive_folder_id:
-                    supabase_admin.table("album").update({
-                        "drive_folder_id": drive_folder_id
-                    }).eq("name", album_name).execute()
+                supabase_admin = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+                res = supabase_admin.table("album").select("name").execute()
+                album_names = [a["name"] for a in res.data] if res.data else []
             except Exception as e:
-                app.logger.warning(f"创建 album 失败: {e}")
+                app.logger.warning(f"获取相册名失败: {e}")
+        return render_template("upload.html", album_names=album_names, last_album=session.get("last_album", ""))
 
-            # ---------- 上传每个文件 ----------
-            for f in files:
-                if not f or not f.filename:
-                    continue
+    # ---------- POST 上传 ----------
+    album_name = (request.form.get("album") or request.form.get("new_album") or "").strip()
+    if not album_name:
+        return jsonify({"success": False, "error": "album name required"}), 400
 
-                filename = f"{uuid.uuid4().hex}_{secure_filename(f.filename)}"
-                tmp_path = os.path.join("/tmp", filename)
+    is_private = request.form.get("is_private", "false").lower() == "true"
+    files = request.files.getlist("photo")
+    if not files:
+        return jsonify({"success": False, "error": "no files"}), 400
 
-                # 保存上传文件到临时目录
-                with open(tmp_path, "wb") as tmp_file:
-                    for chunk in f.stream:
-                        tmp_file.write(chunk)
+    uploaded_urls = []
+    supabase_admin = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-                # 压缩图片（你已有 compress_image_file 函数）
-                compressed_path = compress_image_file(tmp_path, max_size=(1280, 1280), quality=70)
-                with open(compressed_path, "rb") as buf:
-                    file_bytes = buf.read()
-
-                public_url = None
-                try:
-                    # 上传到 Supabase Storage
-                    path = f"{album_name}/{filename}"
-                    bucket = supabase_admin.storage.from_(SUPABASE_BUCKET)
-                    bucket.upload(
-                        path,
-                        file_bytes,
-                        file_options={"content-type": f.mimetype or "application/octet-stream", "upsert": "true"}
-                    )
-
-                    # ✅ 正确生成公开 URL（手动拼接最稳）
-                    public_url = f"{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_BUCKET}/{quote(path)}"
-
-                except Exception as e:
-                    app.logger.exception("Supabase upload failed, fallback to local: %s", e)
-                    # 回退到本地存储
-                    local_path = os.path.join("static/uploads", filename)
-                    os.makedirs(os.path.dirname(local_path), exist_ok=True)
-                    os.rename(compressed_path, local_path)
-                    public_url = url_for("static", filename=f"uploads/{filename}", _external=True)
-
-                finally:
-                    # 清理临时文件
-                    if os.path.exists(compressed_path):
-                        os.remove(compressed_path)
-                    if os.path.exists(tmp_path):
-                        os.remove(tmp_path)
-
-                # 写入数据库 photo 表
-                if public_url:
-                    try:
-                        supabase_admin.table("photo").insert({
-                            "album": album_name,
-                            "url": public_url,
-                            "is_private": is_private
-                        }).execute()
-                    except Exception as e:
-                        app.logger.warning(f"写入 photo 表失败: {e}")
-
-                uploaded_urls.append(public_url)
-
-        # ---------- Fallback：本地模式 ----------
-        else:
-            os.makedirs("static/uploads", exist_ok=True)
-            for f in files:
-                if not f or not f.filename:
-                    continue
-                filename = f"{uuid.uuid4().hex}_{secure_filename(f.filename)}"
-                local_path = os.path.join("static/uploads", filename)
-                f.save(local_path)
-                uploaded_urls.append(url_for("static", filename=f"uploads/{filename}", _external=True))
-
-        # 保存最后使用的相册名
-        session["last_album"] = album_name
-        return jsonify({"success": True, "uploads": uploaded_urls})
-
+    # 确保相册存在
+    try:
+        existing = supabase_admin.table("album").select("*").eq("name", album_name).execute()
+        if not existing.data:
+            supabase_admin.table("album").insert({"name": album_name}).execute()
     except Exception as e:
-        app.logger.exception("Upload failed")
-        return jsonify({"success": False, "error": str(e)}), 500
+        app.logger.warning(f"创建 album 失败: {e}")
+
+    for f in files:
+        if not f or not f.filename:
+            continue
+
+        filename = f"{uuid.uuid4().hex}_{secure_filename(f.filename)}"
+        tmp_path = os.path.join("/tmp", filename)
+        f.save(tmp_path)
+
+        # 压缩图片
+        compressed_path = compress_image_file(tmp_path, max_size=(1280, 1280), quality=70)
+
+        with open(compressed_path, "rb") as buf:
+            file_bytes = buf.read()
+
+        try:
+            path = f"{album_name}/{filename}"
+            supabase_admin.storage.from_(SUPABASE_BUCKET).upload(
+                path, file_bytes,
+                file_options={"content-type": f.mimetype or "application/octet-stream", "upsert": "true"}
+            )
+            public_url = f"{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_BUCKET}/{quote(path)}"
+
+            # 写入 photo 表
+            supabase_admin.table("photo").insert({
+                "album": album_name,
+                "url": public_url,
+                "is_private": is_private
+            }).execute()
+
+            uploaded_urls.append(public_url)
+        except Exception as e:
+            app.logger.exception("Supabase 上传失败: %s", e)
+            return jsonify({"success": False, "error": str(e)}), 500
+        finally:
+            # 清理临时文件
+            for p in [tmp_path, compressed_path]:
+                if os.path.exists(p):
+                    os.remove(p)
+
+    session["last_album"] = album_name
+    return jsonify({"success": True, "uploads": uploaded_urls})
+
 # --------------------------
 # Upload private (logged-in required)
 # --------------------------
