@@ -276,7 +276,7 @@ def about():
     return render_template("about.html")
 
 # --------------------------
-# Albums list (reads from DB or Supabase)
+# Albums list
 # --------------------------
 @app.route("/album")
 def albums():
@@ -286,26 +286,24 @@ def albums():
         albums_list = []
 
         if use_supabase and supabase:
-            # 先读取 album 表
+            # 读取 album 表
             album_response = supabase.table("album").select("name").execute()
-
             album_names = [a["name"] for a in album_response.data] if album_response.data else []
-            album_map = {}
 
-            # 再读取 photo 表，获取封面照片
+            # 读取 photo 表，获取每个相册封面（最新一张）
             photo_response = supabase.table("photo")\
                 .select("album,url,created_at")\
                 .order("created_at", desc=True)\
                 .execute()
 
+            album_map = {}
             if photo_response.data:
                 for item in photo_response.data:
                     name = item.get("album")
                     url = item.get("url")
                     if name and url and name not in album_map:
-                        album_map[name] = url
+                        album_map[name] = url  # 直接用数据库里存的 URL
 
-            # 构建最终列表（无照片则显示默认封面）
             albums_list = [
                 {
                     "name": name,
@@ -330,11 +328,14 @@ def albums():
                     album_map[album] = url
 
             albums_list = [
-                {"name": name, "cover": album_map.get(name, url_for('static', filename='images/default_cover.jpg'))}
+                {
+                    "name": name,
+                    "cover": album_map.get(name, url_for('static', filename='images/default_cover.jpg'))
+                }
                 for name in sorted(album_names)
             ]
 
-        print("Albums list:", albums_list)  # 调试输出
+        print("Albums list:", albums_list)
         return render_template("album.html", albums=albums_list)
 
     except Exception as e:
@@ -348,7 +349,6 @@ def albums():
 def view_album(album_name):
     try:
         photos = []
-        drive_link = None  # 暂时不使用 Album 表
 
         if use_supabase and supabase:
             response = supabase.table("photo")\
@@ -357,14 +357,16 @@ def view_album(album_name):
                 .eq("is_private", False)\
                 .order("created_at", desc=True)\
                 .execute()
+
             if response.data:
                 for p in response.data:
-                    if p.get("url"):  # 确保 URL 不为空
+                    if p.get("url"):
                         photos.append({
                             "id": p["id"],
-                            "url": p["url"],
+                            "url": p["url"],  # ✅ 直接用数据库里的 URL
                             "created_at": p["created_at"]
                         })
+
         else:
             photos_db = Photo.query.filter_by(album=album_name, is_private=False)\
                 .order_by(Photo.created_at.desc())\
@@ -380,8 +382,7 @@ def view_album(album_name):
         return render_template(
             "view_album.html",
             album_name=album_name,
-            photos=photos,       # 改成 photos
-            drive_link=drive_link
+            photos=photos
         )
     except Exception as e:
         app.logger.exception("view_album failed")
