@@ -6,7 +6,7 @@ import uuid
 import stat
 from datetime import datetime
 from functools import wraps
-from urllib.parse import urlparse, unquote
+from urllib.parse import urlparse, quote
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.utils import secure_filename
