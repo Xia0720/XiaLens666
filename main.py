@@ -401,43 +401,45 @@ def delete_images():
         return redirect(url_for("view_album", album_name=album_name) if album_name else url_for("albums"))
 
     deleted_db = 0
-    deleted_local_files = 0
+    deleted_storage = 0
 
     for ident in ids:
-        # 从 Supabase 数据表中删除
         try:
+            # === 获取数据库中这张照片的 URL ===
+            record = None
+            if use_supabase and supabase:
+                res = supabase.table("photo").select("url").eq("id", ident).execute()
+                if res.data and len(res.data) > 0:
+                    record = res.data[0]
+            elif not use_supabase:
+                record = Photo.query.filter((Photo.id == ident) | (Photo.url == ident)).first()
+
+            # === 删除 Supabase 存储中的文件 ===
+            if use_supabase and supabase and record and "url" in record:
+                file_url = record["url"]
+                # 从 URL 中提取出 Supabase 存储路径部分
+                from urllib.parse import urlparse
+                parsed = urlparse(file_url)
+                file_path = parsed.path.split("/object/public/photos/")[-1]
+                if file_path:
+                    supabase.storage.from_(SUPABASE_BUCKET).remove([file_path])
+                    deleted_storage += 1
+                    app.logger.debug(f"Deleted file from Supabase: {file_path}")
+
+            # === 删除数据库记录 ===
             if use_supabase and supabase:
                 supabase.table("photo").delete().eq("id", ident).execute()
                 deleted_db += 1
-        except Exception as e:
-            app.logger.debug(f"Supabase delete photo failed: {e}")
-
-        # 删除 Supabase 存储文件
-        if use_supabase and supabase and album_name:
-            possible_paths = [
-                f"{album_name}/{ident}",
-                f"private/{album_name}/{ident}",
-                ident
-            ]
-            for _path in possible_paths:
-                try:
-                    supabase.storage.from_(SUPABASE_BUCKET).remove([_path])
-                except Exception as e:
-                    app.logger.debug("Supabase remove(%s) failed: %s", _path, e)
-
-        # 删除本地数据库（fallback）
-        if not use_supabase:
-            try:
-                p = Photo.query.filter((Photo.id == ident) | (Photo.url == ident)).first()
-                if p:
-                    db.session.delete(p)
+            else:
+                if record:
+                    db.session.delete(record)
                     db.session.commit()
                     deleted_db += 1
-            except Exception as e:
-                app.logger.debug(f"SQLite delete photo failed: {e}")
-                db.session.rollback()
 
-    flash(f"Deleted {deleted_db} image records.", "success")
+        except Exception as e:
+            app.logger.debug(f"❌ Delete failed for {ident}: {e}")
+
+    flash(f"✅ Deleted {deleted_db} database records and {deleted_storage} files.", "success")
     return redirect(url_for("view_album", album_name=album_name) if album_name else url_for("albums"))
     
 
@@ -473,44 +475,59 @@ def delete_private_images():
 @login_required
 def delete_album(album_name):
     try:
-        deleted_count = 0
+        deleted_photos = 0
+        deleted_files = 0
 
         if use_supabase and supabase:
-            # 删除 Supabase 存储中的文件夹
+            # === 1. 删除 Supabase 存储中的所有文件 ===
             try:
-                files = supabase.storage.from_(SUPABASE_BUCKET).list(album_name)
-                for f in files:
-                    supabase.storage.from_(SUPABASE_BUCKET).remove([f"{album_name}/{f['name']}"])
-                app.logger.info(f"Supabase storage cleared for album: {album_name}")
+                res = supabase.storage.from_(SUPABASE_BUCKET).list(album_name)
+                if res and isinstance(res, dict) and res.get("data"):
+                    for f in res["data"]:
+                        file_name = f.get("name")
+                        if file_name:
+                            file_path = f"{album_name}/{file_name}"
+                            supabase.storage.from_(SUPABASE_BUCKET).remove([file_path])
+                            deleted_files += 1
+                    app.logger.info(f"✅ Cleared {deleted_files} files in album '{album_name}'")
+                else:
+                    app.logger.info(f"No files found in Supabase album: {album_name}")
             except Exception as e:
-                app.logger.warning(f"Failed to clear Supabase storage for {album_name}: {e}")
+                app.logger.warning(f"❌ Failed to clear Supabase storage for {album_name}: {e}")
 
-            # 删除数据库中对应相册的照片
+            # === 2. 删除数据库中对应相册的所有照片 ===
             try:
                 supabase.table("photo").delete().eq("album", album_name).execute()
-                deleted_count += 1
+                deleted_photos += 1
             except Exception as e:
-                app.logger.warning(f"Supabase DB delete failed for {album_name}: {e}")
+                app.logger.warning(f"❌ Supabase DB delete failed for album {album_name}: {e}")
+
+            # === 3. 删除 Album 表记录 ===
+            try:
+                supabase.table("album").delete().eq("name", album_name).execute()
+            except Exception as e:
+                app.logger.warning(f"❌ Failed to delete album record for {album_name}: {e}")
 
         else:
-            # fallback: 本地 SQLite
+            # === fallback: 本地 SQLite 模式 ===
             photos = Photo.query.filter_by(album=album_name).all()
             for p in photos:
                 db.session.delete(p)
+            deleted_photos = len(photos)
             db.session.commit()
 
             album_obj = Album.query.filter_by(name=album_name).first()
             if album_obj:
                 db.session.delete(album_obj)
                 db.session.commit()
-            deleted_count = len(photos)
 
-        flash(f"Album '{album_name}' deleted successfully. ({deleted_count} photo records removed)", "success")
+        flash(f"✅ Album '{album_name}' deleted ({deleted_photos} photos, {deleted_files} files)", "success")
+        app.logger.info(f"Album '{album_name}' fully deleted.")
         return redirect(url_for("albums"))
 
     except Exception as e:
         app.logger.exception(f"delete_album failed: {e}")
-        flash(f"Failed to delete album '{album_name}': {e}", "danger")
+        flash(f"❌ Failed to delete album '{album_name}': {e}", "danger")
         return redirect(url_for("albums"))
 
 # --------------------------
