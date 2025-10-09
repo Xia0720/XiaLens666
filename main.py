@@ -51,18 +51,25 @@ cloudinary.config(
 # --------------------------
 # Supabase config (optional). If not present, we fallback to local storage.
 # --------------------------
+# --------------------------
+# Supabase config
+# --------------------------
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_ANON_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "photos")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")  # ✅ 加上这一行
+
 use_supabase = False
 supabase = None
-if SUPABASE_URL and SUPABASE_KEY and create_client:
+
+if SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY and create_client:
     try:
-        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+        # ✅ 用 Service Role Key 初始化客户端
+        supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
         use_supabase = True
+        app.logger.info("✅ Supabase client initialized with Service Role Key.")
     except Exception as e:
-        app.logger.warning("Supabase client init failed: %s", e)
+        app.logger.warning(f"⚠️ Supabase client init failed: {e}")
         supabase = None
         use_supabase = False
 
