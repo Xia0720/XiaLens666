@@ -485,32 +485,40 @@ def delete_album(album_name):
         deleted_files = 0
 
         if use_supabase and supabase:
-            # === 1. 删除 Supabase 存储中的所有文件 ===
+            bucket = SUPABASE_BUCKET or "photos"
+
+            # === 1️⃣ 删除 Supabase Storage 中的文件 ===
             try:
-                res = supabase.storage.from_(SUPABASE_BUCKET).list(album_name)
-                if res and isinstance(res, dict) and res.get("data"):
-                    for f in res["data"]:
-                        file_name = f.get("name")
-                        if file_name:
-                            file_path = f"{album_name}/{file_name}"
-                            supabase.storage.from_(SUPABASE_BUCKET).remove([file_path])
-                            deleted_files += 1
-                    app.logger.info(f"✅ Cleared {deleted_files} files in album '{album_name}'")
+                files_response = supabase.storage.from_(bucket).list(album_name)
+                # Supabase 新版 SDK 返回 list，而非 dict
+                if files_response and isinstance(files_response, list):
+                    file_names = [f["name"] for f in files_response if "name" in f]
+                    if file_names:
+                        full_paths = [f"{album_name}/{name}" for name in file_names]
+                        supabase.storage.from_(bucket).remove(full_paths)
+                        deleted_files = len(full_paths)
+                        app.logger.info(f"✅ Deleted {deleted_files} files from Supabase album '{album_name}'")
+                    else:
+                        app.logger.info(f"⚠️ No files found in Supabase album: {album_name}")
                 else:
-                    app.logger.info(f"No files found in Supabase album: {album_name}")
+                    app.logger.info(f"⚠️ Supabase list returned empty or unexpected format for album: {album_name}")
+
             except Exception as e:
                 app.logger.warning(f"❌ Failed to clear Supabase storage for {album_name}: {e}")
 
-            # === 2. 删除数据库中对应相册的所有照片 ===
+            # === 2️⃣ 删除 photo 表中的记录 ===
             try:
-                supabase.table("photo").delete().eq("album", album_name).execute()
-                deleted_photos += 1
+                resp = supabase.table("photo").delete().eq("album", album_name).execute()
+                if resp.data:
+                    deleted_photos = len(resp.data)
+                app.logger.info(f"✅ Deleted {deleted_photos} photo records for album '{album_name}'")
             except Exception as e:
                 app.logger.warning(f"❌ Supabase DB delete failed for album {album_name}: {e}")
 
-            # === 3. 删除 Album 表记录 ===
+            # === 3️⃣ 删除 album 表中的记录 ===
             try:
                 supabase.table("album").delete().eq("name", album_name).execute()
+                app.logger.info(f"✅ Deleted album record '{album_name}'")
             except Exception as e:
                 app.logger.warning(f"❌ Failed to delete album record for {album_name}: {e}")
 
@@ -526,6 +534,7 @@ def delete_album(album_name):
             if album_obj:
                 db.session.delete(album_obj)
                 db.session.commit()
+            app.logger.info(f"✅ Local album '{album_name}' deleted ({deleted_photos} photos)")
 
         flash(f"✅ Album '{album_name}' deleted ({deleted_photos} photos, {deleted_files} files)", "success")
         app.logger.info(f"Album '{album_name}' fully deleted.")
@@ -798,6 +807,7 @@ def get_albums():
 # --------------------------
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
+    # ---------- GET：加载上传页 ----------
     if request.method == "GET":
         try:
             if use_supabase and SUPABASE_SERVICE_ROLE_KEY:
@@ -816,7 +826,7 @@ def upload():
             last_album=session.get("last_album", "")
         )
 
-    # ---------- POST ----------
+    # ---------- POST：上传图片 ----------
     try:
         album_name = (request.form.get("album") or request.form.get("new_album") or "").strip()
         if not album_name:
@@ -830,10 +840,11 @@ def upload():
 
         uploaded_urls = []
 
+        # ---------- 使用 Supabase ----------
         if use_supabase and SUPABASE_SERVICE_ROLE_KEY:
             supabase_admin = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
-            # 创建相册
+            # 创建相册（如果不存在）
             try:
                 existing = supabase_admin.table("album").select("*").eq("name", album_name).execute()
                 if not existing.data:
@@ -848,55 +859,54 @@ def upload():
             except Exception as e:
                 app.logger.warning(f"创建 album 失败: {e}")
 
-            # 上传每个文件
+            # ---------- 上传每个文件 ----------
             for f in files:
                 if not f or not f.filename:
                     continue
 
                 filename = f"{uuid.uuid4().hex}_{secure_filename(f.filename)}"
                 tmp_path = os.path.join("/tmp", filename)
+
+                # 保存上传文件到临时目录
                 with open(tmp_path, "wb") as tmp_file:
                     for chunk in f.stream:
                         tmp_file.write(chunk)
 
-                # 压缩图片
+                # 压缩图片（你已有 compress_image_file 函数）
                 compressed_path = compress_image_file(tmp_path, max_size=(1280, 1280), quality=70)
                 with open(compressed_path, "rb") as buf:
                     file_bytes = buf.read()
 
-                # 上传到 Supabase Storage
                 public_url = None
                 try:
+                    # 上传到 Supabase Storage
                     path = f"{album_name}/{filename}"
-                    supabase_admin.storage.from_("photos").upload(
+                    bucket = supabase_admin.storage.from_(SUPABASE_BUCKET)
+                    bucket.upload(
                         path,
                         file_bytes,
                         file_options={"content-type": f.mimetype or "application/octet-stream", "upsert": "true"}
                     )
 
-                    # ✅ 修正：新版 SDK 的正确用法
-                    pub = supabase_admin.storage.from_("photos").get_public_url(path)
-                    if hasattr(pub, "public_url"):
-                        public_url = pub.public_url
-                    elif isinstance(pub, dict):
-                        public_url = pub.get("public_url")
-                    else:
-                        public_url = str(pub)
+                    # ✅ 正确生成公开 URL（手动拼接最稳）
+                    public_url = f"{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_BUCKET}/{quote(path)}"
 
                 except Exception as e:
                     app.logger.exception("Supabase upload failed, fallback to local: %s", e)
-                    # 回退到本地
+                    # 回退到本地存储
                     local_path = os.path.join("static/uploads", filename)
                     os.makedirs(os.path.dirname(local_path), exist_ok=True)
                     os.rename(compressed_path, local_path)
                     public_url = url_for("static", filename=f"uploads/{filename}", _external=True)
+
                 finally:
+                    # 清理临时文件
                     if os.path.exists(compressed_path):
                         os.remove(compressed_path)
                     if os.path.exists(tmp_path):
                         os.remove(tmp_path)
 
-                # 写入 photo 表
+                # 写入数据库 photo 表
                 if public_url:
                     try:
                         supabase_admin.table("photo").insert({
@@ -909,13 +919,24 @@ def upload():
 
                 uploaded_urls.append(public_url)
 
+        # ---------- Fallback：本地模式 ----------
+        else:
+            os.makedirs("static/uploads", exist_ok=True)
+            for f in files:
+                if not f or not f.filename:
+                    continue
+                filename = f"{uuid.uuid4().hex}_{secure_filename(f.filename)}"
+                local_path = os.path.join("static/uploads", filename)
+                f.save(local_path)
+                uploaded_urls.append(url_for("static", filename=f"uploads/{filename}", _external=True))
+
+        # 保存最后使用的相册名
         session["last_album"] = album_name
         return jsonify({"success": True, "uploads": uploaded_urls})
 
     except Exception as e:
         app.logger.exception("Upload failed")
         return jsonify({"success": False, "error": str(e)}), 500
-
 # --------------------------
 # Upload private (logged-in required)
 # --------------------------
