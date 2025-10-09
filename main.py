@@ -405,39 +405,45 @@ def delete_images():
 
     for ident in ids:
         try:
-            # === 获取数据库中这张照片的 URL ===
             record = None
+
+            # --- Supabase 模式 ---
             if use_supabase and supabase:
-                res = supabase.table("photo").select("url").eq("id", ident).execute()
+                # 支持用 URL 或 ID 两种方式删除
+                if ident.startswith("http"):
+                    res = supabase.table("photo").select("id, url").eq("url", ident).execute()
+                else:
+                    res = supabase.table("photo").select("id, url").eq("id", ident).execute()
+
                 if res.data and len(res.data) > 0:
                     record = res.data[0]
-            elif not use_supabase:
-                record = Photo.query.filter((Photo.id == ident) | (Photo.url == ident)).first()
+                else:
+                    app.logger.debug(f"No record found for {ident}")
+                    continue
 
-            # === 删除 Supabase 存储中的文件 ===
-            if use_supabase and supabase and record and "url" in record:
-                file_url = record["url"]
-                # 从 URL 中提取出 Supabase 存储路径部分
+                # === 删除 Supabase 存储中的文件 ===
                 from urllib.parse import urlparse
-                parsed = urlparse(file_url)
+                parsed = urlparse(record["url"])
                 file_path = parsed.path.split("/object/public/photos/")[-1]
                 if file_path:
                     supabase.storage.from_(SUPABASE_BUCKET).remove([file_path])
                     deleted_storage += 1
-                    app.logger.debug(f"Deleted file from Supabase: {file_path}")
+                    app.logger.debug(f"🗑️ Deleted file from Supabase: {file_path}")
 
-            # === 删除数据库记录 ===
-            if use_supabase and supabase:
-                supabase.table("photo").delete().eq("id", ident).execute()
+                # === 删除数据库记录 ===
+                supabase.table("photo").delete().eq("id", record["id"]).execute()
                 deleted_db += 1
+
+            # --- 本地 SQLite 模式 ---
             else:
+                record = Photo.query.filter((Photo.id == ident) | (Photo.url == ident)).first()
                 if record:
                     db.session.delete(record)
                     db.session.commit()
                     deleted_db += 1
 
         except Exception as e:
-            app.logger.debug(f"❌ Delete failed for {ident}: {e}")
+            app.logger.warning(f"❌ Delete failed for {ident}: {e}")
 
     flash(f"✅ Deleted {deleted_db} database records and {deleted_storage} files.", "success")
     return redirect(url_for("view_album", album_name=album_name) if album_name else url_for("albums"))
