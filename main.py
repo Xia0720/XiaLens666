@@ -54,8 +54,10 @@ cloudinary.config(
 # --------------------------
 # Supabase config
 # --------------------------
+# --------------------------
+# Supabase config
+# --------------------------
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_KEY")
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "photos")
 
@@ -64,10 +66,9 @@ supabase = None
 
 if SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY and create_client:
     try:
-        # ✅ 用 Service Role Key 初始化客户端
         supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
         use_supabase = True
-        app.logger.info("✅ Supabase client initialized with Service Role Key.")
+        app.logger.info("✅ Supabase client initialized successfully (Service Role Key).")
     except Exception as e:
         app.logger.warning(f"⚠️ Supabase client init failed: {e}")
         supabase = None
