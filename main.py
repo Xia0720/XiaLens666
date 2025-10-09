@@ -54,6 +54,7 @@ cloudinary.config(
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "photos")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")  # ✅ 加上这一行
 use_supabase = False
 supabase = None
 if SUPABASE_URL and SUPABASE_KEY and create_client:
