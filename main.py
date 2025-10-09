@@ -14,7 +14,6 @@ from PIL import Image, ExifTags, UnidentifiedImageError
 
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from your_image_utils import compress_image_file  # 自己的压缩函数
 
 # optional supabase client (if you have it installed and env vars set)
 try:
