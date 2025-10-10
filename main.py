@@ -288,57 +288,68 @@ def albums():
         albums_list = []
 
         if use_supabase and supabase:
-            # 读取 album 表
+            # 从 album 表读取所有相册名
             album_response = supabase.table("album").select("name").execute()
             album_names = [a["name"] for a in album_response.data] if album_response.data else []
 
-            # 读取 photo 表，获取每个相册封面（最新一张）
-            photo_response = supabase.table("photo")\
-                .select("album,url,created_at")\
-                .order("created_at", desc=True)\
+            # 从 photo 表读取最新图片（作为封面）
+            photo_response = (
+                supabase.table("photo")
+                .select("album,url,created_at")
+                .eq("is_private", False)
+                .order("created_at", desc=True)
                 .execute()
+            )
 
             album_map = {}
             if photo_response.data:
                 for item in photo_response.data:
                     name = item.get("album")
                     url = item.get("url")
-                    if name and url and name not in album_map:
-                        album_map[name] = url.rstrip('?') # 直接用数据库里存的 URL
 
+                    # ✅ 过滤空 album 和 url
+                    if not name or not url:
+                        continue
+
+                    # ✅ 确保 URL 编码正确（防止中文或空格）
+                    safe_url = url.replace(" ", "%20")
+
+                    # ✅ 每个相册只保留最新一张照片作封面
+                    if name not in album_map:
+                        album_map[name] = safe_url.rstrip("?")
+
+            # ✅ 仅显示有封面的相册（去掉没图的）
             albums_list = [
-                {
-                    "name": name,
-                    "cover": album_map.get(name, url_for('static', filename='images/default_cover.jpg'))
-                }
-                for name in sorted(album_names)
+                {"name": name, "cover": album_map[name]}
+                for name in album_names
+                if name in album_map
             ]
 
         else:
             # SQLite 回退逻辑
-            rows = db.session.query(Photo.album, Photo.url, Photo.created_at)\
-                .order_by(Photo.created_at.desc())\
+            rows = (
+                db.session.query(Photo.album, Photo.url, Photo.created_at)
+                .order_by(Photo.created_at.desc())
                 .all()
+            )
 
             album_map = {}
             album_names = set()
             for album, url, _ in rows:
-                if not album:
+                if not album or not url:
                     continue
                 album_names.add(album)
-                if album not in album_map and url:
+                if album not in album_map:
                     album_map[album] = url
 
             albums_list = [
-                {
-                    "name": name,
-                    "cover": album_map.get(name, url_for('static', filename='images/default_cover.jpg'))
-                }
+                {"name": name, "cover": album_map[name]}
                 for name in sorted(album_names)
+                if name in album_map
             ]
 
-        print("Albums list:", albums_list)
-        return render_template("album.html", albums=albums_list)
+        print("✅ Albums list:", albums_list)
+        return render_template("album.html", albums=albums_list, logged_in=session.get("logged_in"))
 
     except Exception as e:
         app.logger.exception("Failed to load albums")
@@ -353,39 +364,48 @@ def view_album(album_name):
         photos = []
 
         if use_supabase and supabase:
-            response = supabase.table("photo")\
-                .select("id,url,created_at")\
-                .eq("album", album_name)\
-                .eq("is_private", False)\
-                .order("created_at", desc=True)\
+            response = (
+                supabase.table("photo")
+                .select("id,url,created_at")
+                .eq("album", album_name)
+                .eq("is_private", False)
+                .order("created_at", desc=True)
                 .execute()
+            )
 
             if response.data:
                 for p in response.data:
-                    if p.get("url"):
+                    url = p.get("url")
+                    if url:
                         photos.append({
                             "id": p["id"],
-                            "url": p["url"],  # ✅ 直接用数据库里的 URL
+                            # ✅ 确保 URL 中文/空格正常
+                            "url": url.replace(" ", "%20").rstrip("?"),
                             "created_at": p["created_at"]
                         })
 
         else:
-            photos_db = Photo.query.filter_by(album=album_name, is_private=False)\
-                .order_by(Photo.created_at.desc())\
+            photos_db = (
+                Photo.query.filter_by(album=album_name, is_private=False)
+                .order_by(Photo.created_at.desc())
                 .all()
+            )
             for p in photos_db:
                 if p.url:
                     photos.append({
                         "id": p.id,
-                        "url": p.url,
+                        "url": p.url.replace(" ", "%20").rstrip("?"),
                         "created_at": p.created_at
                     })
 
+        print(f"✅ {album_name} Photos:", photos)
         return render_template(
             "view_album.html",
             album_name=album_name,
-            photos=photos
+            photos=photos,
+            logged_in=session.get("logged_in")
         )
+
     except Exception as e:
         app.logger.exception("view_album failed")
         return f"Error loading album: {e}", 500
@@ -808,53 +828,68 @@ def get_albums():
 # --------------------------
 # Upload (public album) - accepts multipart/form-data
 # --------------------------
-@app.route("/upload", methods=["POST"])
+# --------------------------
+# Upload photo
+# --------------------------
+@app.route("/upload", methods=["GET", "POST"])
 def upload():
     try:
-        album_name = request.form.get("album_name", "").strip()
+        if request.method == "GET":
+            # ✅ 显示上传页面
+            return render_template("upload.html")
+
+        # ✅ 处理表单提交（POST）
+        album_name = request.form.get("album")
         file = request.files.get("file")
 
-        if not file or not album_name:
-            return "Missing album or file", 400
+        if not album_name or not file:
+            return "Missing album name or file", 400
 
         filename = secure_filename(file.filename)
-        if not filename:
-            return "Invalid filename", 400
-
-        # ✅ 确保支持中文和空格
-        safe_album = urllib.parse.quote(album_name, safe='')
-        safe_filename = urllib.parse.quote(filename, safe='')
+        ext = os.path.splitext(filename)[1]
+        unique_name = f"{uuid.uuid4().hex}{ext}"
 
         # ✅ 上传到 Supabase
-        file_path = f"{safe_album}/{safe_filename}"
-        file_bytes = file.read()
+        if use_supabase and supabase:
+            file_bytes = file.read()
+            path = f"{album_name}/{unique_name}"
 
-        res = supabase.storage.from_("photos").upload(
-            file_path, file_bytes, {"content-type": file.mimetype}
-        )
+            res = supabase.storage.from_("photos").upload(
+                path=path,
+                file=file_bytes,
+                file_options={"content-type": file.content_type}
+            )
 
-        if res.get("error"):
-            print("Upload error:", res["error"])
-            return f"Upload failed: {res['error']['message']}", 500
+            if res.status_code in (200, 201):
+                public_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{path}"
+                # 存入数据库
+                supabase.table("photo").insert({
+                    "album": album_name,
+                    "url": public_url,
+                    "is_private": False
+                }).execute()
+                print("✅ Uploaded:", public_url)
+                return redirect(url_for("view_album", album_name=album_name))
+            else:
+                print("❌ Upload failed:", res)
+                return f"Upload failed: {res}", 500
 
-        # ✅ 生成可公开访问的 URL
-        public_url = supabase.storage.from_("photos").get_public_url(file_path)
-        if not public_url:
-            return "Failed to get public URL", 500
+        # ✅ SQLite 回退逻辑
+        else:
+            upload_folder = os.path.join("static", "uploads", album_name)
+            os.makedirs(upload_folder, exist_ok=True)
+            save_path = os.path.join(upload_folder, unique_name)
+            file.save(save_path)
 
-        # ✅ 写入数据库
-        supabase.table("photo").insert({
-            "album": album_name,
-            "url": public_url,
-            "is_private": False
-        }).execute()
+            photo = Photo(album=album_name, url="/" + save_path.replace("\\", "/"))
+            db.session.add(photo)
+            db.session.commit()
 
-        print("✅ Uploaded:", public_url)
-        return redirect(url_for("view_album", album_name=album_name))
+            return redirect(url_for("view_album", album_name=album_name))
 
     except Exception as e:
         app.logger.exception("Upload failed")
-        return f"Upload error: {e}", 500
+        return f"Error uploading: {e}", 500
 
 # --------------------------
 # Upload private (logged-in required)
