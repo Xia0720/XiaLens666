@@ -170,7 +170,7 @@
         <!-- 点击进入相册 -->
         <a href="{{ url_for('view_album', album_name=album['name']) }}">
           {% if album['cover'] %}
-            <img src="{{ album['cover'] }}" alt="{{ album['name'] }}">
+            <img src="{{ album['cover'] }}" alt="{{ album['name'] }}" loading="lazy">
           {% else %}
             <img src="{{ url_for('static', filename='images/default_cover.jpg') }}" alt="No cover">
           {% endif %}
@@ -178,7 +178,6 @@
         </a>
 
         {% if logged_in %}
-        <!-- 删除相册按钮 -->
         <form class="delete-form"
               action="{{ url_for('delete_album', album_name=album['name']) }}"
               method="POST"
