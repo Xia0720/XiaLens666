@@ -4,6 +4,7 @@ import re
 import io
 import uuid
 import stat
+import shutil
 from datetime import datetime
 from functools import wraps
 from urllib.parse import urlparse, quote
@@ -863,7 +864,7 @@ def upload():
                 # 上传到 Supabase
                 bucket.upload(
                     path, file_bytes,
-                    file_options={"content-type": f.mimetype or "application/octet-stream", "upsert": True}
+                    file_options={"content-type": f.mimetype or "application/octet-stream", "x-upsert": "true"}
                 )
                 # ✅ 正确生成可直接访问的公共 URL
                 public_url = bucket.get_public_url(path).public_url
