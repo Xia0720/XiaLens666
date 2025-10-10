@@ -177,10 +177,11 @@ body.album-page::before {
         {% for photo in photos[i:i+row_size] %}
         <div class="album-item">
           {% if logged_in %}
-            <input type="checkbox" name="to_delete" value="{{ photo.url }}">
+            <input type="checkbox" name="to_delete" value="{{ photo['url'] }}">
           {% endif %}
-          <a href="{{ photo.url }}" class="glightbox" data-gallery="album-{{ album_name }}">
-            <img src="{{ photo.url }}" alt="Photo" loading="lazy">
+          <a href="{{ photo['url'] }}" class="glightbox" data-gallery="album-{{ album_name }}">
+            <!-- ✅ 修复: 改为 photo['url']，确保从 dict 正确取值 -->
+            <img src="{{ photo['url'] }}" alt="Photo" loading="lazy" onerror="this.src='{{ url_for('static', filename='images/default_cover.jpg') }}'">
           </a>
         </div>
         {% endfor %}
@@ -209,6 +210,12 @@ body.album-page::before {
 </div>
 
 <script>
-const lightbox = GLightbox({ selector: '.glightbox', loop: true, touchNavigation: true, keyboardNavigation: true, closeOnOutsideClick: true });
+const lightbox = GLightbox({
+  selector: '.glightbox',
+  loop: true,
+  touchNavigation: true,
+  keyboardNavigation: true,
+  closeOnOutsideClick: true
+});
 </script>
 {% endblock %}
