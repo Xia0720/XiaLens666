@@ -5,6 +5,7 @@ import io
 import uuid
 import stat
 import shutil
+import tempfile
 from datetime import datetime
 from functools import wraps
 from urllib.parse import urlparse, quote
@@ -807,104 +808,53 @@ def get_albums():
 # --------------------------
 # Upload (public album) - accepts multipart/form-data
 # --------------------------
-@app.route("/upload", methods=["GET", "POST"])
+@app.route("/upload", methods=["POST"])
 def upload():
-    if request.method == "GET":
-        # 获取相册名
-        album_names = []
-        if use_supabase and SUPABASE_SERVICE_ROLE_KEY:
-            try:
-                supabase_admin = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-                res = supabase_admin.table("album").select("name").execute()
-                album_names = [a["name"] for a in res.data] if res.data else []
-            except Exception as e:
-                app.logger.warning(f"获取相册名失败: {e}")
-        return render_template("upload.html", album_names=album_names, last_album=session.get("last_album", ""))
+    try:
+        album_name = request.form.get("album_name", "").strip()
+        file = request.files.get("file")
 
-    # ---------- POST 上传 ----------
-    album_name = (request.form.get("album") or request.form.get("new_album") or "").strip()
-    if not album_name:
-        return jsonify({"success": False, "error": "album name required"}), 400
+        if not file or not album_name:
+            return "Missing album or file", 400
 
-    is_private = request.form.get("is_private", "false").lower() == "true"
-    files = request.files.getlist("photo")
-    if not files:
-        return jsonify({"success": False, "error": "no files"}), 400
+        filename = secure_filename(file.filename)
+        if not filename:
+            return "Invalid filename", 400
 
-    uploaded_urls = []
+        # ✅ 确保支持中文和空格
+        safe_album = urllib.parse.quote(album_name, safe='')
+        safe_filename = urllib.parse.quote(filename, safe='')
 
-    # ---------- Supabase 上传 ----------
-    if use_supabase and SUPABASE_SERVICE_ROLE_KEY:
-        supabase_admin = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-        bucket = supabase_admin.storage.from_(SUPABASE_BUCKET)
+        # ✅ 上传到 Supabase
+        file_path = f"{safe_album}/{safe_filename}"
+        file_bytes = file.read()
 
-        # 确保相册存在
-        try:
-            existing = supabase_admin.table("album").select("*").eq("name", album_name).execute()
-            if not existing.data:
-                supabase_admin.table("album").insert({"name": album_name}).execute()
-        except Exception as e:
-            app.logger.warning(f"创建 album 失败: {e}")
+        res = supabase.storage.from_("photos").upload(
+            file_path, file_bytes, {"content-type": file.mimetype}
+        )
 
-        for f in files:
-            if not f or not f.filename:
-                continue
+        if res.get("error"):
+            print("Upload error:", res["error"])
+            return f"Upload failed: {res['error']['message']}", 500
 
-            filename = f"{uuid.uuid4().hex}_{secure_filename(f.filename)}"
-            tmp_path = os.path.join("/tmp", filename)
-            f.save(tmp_path)
+        # ✅ 生成可公开访问的 URL
+        public_url = supabase.storage.from_("photos").get_public_url(file_path)
+        if not public_url:
+            return "Failed to get public URL", 500
 
-            compressed_path = compress_image_file(tmp_path, max_size=(1280, 1280), quality=70)
+        # ✅ 写入数据库
+        supabase.table("photo").insert({
+            "album": album_name,
+            "url": public_url,
+            "is_private": False
+        }).execute()
 
-            with open(compressed_path, "rb") as buf:
-                file_bytes = buf.read()
+        print("✅ Uploaded:", public_url)
+        return redirect(url_for("view_album", album_name=album_name))
 
-            try:
-                path = f"{album_name}/{filename}"
-                # 上传到 Supabase
-                bucket.upload(
-                    path, file_bytes,
-                    file_options={"content-type": f.mimetype or "application/octet-stream", "x-upsert": "true"}
-                )
-                # ✅ 正确生成可直接访问的公共 URL
-                public_url = bucket.get_public_url(path).public_url
-
-                # 写入 photo 表
-                supabase_admin.table("photo").insert({
-                    "album": album_name,
-                    "url": public_url,
-                    "is_private": is_private
-                }).execute()
-
-                uploaded_urls.append(public_url)
-            except Exception as e:
-                app.logger.warning(f"Supabase 上传失败: {e}")
-                # 回退到本地
-                local_dir = "static/uploads"
-                os.makedirs(local_dir, exist_ok=True)
-                local_path = os.path.join(local_dir, filename)
-                shutil.copy(compressed_path, local_path)
-                public_url = url_for("static", filename=f"uploads/{filename}", _external=True)
-                uploaded_urls.append(public_url)
-            finally:
-                # 清理临时文件
-                for p in [tmp_path, compressed_path]:
-                    if os.path.exists(p):
-                        os.remove(p)
-
-    # ---------- 本地回退 ----------
-    else:
-        os.makedirs("static/uploads", exist_ok=True)
-        for f in files:
-            if not f or not f.filename:
-                continue
-            filename = f"{uuid.uuid4().hex}_{secure_filename(f.filename)}"
-            local_path = os.path.join("static/uploads", filename)
-            f.save(local_path)
-            uploaded_urls.append(url_for("static", filename=f"uploads/{filename}", _external=True))
-
-    session["last_album"] = album_name
-    return jsonify({"success": True, "uploads": uploaded_urls})
+    except Exception as e:
+        app.logger.exception("Upload failed")
+        return f"Upload error: {e}", 500
 
 # --------------------------
 # Upload private (logged-in required)
