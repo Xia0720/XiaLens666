@@ -863,10 +863,10 @@ def upload():
                 # 上传到 Supabase
                 bucket.upload(
                     path, file_bytes,
-                    file_options={"content-type": f.mimetype or "application/octet-stream", "upsert": "true"}
+                    file_options={"content-type": f.mimetype or "application/octet-stream", "upsert": True}
                 )
-                # 获取可直接访问的公共 URL
-                public_url = bucket.get_public_url(path).get("publicUrl")
+                # ✅ 正确生成可直接访问的公共 URL
+                public_url = bucket.get_public_url(path).public_url
 
                 # 写入 photo 表
                 supabase_admin.table("photo").insert({
@@ -882,10 +882,11 @@ def upload():
                 local_dir = "static/uploads"
                 os.makedirs(local_dir, exist_ok=True)
                 local_path = os.path.join(local_dir, filename)
-                os.rename(compressed_path, local_path)
+                shutil.copy(compressed_path, local_path)
                 public_url = url_for("static", filename=f"uploads/{filename}", _external=True)
                 uploaded_urls.append(public_url)
             finally:
+                # 清理临时文件
                 for p in [tmp_path, compressed_path]:
                     if os.path.exists(p):
                         os.remove(p)
@@ -901,7 +902,6 @@ def upload():
             f.save(local_path)
             uploaded_urls.append(url_for("static", filename=f"uploads/{filename}", _external=True))
 
-    # 保存最后使用的相册名
     session["last_album"] = album_name
     return jsonify({"success": True, "uploads": uploaded_urls})
 
