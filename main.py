@@ -304,7 +304,7 @@ def albums():
                     name = item.get("album")
                     url = item.get("url")
                     if name and url and name not in album_map:
-                        album_map[name] = url  # 直接用数据库里存的 URL
+                        album_map[name] = url.rstrip('?') # 直接用数据库里存的 URL
 
             albums_list = [
                 {
