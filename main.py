@@ -380,8 +380,21 @@ def albums():
 def view_album(album_name):
     try:
         photos = []
+        drive_link = None  # ✅ 新增变量：Google Drive 链接
 
         if use_supabase and supabase:
+            # ✅ 从 album 表中查询该相册的 drive_folder_id
+            album_resp = (
+                supabase.table("album")
+                .select("drive_folder_id")
+                .eq("name", album_name)
+                .execute()
+            )
+            if album_resp.data and album_resp.data[0].get("drive_folder_id"):
+                folder_id = album_resp.data[0]["drive_folder_id"]
+                drive_link = f"https://drive.google.com/drive/folders/{folder_id}"
+
+            # ✅ 查询相册照片
             response = (
                 supabase.table("photo")
                 .select("id,url,created_at")
@@ -397,12 +410,16 @@ def view_album(album_name):
                     if url:
                         photos.append({
                             "id": p["id"],
-                            # ✅ 确保 URL 中文/空格正常
                             "url": url.replace(" ", "%20").rstrip("?"),
                             "created_at": p["created_at"]
                         })
 
         else:
+            # ✅ 本地数据库情况
+            album_db = Album.query.filter_by(name=album_name).first()
+            if album_db and album_db.drive_folder_id:
+                drive_link = f"https://drive.google.com/drive/folders/{album_db.drive_folder_id}"
+
             photos_db = (
                 Photo.query.filter_by(album=album_name, is_private=False)
                 .order_by(Photo.created_at.desc())
@@ -417,10 +434,13 @@ def view_album(album_name):
                     })
 
         print(f"✅ {album_name} Photos:", photos)
+        print(f"✅ Drive link: {drive_link}")
+
         return render_template(
             "view_album.html",
             album_name=album_name,
             photos=photos,
+            drive_link=drive_link,  # ✅ 传入模板
             logged_in=session.get("logged_in")
         )
 
