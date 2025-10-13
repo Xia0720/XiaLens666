@@ -833,16 +833,17 @@ def upload():
     try:
         if request.method == "GET":
             # ✅ 显示上传页面
-            return render_template("upload.html")
+            album_names = get_album_names_from_db()
+            return render_template("upload.html", album_names=album_names)
 
         # ✅ 处理表单提交（POST）
         album_name = request.form.get("album") or request.form.get("new_album")
-        file = request.files.get("photo")  # ← 改成 photo
+        file = request.files.get("photo")
 
         if not album_name or not file:
             return "Missing album name or file", 400
 
-        # ✅ 支持中文与空格相册名
+        # ✅ 允许中文和空格（上传路径安全化）
         safe_album_name = album_name.replace(" ", "_")
 
         filename = secure_filename(file.filename)
@@ -851,32 +852,30 @@ def upload():
 
         # ✅ 上传到 Supabase
         if use_supabase and supabase:
-            file_bytes = file.read()
-            path = f"{safe_album_name}/{unique_name}"
+            try:
+                file_path = f"{safe_album_name}/{unique_name}"
+                # 新版 SDK 自动抛异常，不用判断 status_code
+                res = supabase.storage.from_("photos").upload(file_path, file)
+                print("Upload result:", res)
 
-            res = supabase.storage.from_("photos").upload(
-                path=path,
-                file=file_bytes,
-                file_options={"content-type": file.content_type}
-            )
+                # ✅ 生成公开访问 URL
+                public_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{file_path}"
 
-            if res.status_code in (200, 201, 204):
-                public_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{path}"
-
-                # ✅ 存入数据库
+                # ✅ 写入数据库
                 supabase.table("photo").insert({
                     "album": album_name,
                     "url": public_url,
                     "is_private": False
                 }).execute()
 
-                print("✅ Uploaded:", public_url)
+                print("✅ Uploaded successfully:", public_url)
                 return redirect(url_for("view_album", album_name=album_name))
-            else:
-                print("❌ Upload failed:", res)
-                return f"Upload failed: {res}", 500
 
-        # ✅ SQLite 回退逻辑（无 Supabase）
+            except Exception as e:
+                print("❌ Upload failed:", e)
+                return f"Upload failed: {e}", 500
+
+        # ✅ 如果不用 Supabase，保存到本地
         else:
             upload_folder = os.path.join("static", "uploads", safe_album_name)
             os.makedirs(upload_folder, exist_ok=True)
