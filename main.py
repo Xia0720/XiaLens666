@@ -846,6 +846,8 @@ def get_albums():
 # --------------------------
 # Upload photo
 # --------------------------
+from io import BytesIO  # ✅ 请确保在文件顶部导入
+
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     try:
@@ -871,15 +873,20 @@ def upload():
         # ✅ 上传到 Supabase
         if use_supabase and supabase:
             try:
+                # 1️⃣ 生成存储路径
                 file_path = f"{safe_album_name}/{unique_name}"
-                # 新版 SDK 自动抛异常，不用判断 status_code
-                res = supabase.storage.from_("photos").upload(file_path, file)
+
+                # 2️⃣ 读取文件并转成 BytesIO（修复上传问题）
+                file_bytes = BytesIO(file.read())
+
+                # 3️⃣ 上传到 Supabase Storage
+                res = supabase.storage.from_("photos").upload(file_path, file_bytes)
                 print("Upload result:", res)
 
-                # ✅ 生成公开访问 URL
+                # 4️⃣ 生成公开访问 URL
                 public_url = f"{SUPABASE_URL}/storage/v1/object/public/photos/{file_path}"
 
-                # ✅ 写入数据库
+                # 5️⃣ 写入数据库
                 supabase.table("photo").insert({
                     "album": album_name,
                     "url": public_url,
