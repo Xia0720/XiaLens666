@@ -266,6 +266,24 @@ def upload_to_cloudinary(file):
     )
     return upload_result["secure_url"]
 
+
+def get_album_names_from_db():
+    """从数据库或 Supabase 获取所有相册名"""
+    try:
+        if use_supabase and supabase:
+            response = supabase.table("album").select("name").execute()
+            if response.data:
+                return [a["name"] for a in response.data if "name" in a]
+            else:
+                return []
+        else:
+            # 本地 SQLite 回退逻辑
+            rows = db.session.query(Photo.album).distinct().all()
+            return [r[0] for r in rows if r[0]]
+    except Exception as e:
+        print("⚠️ Failed to load album names:", e)
+        return []
+
 # --------------------------
 # Routes: index / static pages
 # --------------------------
