@@ -380,21 +380,25 @@ def albums():
 def view_album(album_name):
     try:
         photos = []
-        drive_link = None  # ✅ 新增变量：Google Drive 链接
+        drive_link = None  # ✅ 新增：初始化 Google Drive 链接
 
+        # ✅ 从 Supabase 的 album 表中获取 drive_folder_id
         if use_supabase and supabase:
-            # ✅ 从 album 表中查询该相册的 drive_folder_id
-            album_resp = (
+            album_res = (
                 supabase.table("album")
                 .select("drive_folder_id")
                 .eq("name", album_name)
+                .limit(1)
                 .execute()
             )
-            if album_resp.data and album_resp.data[0].get("drive_folder_id"):
-                folder_id = album_resp.data[0]["drive_folder_id"]
-                drive_link = f"https://drive.google.com/drive/folders/{folder_id}"
+            if album_res.data and len(album_res.data) > 0:
+                drive_folder_id = album_res.data[0].get("drive_folder_id")
+                if drive_folder_id:
+                    # ✅ 拼接成可直接访问的 Google Drive 文件夹链接
+                    drive_link = f"https://drive.google.com/drive/folders/{drive_folder_id}"
 
-            # ✅ 查询相册照片
+        # ✅ 获取相册中的照片
+        if use_supabase and supabase:
             response = (
                 supabase.table("photo")
                 .select("id,url,created_at")
@@ -415,11 +419,6 @@ def view_album(album_name):
                         })
 
         else:
-            # ✅ 本地数据库情况
-            album_db = Album.query.filter_by(name=album_name).first()
-            if album_db and album_db.drive_folder_id:
-                drive_link = f"https://drive.google.com/drive/folders/{album_db.drive_folder_id}"
-
             photos_db = (
                 Photo.query.filter_by(album=album_name, is_private=False)
                 .order_by(Photo.created_at.desc())
@@ -434,7 +433,7 @@ def view_album(album_name):
                     })
 
         print(f"✅ {album_name} Photos:", photos)
-        print(f"✅ Drive link: {drive_link}")
+        print(f"✅ Google Drive Link:", drive_link)
 
         return render_template(
             "view_album.html",
