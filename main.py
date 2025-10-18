@@ -380,33 +380,10 @@ def albums():
 def view_album(album_name):
     try:
         photos = []
-        drive_link = None  # ✅ 初始化 Google Drive 链接
+        drive_link = None  # ✅ 新增：初始化 drive_link
 
         if use_supabase and supabase:
-            print(f"🔍 查询相册信息: {album_name}")
-
-            album_res = (
-                supabase.table("album")
-                .select("name, drive_folder_id")
-                .eq("name", album_name)
-                .limit(1)
-                .execute()
-            )
-            print("🔍 Supabase album 返回结果:", album_res.data)
-
-            if album_res.data and len(album_res.data) > 0:
-                drive_folder_id = album_res.data[0].get("drive_folder_id")
-                if drive_folder_id:
-                    drive_link = f"https://drive.google.com/drive/folders/{drive_folder_id}"
-                    print("✅ 生成 drive_link:", drive_link)
-                else:
-                    print("⚠️ drive_folder_id 是空或 null")
-            else:
-                print("❌ 没查到相册记录")
-
-        # ✅ 取照片
-        photos = []
-        if use_supabase and supabase:
+            # 1️⃣ 获取照片
             response = (
                 supabase.table("photo")
                 .select("id,url,created_at")
@@ -415,8 +392,6 @@ def view_album(album_name):
                 .order("created_at", desc=True)
                 .execute()
             )
-            print("📸 Supabase photo 返回:", response.data)
-
             if response.data:
                 for p in response.data:
                     url = p.get("url")
@@ -427,14 +402,38 @@ def view_album(album_name):
                             "created_at": p["created_at"]
                         })
 
-        print(f"✅ 最终 drive_link={drive_link}")
-        print(f"✅ {album_name} photos 数量={len(photos)}")
+            # 2️⃣ 获取 album 表中的 Google Drive 文件夹 ID
+            album_info = (
+                supabase.table("album")
+                .select("drive_folder_id")
+                .eq("name", album_name)
+                .execute()
+            )
+            if album_info.data and album_info.data[0].get("drive_folder_id"):
+                drive_folder_id = album_info.data[0]["drive_folder_id"]
+                drive_link = f"https://drive.google.com/drive/folders/{drive_folder_id}"
 
+        else:
+            # --- SQLite 回退 ---
+            photos_db = (
+                Photo.query.filter_by(album=album_name, is_private=False)
+                .order_by(Photo.created_at.desc())
+                .all()
+            )
+            for p in photos_db:
+                if p.url:
+                    photos.append({
+                        "id": p.id,
+                        "url": p.url.replace(" ", "%20").rstrip("?"),
+                        "created_at": p.created_at
+                    })
+
+        # ✅ 返回模板时，一并传 drive_link
         return render_template(
             "view_album.html",
             album_name=album_name,
             photos=photos,
-            drive_link=drive_link,  # ✅ 模板参数
+            drive_link=drive_link,  # ✅ 关键：传给模板
             logged_in=session.get("logged_in")
         )
 
@@ -863,17 +862,14 @@ def get_albums():
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     try:
-        # ---------- GET: 渲染上传页面并传相册名 ----------
         if request.method == "GET":
             album_names = []
             try:
                 if use_supabase and SUPABASE_SERVICE_ROLE_KEY:
-                    # 用 service role 读 album 表（只读）
                     supabase_admin = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
                     res = supabase_admin.table("album").select("name").order("name", desc=False).execute()
                     album_names = [a["name"] for a in (res.data or [])]
                 else:
-                    # SQLite 回退：从 Photo 表提取相册名
                     rows = db.session.query(Photo.album).distinct().all()
                     album_names = sorted([r[0] for r in rows if r[0]])
             except Exception as e:
@@ -882,98 +878,79 @@ def upload():
 
             return render_template("upload.html", album_names=album_names, last_album=session.get("last_album", ""))
 
-        # ---------- POST: 上传文件 ----------
-        # 支持前端单文件或多文件（前端逐文件调用或一次上传多个）
+        # ---------- POST ----------
         album_name = (request.form.get("album") or request.form.get("new_album") or "").strip()
         if not album_name:
             return jsonify({"success": False, "error": "album name required"}), 400
 
-        # files: 支持多文件上传
+        drive_folder_id = (request.form.get("drive_folder_id") or "").strip()
+        is_private = request.form.get("is_private", "false").lower() == "true"
         files = request.files.getlist("photo") or []
         if not files:
             return jsonify({"success": False, "error": "no files"}), 400
 
-        is_private = request.form.get("is_private", "false").lower() == "true"
-
         uploaded_urls = []
-        safe_album = album_name.replace(" ", "_")  # 用下划线替换空格以构造路径
+        safe_album = album_name.replace(" ", "_")
 
         if use_supabase and SUPABASE_SERVICE_ROLE_KEY:
             supabase_admin = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
             bucket = supabase_admin.storage.from_(SUPABASE_BUCKET)
 
-            # 确保 album 表有记录（可选）
+            # --- 检查 album 是否存在，不存在则创建 ---
             try:
                 existing = supabase_admin.table("album").select("*").eq("name", album_name).execute()
                 if not existing.data:
-                    supabase_admin.table("album").insert({"name": album_name}).execute()
+                    # 新建时带上 drive_folder_id
+                    supabase_admin.table("album").insert({
+                        "name": album_name,
+                        "drive_folder_id": drive_folder_id if drive_folder_id else None
+                    }).execute()
+                else:
+                    # 如果已有记录但用户输入了新的 drive_folder_id，则更新
+                    if drive_folder_id:
+                        supabase_admin.table("album").update({
+                            "drive_folder_id": drive_folder_id
+                        }).eq("name", album_name).execute()
             except Exception as e:
                 app.logger.warning(f"创建/检查 album 失败: {e}")
 
+            # --- 上传每个文件到 Supabase Storage ---
             for f in files:
                 if not f or not f.filename:
                     continue
 
-                # 生成唯一文件名并读取 bytes
                 filename = f"{uuid.uuid4().hex}_{secure_filename(f.filename)}"
-                ext = os.path.splitext(filename)[1]
-                unique_filename = filename if ext else filename + ".jpg"
-                path = f"{safe_album}/{unique_filename}"
+                path = f"{safe_album}/{filename}"
 
                 try:
-                    file_bytes = f.read()  # bytes
-
-                    # 上传到 Supabase Storage（注意 file_options 的 upsert 要用字符串）
+                    file_bytes = f.read()
                     bucket.upload(
                         path,
                         file_bytes,
                         file_options={"content-type": f.mimetype or "application/octet-stream", "upsert": "true"}
                     )
-
-                    # 生成公开 URL（手动拼接并对 path 做 url-encode）
                     public_url = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/public/{SUPABASE_BUCKET}/{quote(path, safe='')}"
 
-                    # 写入 photo 表
-                    try:
-                        supabase_admin.table("photo").insert({
-                            "album": album_name,
-                            "url": public_url,
-                            "is_private": is_private
-                        }).execute()
-                    except Exception as e:
-                        app.logger.warning(f"写入 photo 表失败: {e}")
+                    supabase_admin.table("photo").insert({
+                        "album": album_name,
+                        "url": public_url,
+                        "is_private": is_private
+                    }).execute()
 
                     uploaded_urls.append(public_url)
 
                 except Exception as e:
-                    app.logger.exception(f"Supabase 上传失败，回退到本地：{e}")
-                    # 回退到本地保存
+                    app.logger.exception(f"Supabase 上传失败，尝试本地保存: {e}")
                     local_dir = os.path.join("static", "uploads", safe_album)
                     os.makedirs(local_dir, exist_ok=True)
-                    local_path = os.path.join(local_dir, unique_filename)
-                    try:
-                        # f.stream might be exhausted after f.read(), so re-seek when necessary
-                        # 重读：如果 f.stream 在上面 read 失败，则这里使用 save；否则把 file_bytes 写入文件
-                        if 'file_bytes' in locals():
-                            with open(local_path, "wb") as out:
-                                out.write(file_bytes)
-                        else:
-                            f.save(local_path)
-                        local_url = url_for("static", filename=f"uploads/{safe_album}/{unique_filename}", _external=True)
-                        # 写入本地 DB（如果你有 Photo 模型）
-                        try:
-                            new_photo = Photo(album=album_name, url=local_url, is_private=is_private)
-                            db.session.add(new_photo)
-                            db.session.commit()
-                        except Exception as ex:
-                            app.logger.warning(f"写本地 DB 失败: {ex}; continue.")
-                        uploaded_urls.append(local_url)
-                    except Exception as ex2:
-                        app.logger.exception(f"回退本地保存也失败: {ex2}")
-                        # 不中断循环，继续下一个文件
+                    local_path = os.path.join(local_dir, filename)
+                    with open(local_path, "wb") as out:
+                        out.write(file_bytes)
+                    local_url = url_for("static", filename=f"uploads/{safe_album}/{filename}", _external=True)
+                    uploaded_urls.append(local_url)
 
         else:
-            # 本地回退：保存到 static/uploads/<safe_album>/
+            # --- 本地保存模式 ---
             os.makedirs(os.path.join("static", "uploads", safe_album), exist_ok=True)
             for f in files:
                 if not f or not f.filename:
@@ -983,23 +960,18 @@ def upload():
                 f.save(local_path)
                 public_url = url_for("static", filename=f"uploads/{safe_album}/{filename}", _external=True)
 
-                # 写入本地 DB（如果有）
                 try:
                     new_photo = Photo(album=album_name, url=public_url, is_private=is_private)
                     db.session.add(new_photo)
                 except Exception as e:
                     app.logger.warning(f"写本地 DB 失败: {e}")
+
             try:
                 db.session.commit()
             except Exception:
                 db.session.rollback()
 
-            uploaded_urls = [url_for("static", filename=f"uploads/{safe_album}/{fn}", _external=True)
-                             for fn in os.listdir(os.path.join("static", "uploads", safe_album))]
-
-        # 保存最后使用相册名以便下次预选
         session["last_album"] = album_name
-
         return jsonify({"success": True, "uploads": uploaded_urls})
 
     except Exception as e:
