@@ -298,80 +298,71 @@ def about():
 # --------------------------
 # Albums list
 # --------------------------
-@app.route("/album")
-def albums():
+@app.route("/album/<album_name>")
+def view_album(album_name):
     try:
-        print("✅ use_supabase =", use_supabase)
-
-        albums_list = []
+        photos = []
+        drive_link = None  # ✅ 初始化 Google Drive 链接
 
         if use_supabase and supabase:
-            # 从 album 表读取所有相册名
-            album_response = supabase.table("album").select("name").execute()
-            album_names = [a["name"] for a in album_response.data] if album_response.data else []
+            print(f"🔍 查询相册信息: {album_name}")
 
-            # 从 photo 表读取最新图片（作为封面）
-            photo_response = (
+            album_res = (
+                supabase.table("album")
+                .select("name, drive_folder_id")
+                .eq("name", album_name)
+                .limit(1)
+                .execute()
+            )
+            print("🔍 Supabase album 返回结果:", album_res.data)
+
+            if album_res.data and len(album_res.data) > 0:
+                drive_folder_id = album_res.data[0].get("drive_folder_id")
+                if drive_folder_id:
+                    drive_link = f"https://drive.google.com/drive/folders/{drive_folder_id}"
+                    print("✅ 生成 drive_link:", drive_link)
+                else:
+                    print("⚠️ drive_folder_id 是空或 null")
+            else:
+                print("❌ 没查到相册记录")
+
+        # ✅ 取照片
+        photos = []
+        if use_supabase and supabase:
+            response = (
                 supabase.table("photo")
-                .select("album,url,created_at")
+                .select("id,url,created_at")
+                .eq("album", album_name)
                 .eq("is_private", False)
                 .order("created_at", desc=True)
                 .execute()
             )
+            print("📸 Supabase photo 返回:", response.data)
 
-            album_map = {}
-            if photo_response.data:
-                for item in photo_response.data:
-                    name = item.get("album")
-                    url = item.get("url")
+            if response.data:
+                for p in response.data:
+                    url = p.get("url")
+                    if url:
+                        photos.append({
+                            "id": p["id"],
+                            "url": url.replace(" ", "%20").rstrip("?"),
+                            "created_at": p["created_at"]
+                        })
 
-                    # ✅ 过滤空 album 和 url
-                    if not name or not url:
-                        continue
+        print(f"✅ 最终 drive_link={drive_link}")
+        print(f"✅ {album_name} photos 数量={len(photos)}")
 
-                    # ✅ 确保 URL 编码正确（防止中文或空格）
-                    safe_url = url.replace(" ", "%20")
-
-                    # ✅ 每个相册只保留最新一张照片作封面
-                    if name not in album_map:
-                        album_map[name] = safe_url.rstrip("?")
-
-            # ✅ 仅显示有封面的相册（去掉没图的）
-            albums_list = [
-                {"name": name, "cover": album_map[name]}
-                for name in album_names
-                if name in album_map
-            ]
-
-        else:
-            # SQLite 回退逻辑
-            rows = (
-                db.session.query(Photo.album, Photo.url, Photo.created_at)
-                .order_by(Photo.created_at.desc())
-                .all()
-            )
-
-            album_map = {}
-            album_names = set()
-            for album, url, _ in rows:
-                if not album or not url:
-                    continue
-                album_names.add(album)
-                if album not in album_map:
-                    album_map[album] = url
-
-            albums_list = [
-                {"name": name, "cover": album_map[name]}
-                for name in sorted(album_names)
-                if name in album_map
-            ]
-
-        print("✅ Albums list:", albums_list)
-        return render_template("album.html", albums=albums_list, logged_in=session.get("logged_in"))
+        return render_template(
+            "view_album.html",
+            album_name=album_name,
+            photos=photos,
+            drive_link=drive_link,  # ✅ 模板参数
+            logged_in=session.get("logged_in")
+        )
 
     except Exception as e:
-        app.logger.exception("Failed to load albums")
-        return f"Error loading albums: {e}", 500
+        app.logger.exception("view_album failed")
+        return f"Error loading album: {e}", 500
 
 # --------------------------
 # View album (public)
