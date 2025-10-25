@@ -380,11 +380,12 @@ def albums():
 def view_album(album_name):
     try:
         photos = []
-        drive_link = None  # ✅ 新增：初始化 drive_link
+        drive_link = None
 
+        # --------------- Photos: 从 photo 表读取公开照片 ---------------
         if use_supabase and supabase:
-            # 1️⃣ 获取照片
-            response = (
+            # 读取 photo 表（只取公开照片）
+            resp = (
                 supabase.table("photo")
                 .select("id,url,created_at")
                 .eq("album", album_name)
@@ -392,29 +393,18 @@ def view_album(album_name):
                 .order("created_at", desc=True)
                 .execute()
             )
-            if response.data:
-                for p in response.data:
+            if resp.data:
+                for p in resp.data:
                     url = p.get("url")
                     if url:
+                        # 修正空格与尾 ? 之类的多余字符
                         photos.append({
-                            "id": p["id"],
+                            "id": p.get("id"),
                             "url": url.replace(" ", "%20").rstrip("?"),
-                            "created_at": p["created_at"]
+                            "created_at": p.get("created_at")
                         })
-
-            # 2️⃣ 获取 album 表中的 Google Drive 文件夹 ID
-            album_info = (
-                supabase.table("album")
-                .select("drive_folder_id")
-                .eq("name", album_name)
-                .execute()
-            )
-            if album_info.data and album_info.data[0].get("drive_folder_id"):
-                drive_folder_id = album_info.data[0]["drive_folder_id"]
-                drive_link = f"https://drive.google.com/drive/folders/{drive_folder_id}"
-
         else:
-            # --- SQLite 回退 ---
+            # SQLite 回退逻辑
             photos_db = (
                 Photo.query.filter_by(album=album_name, is_private=False)
                 .order_by(Photo.created_at.desc())
@@ -428,12 +418,40 @@ def view_album(album_name):
                         "created_at": p.created_at
                     })
 
-        # ✅ 返回模板时，一并传 drive_link
+        # --------------- Drive folder id: 使用 ADMIN (service role) 客户端读取 ---------------
+        # 目的：保证无论用户是否登录，都能读取 drive_folder_id 并显示 "View Full Album"
+        try:
+            if use_supabase and SUPABASE_SERVICE_ROLE_KEY:
+                supabase_admin = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+                aresp = supabase_admin.table("album").select("drive_folder_id").eq("name", album_name).limit(1).execute()
+                # 如果表里有记录并且字段非空，就生成 drive_link
+                if aresp.data and len(aresp.data) > 0:
+                    dfid = aresp.data[0].get("drive_folder_id")
+                    if dfid:
+                        drive_link = f"https://drive.google.com/drive/folders/{dfid}"
+            else:
+                # 如果没有 Supabase（本地回退），尝试从本地 album 表或 Photo 表存的 drive info 读取
+                try:
+                    # 假设你有 Album 模型（可选），否则跳过
+                    if 'Album' in globals():
+                        album_row = Album.query.filter_by(name=album_name).first()
+                        if album_row and getattr(album_row, "drive_folder_id", None):
+                            drive_link = f"https://drive.google.com/drive/folders/{album_row.drive_folder_id}"
+                except Exception:
+                    # 不重要，继续
+                    pass
+        except Exception as e:
+            app.logger.warning(f"读取 album.drive_folder_id 时出错（admin client）: {e}")
+            drive_link = None
+
+        # 调试日志（部署时可以删除）
+        app.logger.info(f"✅ {album_name} Photos: {len(photos)} items; drive_link={drive_link}")
+
         return render_template(
             "view_album.html",
             album_name=album_name,
             photos=photos,
-            drive_link=drive_link,  # ✅ 关键：传给模板
+            drive_link=drive_link,
             logged_in=session.get("logged_in")
         )
 
