@@ -545,6 +545,17 @@ def delete_private_images():
 
     flash(f"Deleted {deleted} images.", "success")
     return redirect(url_for("view_private_album", album_name=album_name) if album_name else url_for("private_space"))
+    
+# --------------------------
+# /debug_photos
+# --------------------------
+@app.route("/debug_photos")
+def debug_photos():
+    try:
+        resp = supabase.table("photo").select("*").execute()
+        return {"data": resp.get("data", [])}
+    except Exception as e:
+        return {"error": str(e)}
 
 # --------------------------
 # Delete entire album (新加)
