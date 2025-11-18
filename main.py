@@ -553,7 +553,9 @@ def delete_private_images():
 def debug_photos():
     try:
         resp = supabase.table("photo").select("*").execute()
-        return {"data": resp.get("data", [])}
+
+        # v2 APIResponse: data 存在于 resp.data
+        return {"data": resp.data}
     except Exception as e:
         return {"error": str(e)}
 
