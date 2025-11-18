@@ -566,82 +566,72 @@ def debug_photos():
 @login_required
 def delete_album(album_name):
     try:
+        # album_name 现在已经是 safe_album（全部无空格且文件夹一致）
+        safe_album = album_name.strip()
+
         deleted_photos = 0
         deleted_files = 0
 
         if use_supabase and supabase:
             bucket = SUPABASE_BUCKET or "photos"
 
-            # === 1️⃣ 删除 Storage 文件 ===
+            # === 1️⃣ 删除 Supabase Storage 中的文件 ===
             try:
-                files_response = supabase.storage.from_(bucket).list(album_name)
+                files_response = supabase.storage.from_(bucket).list(safe_album)
 
-                # supabase v2 返回格式: {"data": [...], "error": None}
-                file_list = files_response.get("data", [])
+                if files_response and isinstance(files_response, list):
+                    file_names = [f["name"] for f in files_response if "name" in f]
 
-                file_names = [f["name"] for f in file_list if "name" in f]
-
-                if file_names:
-                    full_paths = [f"{album_name}/{name}" for name in file_names]
-                    supabase.storage.from_(bucket).remove(full_paths)
-                    deleted_files = len(full_paths)
-                    app.logger.info(f"Deleted {deleted_files} files from Storage")
+                    if file_names:
+                        full_paths = [f"{safe_album}/{name}" for name in file_names]
+                        supabase.storage.from_(bucket).remove(full_paths)
+                        deleted_files = len(full_paths)
+                        app.logger.info(f"✅ Deleted {deleted_files} files from Supabase album '{safe_album}'")
+                    else:
+                        app.logger.info(f"⚠️ No files found in Supabase album: {safe_album}")
                 else:
-                    app.logger.info(f"No files found in album '{album_name}'")
+                    app.logger.info(f"⚠️ Supabase list returned empty or unexpected format for album: {safe_album}")
 
             except Exception as e:
-                app.logger.warning(f"Storage delete error: {e}")
+                app.logger.warning(f"❌ Failed to clear Supabase storage for {safe_album}: {e}")
 
-            # === 2️⃣ 删除 photo 表记录 ===
+            # === 2️⃣ 删除 photo 表中的记录 ===
             try:
-                # v2: 如果你想获得删除数量，需要 returning="representation"
-                resp = (
-                    supabase.table("photo")
-                    .delete(returning="representation")
-                    .eq("album", album_name)
-                    .execute()
-                )
-
-                # v2 返回格式是 {"data": [...], "count": None, "error": None}
-                deleted_photos = len(resp.get("data", []))
-                app.logger.info(f"Deleted {deleted_photos} rows from photo table")
-
+                resp = supabase.table("photo").delete().eq("album", safe_album).execute()
+                if resp.data:
+                    deleted_photos = len(resp.data)
+                app.logger.info(f"✅ Deleted {deleted_photos} photo records for album '{safe_album}'")
             except Exception as e:
-                app.logger.warning(f"Photo table delete error: {e}")
+                app.logger.warning(f"❌ Supabase DB delete failed for album {safe_album}: {e}")
 
-            # === 3️⃣ 删除 album 表 ===
+            # === 3️⃣ 删除 album 表中的记录 ===
             try:
-                resp = (
-                    supabase.table("album")
-                    .delete(returning="representation")
-                    .eq("name", album_name)
-                    .execute()
-                )
-
-                app.logger.info(f"Album record '{album_name}' deleted")
-
+                supabase.table("album").delete().eq("name", safe_album).execute()
+                app.logger.info(f"✅ Deleted album record '{safe_album}'")
             except Exception as e:
-                app.logger.warning(f"Album table delete error: {e}")
+                app.logger.warning(f"❌ Failed to delete album record for {safe_album}: {e}")
 
-        # --- 本地 SQLite 模式 ---
         else:
-            photos = Photo.query.filter_by(album=album_name).all()
+            # === fallback: 本地 SQLite 模式 ===
+            photos = Photo.query.filter_by(album=safe_album).all()
             for p in photos:
                 db.session.delete(p)
             deleted_photos = len(photos)
             db.session.commit()
 
-            album_obj = Album.query.filter_by(name=album_name).first()
+            album_obj = Album.query.filter_by(name=safe_album).first()
             if album_obj:
                 db.session.delete(album_obj)
                 db.session.commit()
+            app.logger.info(f"✅ Local album '{safe_album}' deleted ({deleted_photos} photos)")
 
-        flash(f"Album '{album_name}' deleted ({deleted_photos} photos, {deleted_files} files)", "success")
+        flash(f"✅ Album '{safe_album}' deleted ({deleted_photos} photos, {deleted_files} files)", "success")
+        app.logger.info(f"Album '{safe_album}' fully deleted.")
         return redirect(url_for("albums"))
 
     except Exception as e:
         app.logger.exception(f"delete_album failed: {e}")
-        flash(f"Failed to delete album '{album_name}'", "danger")
+        flash(f"❌ Failed to delete album '{safe_album}': {e}", "danger")
         return redirect(url_for("albums"))
 
 # --------------------------
@@ -943,11 +933,11 @@ def upload():
 
             # --- 检查 album 是否存在，不存在则创建 ---
             try:
-                existing = supabase_admin.table("album").select("*").eq("name", album_name).execute()
+                existing = supabase_admin.table("album").select("*").eq("name", safe_album).execute()
                 if not existing.data:
                     # 新建时带上 drive_folder_id
                     supabase_admin.table("album").insert({
-                        "name": album_name,
+                        "name": safe_album,
                         "drive_folder_id": drive_folder_id if drive_folder_id else None
                     }).execute()
                 else:
@@ -955,7 +945,7 @@ def upload():
                     if drive_folder_id:
                         supabase_admin.table("album").update({
                             "drive_folder_id": drive_folder_id
-                        }).eq("name", album_name).execute()
+                        }).eq("name", safe_album).execute()
             except Exception as e:
                 app.logger.warning(f"创建/检查 album 失败: {e}")
 
@@ -977,7 +967,7 @@ def upload():
                     public_url = f"{SUPABASE_URL.rstrip('/')}/storage/v1/object/public/{SUPABASE_BUCKET}/{quote(path, safe='')}"
 
                     supabase_admin.table("photo").insert({
-                        "album": album_name,
+                        "album": safe_album,
                         "url": public_url,
                         "is_private": is_private
                     }).execute()
@@ -1016,7 +1006,7 @@ def upload():
             except Exception:
                 db.session.rollback()
 
-        session["last_album"] = album_name
+        session["last_album"] = safe_album
         return jsonify({"success": True, "uploads": uploaded_urls})
 
     except Exception as e:
